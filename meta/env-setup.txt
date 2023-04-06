@@ -1,0 +1,18 @@
+sudo apt-get install -y vim
+sudo apt-get install -y htop
+sudo apt-get install -y pigpio
+sudo apt-get install -y screen
+
+
+# 1-wire
+
+To enable multiple 1-wire GPIO:
+- sudo raspi-config -> interface options -> enable 1-wire
+- vim /boot/config.txt
+- Add multiple entries:
+    - dtoverlay=w1-gpio,gpiopin=4
+    - dtoverlay=w1-gpio,gpiopin=17
+
+
+# 1-wire them sensor python lib DS18B20
+sudo pip3 install w1thermsensor

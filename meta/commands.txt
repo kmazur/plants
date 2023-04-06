@@ -1,0 +1,1 @@
+libcamera-still -t 400000000 --timelapse 60000 --framestart 1 -o test%04d.jpg
