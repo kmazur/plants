@@ -1,11 +1,17 @@
 #!/bin/bash
 
+echo "UPDATING SYSTEM: update & upgrade"
+sudo apt-get update
+sudo apt-get -y upgrade
+
+
 echo "INSTALLING:"
+echo "- git"
 echo "- vim"
 echo "- htop"
 echo "- pigpio"
 echo "- screen"
-sudo apt-get -y install vim htop pigpio screen
+sudo apt-get -y git install vim htop pigpio screen
 
 echo "INSTALLING: "
 echo "- python lib: w1thermsensor"
