@@ -9,7 +9,11 @@ sudo apt-get -y install vim htop pigpio screen
 
 echo "INSTALLING: "
 echo "- python lib: w1thermsensor"
+echo "- python lib: influxdb-client"
+echo "- python lib: python-tsl2591"
 sudo pip3 install w1thermsensor
+sudo pip3 install influxdb-client
+sudo pip3 install python-tsl2591
 
 wget https://raw.githubusercontent.com/kmazur/plants/main/meta/git-update.sh
 chmod +x git-update.sh
