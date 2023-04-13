@@ -11,7 +11,8 @@ echo "- vim"
 echo "- htop"
 echo "- pigpio"
 echo "- screen"
-sudo apt-get -y install git vim htop pigpio screen
+echo "- imagemagick"
+sudo apt-get -y install git vim htop pigpio screen imagemagick
 
 echo "INSTALLING: "
 echo "- python lib: w1thermsensor"
