@@ -6,6 +6,12 @@ libcamera-still -t 400000000 --timelapse 60000 --framestart 1 -o test%04d.jpg
 # ffmpeg join timelapse
 ffmpeg -start_number 1 -framerate 30 -i test%04d.jpg -c:v libx264 -r 30 -pix_fmt yuv420p output.mp4
 
+# motion detection
+sudo libcamerify motion
+
+
+
+
 # TP-Link adapter
 https://www.linuxfordevices.com/tutorials/ubuntu/install-tp-link-wifi-adapter-driver-in-linux
 
