@@ -7,4 +7,4 @@ command = 'python ' + path + '/' + executable
 
 while True:
     call([command], shell=True)
-    time.sleep(10)
+    time.sleep(25)
