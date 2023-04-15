@@ -14,16 +14,19 @@ from utils.Config import Config
 
 class RPiCamera:
     def __init__(self):
-        self.picam = Picamera2()
         self.config = Config()
 
     def get_current_date_time_str(self):
         current_time = datetime.now()
         return current_time.strftime("%Y_%m_%d_%H_%M_%S")
 
+    def get_current_date_str(self):
+        current_time = datetime.now()
+        return current_time.strftime("%Y-%m-%d")
+
     def take_picture(self):
-        self.take_picture_out(
-            os.path.join(self.config.camera_dir),
+        return self.take_picture_out(
+            os.path.join(self.config.camera_dir, self.get_current_date_str()),
             int(self.config.get("camera.width")),
             int(self.config.get("camera.height")),
             int(self.config.get("camera.hflip")),
@@ -32,9 +35,10 @@ class RPiCamera:
 
     def take_picture_out(self, output_dir, width, height, hflip, vflip):
         output_file = self.get_current_date_time_str() + '.jpg'
-        self.take_picture_all(output_dir, output_file, width, height, hflip, vflip)
+        return self.take_picture_all(output_dir, output_file, width, height, hflip, vflip)
 
     def take_picture_all(self, output_dir, output_file, width, height, hflip, vflip, timestamped=True):
+        self.picam = Picamera2()
         config = self.picam.create_still_configuration(main={"size": (width, height)})
         config["transform"] = libcamera.Transform(hflip=hflip, vflip=vflip)
         self.picam.configure(config)
@@ -51,3 +55,4 @@ class RPiCamera:
             timestamp_message = current_time.strftime("%Y-%m-%d %H:%M:%S")
             timestamp_command = '/usr/bin/convert ' + path + f" -pointsize 72 -fill yellow -annotate +{width - 750}+{height - 100} '" + timestamp_message + "' " + path
             call([timestamp_command], shell=True)
+        return path

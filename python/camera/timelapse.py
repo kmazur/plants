@@ -28,5 +28,6 @@ def ensure_date_dir(config):
 
 while True:
     output_dir = ensure_date_dir(config)
-    camera.take_picture()
+    path = camera.take_picture()
+    print (f"Taken picture: {path}")
     time.sleep(sleepSeconds)
