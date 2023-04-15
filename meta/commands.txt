@@ -11,9 +11,22 @@ sudo libcamerify motion
 
 
 
+#### OTHER INSTALLATIONS
+
+### WIFI Adapters
 
 # TP-Link adapter
 https://www.linuxfordevices.com/tutorials/ubuntu/install-tp-link-wifi-adapter-driver-in-linux
 
 # Realtek wifi adapter
 https://askubuntu.com/questions/1162974/wireless-usb-adapter-0bdac811-realtek-semiconductor-corp
+
+
+
+## WINDOWS
+
+### rsync for windows
+https://packages.msys2.org/package/libxxhash?repo=msys&variant=x86_64
+https://prasaz.medium.com/add-rsync-to-windows-git-bash-f42736bae1b3
+
+"C:\Program Files\Git\git-bash.exe" --login -i -c "cd ~/Downloads; rsync -Pav -e \"ssh -i $HOME/.ssh/id_rsa_pi\" user@192.168.0.80:/home/user/WORK/tmp/test rsync-test"

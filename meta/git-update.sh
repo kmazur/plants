@@ -1,6 +1,7 @@
 #!/bin/bash
 
-WORKSPACE_DIR="$HOME"/WORK/workspace
+WORK_DIR="$HOME/WORK"
+WORKSPACE_DIR="$WORK_DIR"/workspace
 GIT_REPO_DIR="$WORKSPACE_DIR"/plants
 
 git config --global pull.ff only

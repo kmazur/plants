@@ -22,6 +22,13 @@ sudo pip3 install w1thermsensor
 sudo pip3 install influxdb-client
 sudo pip3 install python-tsl2591
 
+echo "MAKING DIR STRUCTURE:"
+WORK_DIR="$HOME/WORK"
+mkdir -p "$WORK_DIR/tmp"
+mkdir -p "$WORK_DIR/config"
+mkdir -p "$WORK_DIR/workspace"
+touch "$WORK_DIR/config/config.ini"
+
 wget https://raw.githubusercontent.com/kmazur/plants/main/meta/git-update.sh
 chmod +x git-update.sh
 ./git-update.sh
