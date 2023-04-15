@@ -1,6 +1,6 @@
 import os
 import subprocess
-from datetime import datetime
+from datetime import datetime, timedelta
 
 STORAGE_PATH_WIN = "C:" + os.sep + os.path.join("WORK", "tmp")
 STORAGE_PATH_GIT_BASH = "/c/WORK/tmp"
@@ -16,28 +16,33 @@ SOURCES = [
 
 currentTime = datetime.now()
 currentDateStr = currentTime.strftime("%Y-%m-%d")
+yesterday = datetime.today() - timedelta(days=1)
+yesterdayStr = yesterday.strftime("%Y-%m-%d")
 
-for source in SOURCES:
-    fullStoragePath = os.path.join(STORAGE_PATH_WIN, source["name"], currentDateStr)
-    command_line = f"mkdir {fullStoragePath}"
-    print(command_line)
-    pipe = subprocess.Popen(command_line, shell=True, stdout=subprocess.PIPE).stdout
-    pipe.close()
+dates = [currentDateStr, yesterdayStr]
 
-# rsync + git-bash command:
-for source in SOURCES:
-    fullStoragePath = f'{STORAGE_PATH_GIT_BASH}/{source["name"]}'
+for date in dates:
+    for source in SOURCES:
+        fullStoragePath = os.path.join(STORAGE_PATH_WIN, source["name"], date)
+        command_line = f"mkdir {fullStoragePath}"
+        print(command_line)
+        pipe = subprocess.Popen(command_line, shell=True, stdout=subprocess.PIPE).stdout
+        pipe.close()
 
-    user = source["user"]
-    host = source["host"]
-    rsyncRoot = source["rsync"]
+    # rsync + git-bash command:
+    for source in SOURCES:
+        fullStoragePath = f'{STORAGE_PATH_GIT_BASH}/{source["name"]}'
 
-    rsyncDir = f'{rsyncRoot}/{currentDateStr}'
-    rsyncCommand = f'cd {fullStoragePath}; rsync -Pav -e \\\"ssh -i {PRIV_KEY_PATH}\\\" {user}@{host}:{rsyncDir} ./'
-    command = f'"{GIT_BASH_EXECUTABLE}" -c "{rsyncCommand}"'
-    print("Command to rsync: " + command)
+        user = source["user"]
+        host = source["host"]
+        rsyncRoot = source["rsync"]
 
-    pipe = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE).stdout
-    output = pipe.read().decode()
-    print(output)
-    pipe.close()
+        rsyncDir = f'{rsyncRoot}/{date}'
+        rsyncCommand = f'cd {fullStoragePath}; rsync -Pav -e \\\"ssh -i {PRIV_KEY_PATH}\\\" {user}@{host}:{rsyncDir} ./'
+        command = f'"{GIT_BASH_EXECUTABLE}" -c "{rsyncCommand}"'
+        print("Command to rsync: " + command)
+
+        pipe = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE).stdout
+        output = pipe.read().decode()
+        print(output)
+        pipe.close()
