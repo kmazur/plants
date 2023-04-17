@@ -3,6 +3,9 @@ import sys
 import time
 from datetime import datetime
 
+import cv2
+import numpy as np
+
 current = os.path.dirname(os.path.realpath(__file__))
 parent = os.path.dirname(current)
 sys.path.append(parent)
@@ -25,9 +28,17 @@ def ensure_date_dir(config):
     OsProcess.execute(f"mkdir -p {directory}")
     return directory
 
+def black_ratio(img, threshold):
+    return np.sum(img < threshold) / np.sum(img >= threshold)
+
 
 while True:
     output_dir = ensure_date_dir(config)
     path = camera.take_picture()
-    print (f"Taken picture: {path}")
+    print(f"Taken picture: {path}")
+
+    img = cv2.imread(path)
+    ratio = black_ratio(img, 30)
+    print(f"Black ratio: {path} -> {ratio}")
+
     time.sleep(sleepSeconds)

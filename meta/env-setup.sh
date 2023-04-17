@@ -4,7 +4,6 @@ echo "UPDATING SYSTEM: update & upgrade"
 sudo apt-get update
 sudo apt-get -y upgrade
 
-
 echo "INSTALLING:"
 echo "- git"
 echo "- vim"
@@ -12,7 +11,10 @@ echo "- htop"
 echo "- pigpio"
 echo "- screen"
 echo "- imagemagick"
-sudo apt-get -y install git vim htop pigpio screen imagemagick
+echo "- libcamera-tools"
+# echo "- python3-opencv"
+sudo apt-get -y install git vim htop pigpio screen imagemagick libcamera-tools
+# python3-opencv
 
 echo "INSTALLING: "
 echo "- python lib: w1thermsensor"

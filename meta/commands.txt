@@ -1,4 +1,7 @@
 
+# Focus camera + lens
+libcamera-still --hdr 1 --autofocus-range full --shutter 8000 --ev -500000 -t 2000 -o test-zoom.jpg
+
 # Timelapse
 libcamera-still -t 400000000 --timelapse 60000 --framestart 1 -o test%04d.jpg
 
