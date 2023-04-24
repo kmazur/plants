@@ -12,6 +12,7 @@ parent = os.path.dirname(current)
 sys.path.append(parent)
 from utils.Config import Config
 
+
 class RPiCamera:
     def __init__(self):
         self.config = Config()

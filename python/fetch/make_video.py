@@ -1,6 +1,6 @@
-import subprocess
 import glob
 import os
+import subprocess
 import sys
 
 filenames = glob.glob('*.jpg')
@@ -9,7 +9,7 @@ print(current_path)
 fps = 30
 if len(sys.argv) > 1:
     fps = int(sys.argv[1])
-duration = 1.0/fps
+duration = 1.0 / fps
 
 with open("ffmpeg_input.txt", "wb") as outfile:
     for filename in filenames:

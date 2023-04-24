@@ -6,6 +6,7 @@ import influxdb_client
 from influxdb_client.client.write_api import SYNCHRONOUS
 from w1thermsensor import W1ThermSensor, Sensor
 
+# TODO: move this to Config.py
 bucket = "main"
 org = "Main"
 token = os.environ['INFLUX_DB_TOKEN']

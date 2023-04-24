@@ -28,6 +28,7 @@ def ensure_date_dir(config):
     OsProcess.execute(f"mkdir -p {directory}")
     return directory
 
+
 def black_ratio(img, threshold):
     return np.sum(img < threshold) / np.sum(img >= threshold)
 
