@@ -1,7 +1,15 @@
 import glob
 import os
-import subprocess
 import sys
+
+current = os.path.dirname(os.path.realpath(__file__))
+parent = os.path.dirname(current)
+sys.path.append(parent)
+
+from utils.OsProcess import OsProcess
+
+width = 640
+height = 480
 
 filenames = glob.glob('*.jpg')
 current_path = os.path.abspath("").replace("\\", "/")
@@ -13,23 +21,27 @@ if len(sys.argv) > 1:
     fps = int(sys.argv[1])
 duration = 1.0 / fps
 
-with open("ffmpeg_input.txt", "wb") as outfile:
+def try_remove(file_path):
+    if os.path.exists(file_path):
+        os.remove(file_path)
+
+files_file = "ffmpeg_input.txt"
+full_files_file = f"{current_path}/{files_file}"
+try_remove(full_files_file)
+with open(files_file, "wb") as outfile:
     for filename in filenames:
         outfile.write(f"file '{current_path}/{filename}'\n".encode())
         outfile.write(f"duration {duration}\n".encode())
 
-command_line = f"ffmpeg -y -f {fps} -f concat -safe 0 -i ffmpeg_input.txt -c:v libx265 -pix_fmt yuv420p {current_path}\\{output_file_name}.mp4"
+full_video_path = f"{current_path}/{output_file_name}.mp4"
+command_line = f"ffmpeg -y -f {fps} -f concat -safe 0 -i {files_file} -c:v libx265 -pix_fmt yuv420p {full_video_path}"
 print(command_line)
-
-pipe = subprocess.Popen(command_line, shell=True, stdout=subprocess.PIPE).stdout
-output = pipe.read().decode()
-pipe.close()
-
+OsProcess.execute(command_line)
 
 # "ffmpeg -i input.avi -s 720x480 -c:a copy output.mkv"
-command_line = f"ffmpeg -y -i {current_path}\\{output_file_name}.mp4 -s 720x480 -c:a copy {current_path}\\{output_file_name}_scaled.mp4"
+full_scaled_video_path = f"{current_path}\\{output_file_name}_scaled.mp4"
+command_line = f"ffmpeg -y -i {full_video_path} -s {width}x{height} -c:a copy {full_scaled_video_path}"
 print(command_line)
+OsProcess.execute(command_line)
 
-pipe = subprocess.Popen(command_line, shell=True, stdout=subprocess.PIPE).stdout
-output = pipe.read().decode()
-pipe.close()
+try_remove(full_files_file)

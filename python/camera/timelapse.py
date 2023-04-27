@@ -3,12 +3,12 @@ import sys
 import time
 from datetime import datetime
 
-import cv2
 import numpy as np
 
 current = os.path.dirname(os.path.realpath(__file__))
 parent = os.path.dirname(current)
 sys.path.append(parent)
+
 from utils.Config import Config
 from utils.OsProcess import OsProcess
 from camera.RPiCamera import RPiCamera
@@ -38,8 +38,8 @@ while True:
     path = camera.take_picture()
     print(f"Taken picture: {path}")
 
-    img = cv2.imread(path)
-    ratio = black_ratio(img, 30)
-    print(f"Black ratio: {path} -> {ratio}")
+    # img = cv2.imread(path)
+    # ratio = black_ratio(img, 30)
+    # print(f"Black ratio: {path} -> {ratio}")
 
     time.sleep(sleepSeconds)

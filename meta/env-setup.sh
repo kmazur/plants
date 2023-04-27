@@ -30,13 +30,28 @@ WORK_DIR="$HOME/WORK"
 mkdir -p "$WORK_DIR/tmp"
 mkdir -p "$WORK_DIR/config"
 mkdir -p "$WORK_DIR/workspace"
-touch "$WORK_DIR/config/config.ini"
 
-#echo "camera.width=2592" >>"$WORK_DIR/config/config.ini"
-#echo "camera.height=1944" >>"$WORK_DIR/config/config.ini"
-#echo "camera.vflip=0" >>"$WORK_DIR/config/config.ini"
-#echo "camera.hflip=0" >>"$WORK_DIR/config/config.ini"
+CONFIG_INI="$WORK_DIR/config/config.ini"
+touch "$CONFIG_INI"
 
+ARCH=$(uname -a)
+if [[ "$ARCH" == *"aarch64"* ]]; then
+  camera.width=4608
+  camera.height=2592
+  camera.hflip=1
+  camera.vflip=1
+  echo "" > "$CONFIG_INI"
+  echo "camera.width=4608" >>"$CONFIG_INI"
+  echo "camera.height=2592" >>"$CONFIG_INI"
+  echo "camera.vflip=1" >>"$CONFIG_INI"
+  echo "camera.hflip=1" >>"$CONFIG_INI"
+else
+  echo "" > "$CONFIG_INI"
+  echo "camera.width=2592" >>"$CONFIG_INI"
+  echo "camera.height=1944" >>"$CONFIG_INI"
+  echo "camera.vflip=0" >>"$CONFIG_INI"
+  echo "camera.hflip=0" >>"$CONFIG_INI"
+fi
 
 wget https://raw.githubusercontent.com/kmazur/plants/main/meta/git-update.sh
 chmod +x git-update.sh
