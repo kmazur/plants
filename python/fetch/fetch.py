@@ -17,7 +17,9 @@ SOURCES = [
 currentTime = datetime.now()
 currentDateStr = currentTime.strftime("%Y-%m-%d")
 yesterday = datetime.today() - timedelta(days=1)
+dayBeforeYesterday = datetime.today() - timedelta(days=2)
 yesterdayStr = yesterday.strftime("%Y-%m-%d")
+dayBeforeYesterdayStr = yesterday.strftime("%Y-%m-%d")
 
 dates = [currentDateStr, yesterdayStr]
 

@@ -13,7 +13,9 @@ echo "- screen"
 echo "- imagemagick"
 echo "- libcamera-tools"
 echo "- python3-opencv"
+echo "- motion"
 sudo apt-get -y install git vim htop pigpio screen imagemagick libcamera-tools python3-opencv
+sudo apt-get install motion
 
 echo "INSTALLING: "
 echo "- python lib: w1thermsensor"
@@ -34,6 +36,7 @@ touch "$WORK_DIR/config/config.ini"
 #echo "camera.height=1944" >>"$WORK_DIR/config/config.ini"
 #echo "camera.vflip=0" >>"$WORK_DIR/config/config.ini"
 #echo "camera.hflip=0" >>"$WORK_DIR/config/config.ini"
+
 
 wget https://raw.githubusercontent.com/kmazur/plants/main/meta/git-update.sh
 chmod +x git-update.sh
