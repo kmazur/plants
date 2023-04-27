@@ -1,6 +1,6 @@
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 
 current = os.path.dirname(os.path.realpath(__file__))
 parent = os.path.dirname(current)
@@ -13,8 +13,9 @@ LOCAL_REPO_PATH = "C:/Users/mazur/IdeaProjects/plants"
 PYTHON_EXE = "C:/Python/Python311/python.exe"
 
 current_time = datetime.now()
-current_date_str = current_time.strftime("%Y%m%d")
-current_date_str_out = current_time.strftime("%Y-%m-%d")
+yesterday = datetime.today() - timedelta(days=1)
+current_date_str = yesterday.strftime("%Y%m%d")
+current_date_str_out = yesterday.strftime("%Y-%m-%d")
 
 OsProcess.execute(f"{PYTHON_EXE} {LOCAL_REPO_PATH}/python/fetch/fetch.py")
 
