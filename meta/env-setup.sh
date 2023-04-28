@@ -21,9 +21,11 @@ echo "INSTALLING: "
 echo "- python lib: w1thermsensor"
 echo "- python lib: influxdb-client"
 echo "- python lib: python-tsl2591"
+echo "- python lib: adafruit-circuitpython-tsl2591"
 sudo pip3 install w1thermsensor
 sudo pip3 install influxdb-client
 sudo pip3 install python-tsl2591
+sudo pip3 install adafruit-circuitpython-tsl2591
 
 echo "MAKING DIR STRUCTURE:"
 WORK_DIR="$HOME/WORK"
