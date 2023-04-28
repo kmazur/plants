@@ -44,7 +44,7 @@ class RPiCamera:
     def take_picture_out(self, output_dir, cam_config):
         output_file = self.get_current_date_time_str() + '.jpg'
         cam_config["camera.outputfile"] = output_file
-        return self.take_picture_all(output_dir, output_file, cam_config)
+        return self.take_picture_all(output_dir, cam_config)
 
     def _get_conf(self, cam_config, key, default_value):
         if key in cam_config:
@@ -66,6 +66,7 @@ class RPiCamera:
         afrange = self._get_conf(cam_config, "camera.afrange", "Normal")
         afmetering = self._get_conf(cam_config, "camera.afmetering", "Auto")
         lensposition = self._get_conf(cam_config, "camera.lensposition", None)
+        output_file = self._get_conf(cam_config, "camera.outputfile", self.get_current_date_time_str() + '.jpg')
 
         config = self.picam.create_still_configuration(main={"size": (width, height)})
         config["transform"] = libcamera.Transform(hflip=hflip, vflip=vflip)
