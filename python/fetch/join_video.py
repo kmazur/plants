@@ -19,7 +19,7 @@ if len(sys.argv) > 1:
     current_date_str = sys.argv[1] + "" + sys.argv[2] + "" + sys.argv[3]
     current_date_str_out = sys.argv[1] + "_" + sys.argv[2] + "_" + sys.argv[3]
 
-glob_pattern = f'*{current_date_str}*.mp4'
+glob_pattern = f'*{current_date_str}*'
 filenames = glob.glob(glob_pattern)
 current_path = os.path.abspath("").replace("\\", "/")
 print(glob_pattern)
@@ -59,7 +59,7 @@ try_remove(full_joined_video_path)
 
 # "ffmpeg -i input.mp4 -vf mpdecimate -vsync vfr out.mp4"
 full_dedup_video_path = f"{current_path}/{current_date_str_out}_scaled_dedup.mp4"
-command_line = f"ffmpeg -y -i {full_scaled_video_path} -vf mpdecimate -vsync vfr {full_dedup_video_path}"
+command_line = f"ffmpeg -y -i {full_scaled_video_path} -vf mpdecimate -fps_mode vfr {full_dedup_video_path}"
 print(command_line)
 OsProcess.execute(command_line)
 try_remove(full_scaled_video_path)

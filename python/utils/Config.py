@@ -41,8 +41,11 @@ class Config:
             value = self.data[key]
             print(key + "=" + value)
 
-    def get(self, key):
-        return self.data[key]
+    def get(self, key, default_value=None):
+        if key in self.data:
+            return self.data[key]
+        else:
+            return default_value
 
     def set(self, key, value):
         prev = self.data[key]
