@@ -5,6 +5,8 @@ CURRENT_DATE_DASH=$(date +%Y-%m-%d)
 CURRENT_DATE_UNDERSCORE=$(date +%Y_%m_%d)
 MONITORING_DIR="$HOME/WORK/tmp/Monitoring"
 
+DRIVE_CMD="/home/user/.local/bin/drive"
+
 MY_IP=$(/usr/sbin/ifconfig wlan0 | grep inet | tr ' ' "\n" | grep 192 | head -n 1)
 
 # 192.168.0.45 - RaspberryPi Zero - timelapse
@@ -28,8 +30,8 @@ if [ "$MY_IP" = "192.168.0.45" ]; then
     mkdir -p "$PHOTO_DEST_DIR"
     cd "$PHOTO_SOURCE_DIR"
     ls -1athr | grep "$CURRENT_DATE_UNDERSCORE" | tail -n 100 | grep jpg | xargs -I {} cp -n {} "$PHOTO_DEST_DIR"
-    cd $MONITORING_DIR
-    drive push
+    cd "$MONITORING_DIR"
+    $DRIVE_CMD push
   fi
 elif [ "$MY_IP" = "192.168.0.206" ]; then
   VID_SOURCE_DIR="$HOME/WORK/tmp/vid"
@@ -39,15 +41,15 @@ elif [ "$MY_IP" = "192.168.0.206" ]; then
     mkdir -p "$VID_DEST_DIR"
     cd "$VID_DEST_DIR"
     ls -1athr | grep "$CURRENT_DATE" | tail -n 2 | grep mkv | xargs -I {} cp -n {} "$VID_DEST_DIR"
-    cd $MONITORING_DIR
-    drive push
+    cd "$MONITORING_DIR"
+    $DRIVE_CMD push
   fi
 elif [ "$MY_IP" = "192.168.0.80" ]; then
   if [ -d "$PHOTO_SOURCE_DIR" ]; then
     mkdir -p "$PHOTO_DEST_DIR"
     cd "$PHOTO_SOURCE_DIR"
     ls -1athr | grep "$CURRENT_DATE_UNDERSCORE" | tail -n 100 | grep jpg | xargs -I {} cp -n {} "$PHOTO_DEST_DIR"
-    cd $MONITORING_DIR
-    drive push
+    cd "$MONITORING_DIR"
+    $DRIVE_CMD push
   fi
 fi
