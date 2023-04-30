@@ -29,7 +29,7 @@ if [ "$MY_IP" = "192.168.0.45" ]; then
   if [ -d "$PHOTO_SOURCE_DIR" ]; then
     mkdir -p "$PHOTO_DEST_DIR"
     cd "$PHOTO_SOURCE_DIR"
-    ls -1athr | grep "$CURRENT_DATE_UNDERSCORE" | tail -n 100 | grep jpg | xargs -I {} cp -n {} "$PHOTO_DEST_DIR"
+    ls -1athr | grep "$CURRENT_DATE_UNDERSCORE" | grep jpg | xargs -I {} cp -n {} "$PHOTO_DEST_DIR"
     cd "$MONITORING_DIR"
     $DRIVE_CMD push
   fi
@@ -40,7 +40,7 @@ elif [ "$MY_IP" = "192.168.0.206" ]; then
   if [ -d "$VID_SOURCE_DIR" ]; then
     mkdir -p "$VID_DEST_DIR"
     cd "$VID_SOURCE_DIR"
-    ls -1athr | grep "$CURRENT_DATE" | tail -n 2 | grep mkv | xargs -I {} cp -n {} "$VID_DEST_DIR"
+    ls -1athr | grep "$CURRENT_DATE" | tail -n 5 | grep mkv | xargs -I {} cp -n {} "$VID_DEST_DIR"
     cd "$MONITORING_DIR"
     $DRIVE_CMD push
   fi
@@ -48,7 +48,7 @@ elif [ "$MY_IP" = "192.168.0.80" ]; then
   if [ -d "$PHOTO_SOURCE_DIR" ]; then
     mkdir -p "$PHOTO_DEST_DIR"
     cd "$PHOTO_SOURCE_DIR"
-    ls -1athr | grep "$CURRENT_DATE_UNDERSCORE" | tail -n 100 | grep jpg | xargs -I {} cp -n {} "$PHOTO_DEST_DIR"
+    ls -1athr | grep "$CURRENT_DATE_UNDERSCORE" | grep jpg | xargs -I {} cp -n {} "$PHOTO_DEST_DIR"
     cd "$MONITORING_DIR"
     $DRIVE_CMD push
   fi
