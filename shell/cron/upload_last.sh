@@ -27,7 +27,7 @@ if [ "$MY_IP" = "192.168.0.45" ]; then
     mkdir -p "$PHOTO_DEST_DIR"
     cd "$PHOTO_SOURCE_DIR"
     ls -1athr | grep "$CURRENT_DATE" | tail -n 100 | grep mkv | xargs -0 -I {} cp {} "$PHOTO_DEST_DIR"
-    cd $PHOTO_DEST_DIR
+    cd $MONITORING_DIR
     drive push
   fi
 elif [ "$MY_IP" = "192.168.0.206" ]; then
@@ -46,7 +46,7 @@ elif [ "$MY_IP" = "192.168.0.80" ]; then
     mkdir -p "$PHOTO_DEST_DIR"
     cd "$PHOTO_SOURCE_DIR"
     ls -1athr | grep "$CURRENT_DATE" | tail -n 100 | grep mkv | xargs -0 -I {} cp {} "$PHOTO_DEST_DIR"
-    cd $PHOTO_DEST_DIR
+    cd $MONITORING_DIR
     drive push
   fi
 fi
