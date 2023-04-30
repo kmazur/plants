@@ -13,8 +13,9 @@ echo "- screen"
 echo "- imagemagick"
 echo "- libcamera-tools"
 echo "- python3-opencv"
+echo "- jq"
 echo "- motion"
-sudo apt-get -y install git vim htop pigpio screen imagemagick libcamera-tools python3-opencv
+sudo apt-get -y install git vim htop pigpio screen imagemagick libcamera-tools python3-opencv jq
 sudo apt-get -y install motion
 
 echo "INSTALLING: "
