@@ -2,6 +2,7 @@
 
 CURRENT_DATE=$(date +%Y%m%d)
 CURRENT_DATE_DASH=$(date +%Y-%m-%d)
+CURRENT_DATE_UNDERSCORE=$(date +%Y_%m_%d)
 MONITORING_DIR="$HOME/WORK/tmp/Monitoring"
 
 MY_IP=$(ifconfig wlan0 | grep inet | tr ' ' "\n" | grep 192 | head -n 1)
@@ -26,7 +27,7 @@ if [ "$MY_IP" = "192.168.0.45" ]; then
   if [ -d "$PHOTO_SOURCE_DIR" ]; then
     mkdir -p "$PHOTO_DEST_DIR"
     cd "$PHOTO_SOURCE_DIR"
-    ls -1athr | grep "$CURRENT_DATE" | tail -n 100 | grep mkv | xargs -0 -I {} cp {} "$PHOTO_DEST_DIR"
+    ls -1athr | grep "$CURRENT_DATE_UNDERSCORE" | tail -n 100 | grep jpg | xargs -0 -I {} cp -n {} "$PHOTO_DEST_DIR"
     cd $MONITORING_DIR
     drive push
   fi
@@ -37,7 +38,7 @@ elif [ "$MY_IP" = "192.168.0.206" ]; then
   if [ -d "$VID_SOURCE_DIR" ]; then
     mkdir -p "$VID_DEST_DIR"
     cd "$VID_DEST_DIR"
-    ls -1athr | grep "$CURRENT_DATE" | tail -n 2 | grep mkv | xargs -0 -I {} cp {} "$VID_DEST_DIR"
+    ls -1athr | grep "$CURRENT_DATE" | tail -n 2 | grep mkv | xargs -0 -I {} cp -n {} "$VID_DEST_DIR"
     cd $MONITORING_DIR
     drive push
   fi
@@ -45,7 +46,7 @@ elif [ "$MY_IP" = "192.168.0.80" ]; then
   if [ -d "$PHOTO_SOURCE_DIR" ]; then
     mkdir -p "$PHOTO_DEST_DIR"
     cd "$PHOTO_SOURCE_DIR"
-    ls -1athr | grep "$CURRENT_DATE" | tail -n 100 | grep mkv | xargs -0 -I {} cp {} "$PHOTO_DEST_DIR"
+    ls -1athr | grep "$CURRENT_DATE_UNDERSCORE" | tail -n 100 | grep jpg | xargs -0 -I {} cp -n {} "$PHOTO_DEST_DIR"
     cd $MONITORING_DIR
     drive push
   fi
