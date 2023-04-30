@@ -73,3 +73,5 @@ else
   cd drive-cli &&
   pip install -e .
 fi
+
+# sudo apt-get install postfix

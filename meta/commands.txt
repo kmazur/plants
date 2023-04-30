@@ -46,3 +46,10 @@ https://prasaz.medium.com/add-rsync-to-windows-git-bash-f42736bae1b3
 7. Add oauth.json from GCP to the drive-cli/drive_cli
 8. drive --remote login - login & copy the token
 9. relaunch
+
+### cron
+crontab -e
+"minute hour day-of-month month day-of-week command"
+https://crontab.guru/#*/10_*_*_*_*
+e.g. 30 17 * * 1 /path/to/command
+*/10 * * * * /home/user/WORK/workspace/plants/shell/cron/upload_last.sh

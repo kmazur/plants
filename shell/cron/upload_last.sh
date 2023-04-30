@@ -5,7 +5,7 @@ CURRENT_DATE_DASH=$(date +%Y-%m-%d)
 CURRENT_DATE_UNDERSCORE=$(date +%Y_%m_%d)
 MONITORING_DIR="$HOME/WORK/tmp/Monitoring"
 
-MY_IP=$(ifconfig wlan0 | grep inet | tr ' ' "\n" | grep 192 | head -n 1)
+MY_IP=$(/usr/sbin/ifconfig wlan0 | grep inet | tr ' ' "\n" | grep 192 | head -n 1)
 
 # 192.168.0.45 - RaspberryPi Zero - timelapse
 # 192.168.0.206 - RaspberryPi 2B+ - Videos
