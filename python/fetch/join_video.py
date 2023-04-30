@@ -20,7 +20,7 @@ if len(sys.argv) > 1:
     current_date_str_out = sys.argv[1] + "_" + sys.argv[2] + "_" + sys.argv[3]
 
 glob_pattern = f'*{current_date_str}*'
-filenames = glob.glob(glob_pattern)
+filenames = sorted(glob.glob(glob_pattern), key=os.path.getmtime)
 current_path = os.path.abspath("").replace("\\", "/")
 print(glob_pattern)
 print(current_path)

@@ -8,9 +8,14 @@ sys.path.append(parent)
 
 from utils.OsProcess import OsProcess
 
-STORAGE_PATH = "C:/WORK/tmp"
-LOCAL_REPO_PATH = "C:/Users/mazur/IdeaProjects/plants"
-PYTHON_EXE = "C:/Python/Python311/python.exe"
+if os.name == 'nt':
+    STORAGE_PATH = "C:/WORK/tmp"
+    LOCAL_REPO_PATH = "C:/Users/mazur/IdeaProjects/plants"
+    PYTHON_EXE = "C:/Python/Python311/python.exe"
+else:
+    STORAGE_PATH = "/home/user/WORK/tmp"
+    LOCAL_REPO_PATH = "/home/user/WORK/workspace/plants"
+    PYTHON_EXE = "/usr/bin/python"
 
 current_time = datetime.now()
 yesterday = datetime.today() - timedelta(days=1)

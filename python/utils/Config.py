@@ -17,6 +17,7 @@ class Config:
         self.data["workspace_dir"] = f'{root_dir}/workspace'
         self.data["tmp_dir"] = f'{root_dir}/tmp'
         self.data["camera_dir"] = f'{self.data["tmp_dir"]}/camera'
+        self.data["drive_dir"] = f'{self.data["tmp_dir"]}/Monitoring'
         self.data["user"] = "user"
         self.data["host"] = OsProcess.get_ip_address()
 
@@ -33,6 +34,7 @@ class Config:
         self.workspace_dir = self.data["workspace_dir"]
         self.tmp_dir = self.data["tmp_dir"]
         self.camera_dir = self.data["camera_dir"]
+        self.drive_dir = self.data["drive_dir"]
         self.user = self.data["user"]
         self.host = self.data["host"]
 

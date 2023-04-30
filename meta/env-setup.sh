@@ -32,6 +32,7 @@ WORK_DIR="$HOME/WORK"
 mkdir -p "$WORK_DIR/tmp"
 mkdir -p "$WORK_DIR/config"
 mkdir -p "$WORK_DIR/workspace"
+mkdir -p "$WORK_DIR/tmp/Monitoring"
 
 CONFIG_INI="$WORK_DIR/config/config.ini"
 touch "$CONFIG_INI"
@@ -57,3 +58,18 @@ wget https://raw.githubusercontent.com/kmazur/plants/main/meta/git-update.sh
 chmod +x git-update.sh
 ./git-update.sh
 rm git-update.sh
+
+
+echo "INSTALLING DRIVE-CLI"
+if [ -d "$WORK_DIR/workspace/drive-cli" ]; then
+  echo "drive-cli is installed at: $WORK_DIR/workspace/drive-cli"
+  cd "$GIT_REPO_DIR" || exit 1
+  git reset --hard HEAD
+  git clean -x -f
+  git pull
+else
+  cd "$WORK_DIR/workspace" &&
+  git clone https://github.com/nurdtechie98/drive-cli.git &&
+  cd drive-cli &&
+  pip install -e .
+fi

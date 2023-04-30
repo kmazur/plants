@@ -1,80 +1,61 @@
-import network
 import socket
 from time import sleep
-import machine
 
-pico_led = machine.Pin("LED", machine.Pin.OUT)
-
-ssid = 'UPC3639547'
-password = ''
-
-def connect():
-    #Connect to WLAN
-    wlan = network.WLAN(network.STA_IF)
-    wlan.active(True)
-    wlan.connect(ssid, password)
-    while wlan.isconnected() == False:
-        print('Waiting for connection...')
-        sleep(1)
-    ip = wlan.ifconfig()[0]
-    print(f'Connected on {ip}')
-    return ip
-
-def open_socket(ip):
-    # Open a socket
-    address = (ip, 80)
-    connection = socket.socket()
-    connection.bind(address)
-    connection.listen(1)
-    return connection
+import network
 
 
-def webpage(temperature, state):
-    #Template HTML
-    html = f"""
-            <!DOCTYPE html>
-            <html>
-            <form action="./lighton">
-            <input type="submit" value="Light on" />
-            </form>
-            <form action="./lightoff">
-            <input type="submit" value="Light off" />
-            </form>
-            <p>LED is {state}</p>
-            <p>Temperature is {temperature}</p>
-            </body>
-            </html>
-            """
-    return str(html)
+class WebServer:
+    def __init__(self, handler, ssid, password, port=80):
+        self.handler = handler
+        self.ssid = ssid
+        self.password = password
+        self.port = port
 
-def serve(connection):
-    #Start a web server
-    state = 'OFF'
-    pico_led.off()
-    temperature = 0
-    while True:
-        client = connection.accept()[0]
-        request = client.recv(1024)
-        request = str(request)
-        try:
-            request = request.split()[1]
-        except IndexError:
-            pass
-        if request == '/lighton?':
-            pico_led.on()
-            state = 'ON'
-        elif request =='/lightoff?':
-            pico_led.off()
-            state = 'OFF'
-        temperature = 10.0
-        html = webpage(temperature, state)
-        client.send(html)
-        client.close()
+        self.wlan = None
+        self.connection = None
 
-try:
-    ip = connect()
-    connection = open_socket(ip)
-    serve(connection)
-except KeyboardInterrupt:
-    machine.reset()
+    def start(self):
+        self._connect()
+        self._open_socket(self.ip, self.port)
+        self._serve()
 
+    def _connect(self):
+        self.wlan = network.WLAN(network.STA_IF)
+        self.wlan.active(True)
+        self.wlan.connect(self.ssid, self.password)
+        while not self.wlan.isconnected():
+            print('Waiting for connection...')
+            sleep(1)
+        self.ip = self.wlan.ifconfig()[0]
+        print(f'Connected on {self.ip}')
+        return self.ip
+
+    def _open_socket(self, ip, port=80):
+        self.address = (ip, port)
+        self.connection = socket.socket()
+        self.connection.bind(self.address)
+        self.connection.listen(1)
+
+    def _serve(self):
+        while True:
+            client, addr = self.connection.accept()
+            print('Client connected from:', addr)
+            data = str(client.recv(1024))
+            request = None
+            try:
+                s = data.split()
+                request = {
+                    "method": str(s[0].split("'")[1]),
+                    "path": str(s[1]),
+                    "httpVersion": str(s[2].split("\\r")[0]),
+                    "host": s[3].split("\\r")[0],
+                    "raw": data[2:len(data) - 1].split("\\r\\n")
+                }
+            except IndexError:
+                pass
+
+            response = self.handler(request)
+
+            client.send('HTTP/1.1 200 OK\r\nContent-type: text/html\r\n\r\n')
+            client.send(response)
+            client.close()

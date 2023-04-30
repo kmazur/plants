@@ -33,3 +33,16 @@ https://packages.msys2.org/package/libxxhash?repo=msys&variant=x86_64
 https://prasaz.medium.com/add-rsync-to-windows-git-bash-f42736bae1b3
 
 "C:\Program Files\Git\git-bash.exe" --login -i -c "cd ~/Downloads; rsync -Pav -e \"ssh -i $HOME/.ssh/id_rsa_pi\" user@192.168.0.80:/home/user/WORK/tmp/test rsync-test"
+
+
+## drive-cli - https://github.com/nurdtechie98/drive-cli
+
+1. Create GCP Project
+2. Enable Drive API
+3. Add test user
+4. clone https://github.com/nurdtechie98/drive-cli
+5. cd drive-cli/drive_cli
+6. Generate oauth.json in GCP
+7. Add oauth.json from GCP to the drive-cli/drive_cli
+8. drive --remote login - login & copy the token
+9. relaunch
