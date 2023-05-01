@@ -22,8 +22,20 @@ elif [ "$MY_IP" = "192.168.0.80" ]; then
   SOURCE_NAME="RaspberryPi"
 fi
 
+function ensure_directory() {
+    if [ ! -d "$1" ]; then
+      mkdir -p "$1";
+    fi
+}
+
 PHOTO_SOURCE_DIR="$HOME/WORK/tmp/camera/$CURRENT_DATE_DASH"
 PHOTO_DEST_DIR="$MONITORING_DIR/$SOURCE_NAME/$CURRENT_DATE_DASH"
+
+VID_SOURCE_DIR="$HOME/WORK/tmp/vid"
+VID_DEST_DIR="$MONITORING_DIR/$SOURCE_NAME/$CURRENT_DATE_DASH"
+
+ensure_directory "$PHOTO_DEST_DIR"
+ensure_directory "$VID_DEST_DIR"
 
 if [ "$MY_IP" = "192.168.0.45" ]; then
   if [ -d "$PHOTO_SOURCE_DIR" ]; then
@@ -34,9 +46,6 @@ if [ "$MY_IP" = "192.168.0.45" ]; then
     $DRIVE_CMD push
   fi
 elif [ "$MY_IP" = "192.168.0.206" ]; then
-  VID_SOURCE_DIR="$HOME/WORK/tmp/vid"
-  VID_DEST_DIR="$MONITORING_DIR/$SOURCE_NAME/$CURRENT_DATE_DASH"
-
   if [ -d "$VID_SOURCE_DIR" ]; then
     mkdir -p "$VID_DEST_DIR"
     cd "$VID_SOURCE_DIR"
