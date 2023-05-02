@@ -76,3 +76,5 @@ else
 fi
 
 # sudo apt-get install postfix
+
+cp "$WORK_DIR/workspace/plants/shell/.profile" "$HOME"

@@ -1,64 +1,104 @@
 #!/usr/bin/env bash
 
-CURRENT_DATE=$(date +%Y%m%d)
-CURRENT_DATE_DASH=$(date +%Y-%m-%d)
-CURRENT_DATE_UNDERSCORE=$(date +%Y_%m_%d)
+LOCK_FILE="$HOME/WORK/tmp/drive.lock"
+function finally_func() {
+  echo "Cleaning up the lock file: $LOCK_FILE"
+  rm -f "$LOCK_FILE"
+}
+trap finally_func EXIT
+
+if [ -f "$LOCK_FILE" ]; then
+  echo "Lock file exists: $LOCK_FILE. Exiting!"
+  exit 0
+fi
+touch "$LOCK_FILE"
+
 MONITORING_DIR="$HOME/WORK/tmp/Monitoring"
-
 DRIVE_CMD="/home/user/.local/bin/drive"
+SOURCE_NAME="$(get_machine_name)"
 
-MY_IP=$(/usr/sbin/ifconfig wlan0 | grep inet | tr ' ' "\n" | grep 192 | head -n 1)
-
-# 192.168.0.45 - RaspberryPi Zero - timelapse
-# 192.168.0.206 - RaspberryPi 2B+ - Videos
-# 192.168.0.80 - RaspberryPi 4B+ - timelapse
-
-SOURCE_NAME="RaspberryPi"
-if [ "$MY_IP" = "192.168.0.45" ]; then
-  SOURCE_NAME="PiZero"
-elif [ "$MY_IP" = "192.168.0.206" ]; then
-  SOURCE_NAME="RaspberryPi2"
-elif [ "$MY_IP" = "192.168.0.80" ]; then
-  SOURCE_NAME="RaspberryPi"
+MONITORING_PARENT_ID=""
+if [ "$SOURCE_NAME" = "RaspberryPi2" ]; then
+  MONITORING_PARENT_ID="1gw5b8r24j5lnMCiRyqlrubarOxi6sofD"
+elif [ "$SOURCE_NAME" = "RaspberryPi4" ]; then
+  MONITORING_PARENT_ID="1ea_XDoMjxhwp28rlv7gpiPd80PTfmgge"
+elif [ "$SOURCE_NAME" = "PiZero" ]; then
+  MONITORING_PARENT_ID="1PXmC1nkxR2sQtzUvIR4p2UIILaDSWq6w"
+else
+  exit 1
 fi
 
-function ensure_directory() {
-    if [ ! -d "$1" ]; then
-      mkdir -p "$1";
-    fi
+if [ -d "$MONITORING_DIR/$SOURCE_NAME" ]; then
+  echo "Machine directory exists: $MONITORING_DIR/$SOURCE_NAME"
+else
+  echo "Machine directory does not exist: $MONITORING_DIR/$SOURCE_NAME"
+  cd "$MONITORING_DIR" || exit 2
+  drive clone $MONITORING_PARENT_ID
+  if [ -d "$MONITORING_DIR/$SOURCE_NAME" ]; then
+    echo "Cloned parent successfully"
+  else
+    echo "Error cloning parent"
+    exit 3
+  fi
+fi
+
+function get_photo_source_dir() {
+  CURRENT_DATE_DASH=$1
+  echo "$HOME/WORK/tmp/camera/$CURRENT_DATE_DASH"
 }
 
-PHOTO_SOURCE_DIR="$HOME/WORK/tmp/camera/$CURRENT_DATE_DASH"
-PHOTO_DEST_DIR="$MONITORING_DIR/$SOURCE_NAME/$CURRENT_DATE_DASH"
+function get_photo_destination_dir() {
+  CURRENT_DATE_DASH=$1
+  echo "$MONITORING_DIR/$SOURCE_NAME/$CURRENT_DATE_DASH"
+}
 
-VID_SOURCE_DIR="$HOME/WORK/tmp/vid"
-VID_DEST_DIR="$MONITORING_DIR/$SOURCE_NAME/$CURRENT_DATE_DASH"
+function get_video_source_dir() {
+  echo "$HOME/WORK/tmp/vid"
+}
 
-ensure_directory "$PHOTO_DEST_DIR"
-ensure_directory "$VID_DEST_DIR"
+function get_video_destination_dir() {
+  CURRENT_DATE_DASH=$1
+  echo "$MONITORING_DIR/$SOURCE_NAME/$CURRENT_DATE_DASH"
+}
 
-if [ "$MY_IP" = "192.168.0.45" ]; then
-  if [ -d "$PHOTO_SOURCE_DIR" ]; then
-    mkdir -p "$PHOTO_DEST_DIR"
-    cd "$PHOTO_SOURCE_DIR"
-    ls -1athr | grep "$CURRENT_DATE_UNDERSCORE" | grep jpg | xargs -I {} cp -n {} "$PHOTO_DEST_DIR"
-    cd "$MONITORING_DIR"
-    $DRIVE_CMD push
+CURRENT_DATE_DASH=$(get_current_date_dash)
+YEAR=$(extract_year_from_date "$CURRENT_DATE_DASH" "_")
+MONTH=$(extract_month_from_date "$CURRENT_DATE_DASH" "_")
+DAY=$(extract_day_from_date "$CURRENT_DATE_DASH" "_")
+CURRENT_DATE_UNDERSCORE="$($YEAR)_$($MONTH)_$($DAY)"
+CURRENT_DATE_COMPACT="$($YEAR)$($MONTH)$($DAY)"
+
+PHOTO_SOURCE_DIR=$(get_photo_source_dir "$CURRENT_DATE_DASH")
+PHOTO_DESTINATION_DIR=$(get_photo_destination_dir "$CURRENT_DATE_DASH")
+VIDEO_SOURCE_DIR=$(get_video_source_dir "$CURRENT_DATE_DASH")
+VIDEO_DESTINATION_DIR=$(get_video_destination_dir "$CURRENT_DATE_DASH")
+
+if [ -d "$PHOTO_SOURCE_DIR" ]; then
+  if [ -d "$PHOTO_DESTINATION_DIR" ]; then
+    echo "Date directory exists: $PHOTO_DESTINATION_DIR"
+  else
+    ensure_directory_exists "$PHOTO_DESTINATION_DIR"
+    cd "$PHOTO_DESTINATION_DIR" || exit 2
+    $DRIVE_CMD add_remote --pid "$MONITORING_PARENT_ID"
   fi
-elif [ "$MY_IP" = "192.168.0.206" ]; then
-  if [ -d "$VID_SOURCE_DIR" ]; then
-    mkdir -p "$VID_DEST_DIR"
-    cd "$VID_SOURCE_DIR"
-    ls -1athr | grep "$CURRENT_DATE" | grep mkv | xargs -I {} cp -n {} "$VID_DEST_DIR"
-    cd "$MONITORING_DIR"
-    $DRIVE_CMD push
+
+  cd "$PHOTO_SOURCE_DIR" || exit 2
+  ls -1athr | grep "$CURRENT_DATE_UNDERSCORE" | grep ".jpg" | xargs -I {} cp -n {} "$PHOTO_DESTINATION_DIR"
+  cd "$MONITORING_DIR/$SOURCE_NAME" || exit 2
+  $DRIVE_CMD push
+fi
+
+if [ -d "$VIDEO_SOURCE_DIR" ]; then
+  if [ -d "$VIDEO_DESTINATION_DIR" ]; then
+    echo "Date directory exists: $VIDEO_DESTINATION_DIR"
+  else
+    ensure_directory_exists "$VIDEO_DESTINATION_DIR"
+    cd "$VIDEO_DESTINATION_DIR" || exit 2
+    $DRIVE_CMD add_remote --pid "$MONITORING_PARENT_ID"
   fi
-elif [ "$MY_IP" = "192.168.0.80" ]; then
-  if [ -d "$PHOTO_SOURCE_DIR" ]; then
-    mkdir -p "$PHOTO_DEST_DIR"
-    cd "$PHOTO_SOURCE_DIR"
-    ls -1athr | grep "$CURRENT_DATE_UNDERSCORE" | grep jpg | xargs -I {} cp -n {} "$PHOTO_DEST_DIR"
-    cd "$MONITORING_DIR"
-    $DRIVE_CMD push
-  fi
+
+  cd "$VIDEO_SOURCE_DIR" || exit 2
+  ls -1athr | grep "$CURRENT_DATE_COMPACT" | grep ".mkv" | xargs -I {} cp -n {} "$VID_DEST_DIR"
+  cd "$MONITORING_DIR/$SOURCE_NAME" || exit 2
+  $DRIVE_CMD push
 fi
