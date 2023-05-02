@@ -102,7 +102,7 @@ if [ -d "$VIDEO_SOURCE_DIR" ]; then
   fi
 
   cd "$VIDEO_SOURCE_DIR" || exit 2
-  ls -1athr | grep "$CURRENT_DATE_COMPACT" | grep ".mkv" | xargs -I {} cp -n {} "$VID_DEST_DIR"
+  ls -1athr | grep "$CURRENT_DATE_COMPACT" | grep ".mkv" | xargs -I {} cp -n {} "$VIDEO_DESTINATION_DIR"
   cd "$MONITORING_DIR/$SOURCE_NAME" || exit 2
   $DRIVE_CMD push
 fi
