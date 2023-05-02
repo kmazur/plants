@@ -1,17 +1,19 @@
 #!/usr/bin/env bash
 
 LOCK_FILE="$HOME/WORK/tmp/drive.lock"
+if [ -f "$LOCK_FILE" ]; then
+  echo "Lock file exists: $LOCK_FILE. Exiting!"
+  exit 0
+fi
+touch "$LOCK_FILE"
+
 function finally_func() {
   echo "Cleaning up the lock file: $LOCK_FILE"
   rm -f "$LOCK_FILE"
 }
 trap finally_func EXIT
 
-if [ -f "$LOCK_FILE" ]; then
-  echo "Lock file exists: $LOCK_FILE. Exiting!"
-  exit 0
-fi
-touch "$LOCK_FILE"
+source "$HOME/.profile"
 
 MONITORING_DIR="$HOME/WORK/tmp/Monitoring"
 DRIVE_CMD="/home/user/.local/bin/drive"
@@ -27,6 +29,8 @@ elif [ "$SOURCE_NAME" = "PiZero" ]; then
 else
   exit 1
 fi
+
+ensure_directory_exists "$MONITORING_DIR"
 
 if [ -d "$MONITORING_DIR/$SOURCE_NAME" ]; then
   echo "Machine directory exists: $MONITORING_DIR/$SOURCE_NAME"
@@ -62,11 +66,11 @@ function get_video_destination_dir() {
 }
 
 CURRENT_DATE_DASH=$(get_current_date_dash)
-YEAR=$(extract_year_from_date "$CURRENT_DATE_DASH" "_")
-MONTH=$(extract_month_from_date "$CURRENT_DATE_DASH" "_")
-DAY=$(extract_day_from_date "$CURRENT_DATE_DASH" "_")
-CURRENT_DATE_UNDERSCORE="$($YEAR)_$($MONTH)_$($DAY)"
-CURRENT_DATE_COMPACT="$($YEAR)$($MONTH)$($DAY)"
+YEAR=$(extract_year_from_date "$CURRENT_DATE_DASH" "-")
+MONTH=$(extract_month_from_date "$CURRENT_DATE_DASH" "-")
+DAY=$(extract_day_from_date "$CURRENT_DATE_DASH" "-")
+CURRENT_DATE_UNDERSCORE=$YEAR'_'$MONTH'_'$DAY
+CURRENT_DATE_COMPACT=$YEAR$MONTH$DAY
 
 PHOTO_SOURCE_DIR=$(get_photo_source_dir "$CURRENT_DATE_DASH")
 PHOTO_DESTINATION_DIR=$(get_photo_destination_dir "$CURRENT_DATE_DASH")
