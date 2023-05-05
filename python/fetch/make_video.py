@@ -8,10 +8,13 @@ sys.path.append(parent)
 
 from utils.OsProcess import OsProcess
 
-width = 640
-height = 480
+width = 1024
+height = 768
 
-filenames = glob.glob('*.jpg')
+glob_pattern = '*.jpg'
+glob_filenames = glob.glob(glob_pattern)
+#filenames = sorted(glob_filenames, key=os.path.getmtime)
+filenames = glob_filenames
 current_path = os.path.abspath("").replace("\\", "/")
 output_file_name = "output"
 
@@ -21,9 +24,11 @@ if len(sys.argv) > 1:
     fps = int(sys.argv[1])
 duration = 1.0 / fps
 
+
 def try_remove(file_path):
     if os.path.exists(file_path):
         os.remove(file_path)
+
 
 files_file = "ffmpeg_input.txt"
 full_files_file = f"{current_path}/{files_file}"

@@ -11,6 +11,7 @@ sys.path.append(parent)
 
 from utils.Config import Config
 from utils.OsProcess import OsProcess
+from utils.Image import Image
 from camera.RPiCamera import RPiCamera
 
 sleepSeconds = 25
@@ -38,8 +39,12 @@ while True:
     path = camera.take_picture()
     print(f"Taken picture: {path}")
 
-    # img = cv2.imread(path)
-    # ratio = black_ratio(img, 30)
-    # print(f"Black ratio: {path} -> {ratio}")
+    img = Image(path)
+    ratio = img.get_ratio(20)
+    if ratio >= 280:
+        print(f"Too dark image! Ratio is: {ratio}")
+        os.remove(path)
+    else:
+        img.add_timestamp()
 
     time.sleep(sleepSeconds)

@@ -21,9 +21,12 @@ dayBeforeYesterday = datetime.today() - timedelta(days=2)
 yesterdayStr = yesterday.strftime("%Y-%m-%d")
 dayBeforeYesterdayStr = yesterday.strftime("%Y-%m-%d")
 
-dates = [currentDateStr, yesterdayStr]
+for i in range(0, 2):
+    currentTime = datetime.now()
+    currentDateStr = currentTime.strftime("%Y-%m-%d")
+    idate = datetime.today() - timedelta(days=i)
+    date = idate.strftime("%Y-%m-%d")
 
-for date in dates:
     for source in SOURCES:
         fullStoragePath = os.path.join(STORAGE_PATH_WIN, source["name"], date)
         command_line = f"mkdir {fullStoragePath}"

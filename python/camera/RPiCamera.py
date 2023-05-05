@@ -55,7 +55,7 @@ class RPiCamera:
         else:
             return default_value
 
-    def take_picture_all(self, output_dir, cam_config, timestamped=True):
+    def take_picture_all(self, output_dir, cam_config):
         self.picam = Picamera2()
 
         width = int(self._get_conf(cam_config, "camera.width", "2592"))
@@ -112,9 +112,4 @@ class RPiCamera:
         self.picam.capture_file(path)
         self.picam.close()
 
-        if timestamped:
-            current_time = datetime.now()
-            timestamp_message = current_time.strftime("%Y-%m-%d %H:%M:%S")
-            timestamp_command = '/usr/bin/convert ' + path + f" -pointsize 72 -fill yellow -annotate +{width - 750}+{height - 100} '" + timestamp_message + "' " + path
-            call([timestamp_command], shell=True)
         return path
