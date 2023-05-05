@@ -45,6 +45,7 @@ while True:
         print(f"Too dark image! Ratio is: {ratio}")
         os.remove(path)
     else:
+        print(f"Image darkness ok. Ratio is: {ratio}")
         img.add_timestamp()
 
     time.sleep(sleepSeconds)
