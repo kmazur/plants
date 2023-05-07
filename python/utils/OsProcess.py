@@ -26,5 +26,5 @@ class OsProcess:
 
     @staticmethod
     def get_ip_address(interface="wlan0"):
-        command = f"ifconfig {interface} | grep inet | head -n 1 | cut -d ' ' -f 10"
+        command = f"/usr/sbin/ifconfig {interface} | grep inet | head -n 1 | cut -d ' ' -f 10"
         return OsProcess.get_output(command)
