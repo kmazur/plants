@@ -10,12 +10,14 @@ PRIV_KEY_PATH = '$HOME/.ssh/id_rsa_pi'
 DEFAULT_USER = "user"
 DEFAULT_RSYNC_ROOT_PATH = f"/home/{DEFAULT_USER}/WORK/tmp/camera"
 SOURCES = [
-    {"name": "RaspberryPi", "host": "192.168.0.80", "user": DEFAULT_USER, "rsync": DEFAULT_RSYNC_ROOT_PATH},
-    {"name": "PiZero", "host": "192.168.0.45", "user": DEFAULT_USER, "rsync": DEFAULT_RSYNC_ROOT_PATH}
+    {"name": "RaspberryPi", "host": "192.168.0.80", "user": DEFAULT_USER, "rsync": DEFAULT_RSYNC_ROOT_PATH + "/{date}", "to": "."},
+    {"name": "PiZero", "host": "192.168.0.45", "user": DEFAULT_USER, "rsync": DEFAULT_RSYNC_ROOT_PATH + "/{date}", "to": "."},
+    {"name": "RaspberryPi2", "host": "192.168.0.206", "user": DEFAULT_USER, "rsync": f"/home/{DEFAULT_USER}/WORK/tmp/vid/", "to": "{date}"}
 ]
 
 currentTime = datetime.now()
 currentDateStr = currentTime.strftime("%Y-%m-%d")
+
 yesterday = datetime.today() - timedelta(days=1)
 dayBeforeYesterday = datetime.today() - timedelta(days=2)
 yesterdayStr = yesterday.strftime("%Y-%m-%d")
@@ -28,7 +30,8 @@ for i in range(0, 1):
     date = idate.strftime("%Y-%m-%d")
 
     for source in SOURCES:
-        fullStoragePath = os.path.join(STORAGE_PATH_WIN, source["name"], date)
+        name = source["name"]
+        fullStoragePath = os.path.join(STORAGE_PATH_WIN, name, date)
         command_line = f"mkdir {fullStoragePath}"
         print(command_line)
         pipe = subprocess.Popen(command_line, shell=True, stdout=subprocess.PIPE).stdout
@@ -36,14 +39,20 @@ for i in range(0, 1):
 
     # rsync + git-bash command:
     for source in SOURCES:
-        fullStoragePath = f'{STORAGE_PATH_GIT_BASH}/{source["name"]}'
-
+        name = source["name"]
         user = source["user"]
         host = source["host"]
         rsyncRoot = source["rsync"]
+        rsyncTo = source["to"]
 
-        rsyncDir = f'{rsyncRoot}/{date}'
-        rsyncCommand = f'cd {fullStoragePath}; rsync -Pav -e \\\"ssh -i {PRIV_KEY_PATH}\\\" {user}@{host}:{rsyncDir} ./'
+        fullStoragePath = f'{STORAGE_PATH_GIT_BASH}/{name}'
+        if rsyncTo != ".":
+            fullStoragePath = f'{STORAGE_PATH_GIT_BASH}/{name}/{rsyncTo}'
+
+        rsyncDir = rsyncRoot.replace("{date}", date)
+        fullStoragePath = fullStoragePath.replace("{date}", date)
+
+        rsyncCommand = f'cd {fullStoragePath}; rsync -Pav --include="*{date}*" -e \\\"ssh -i {PRIV_KEY_PATH}\\\" {user}@{host}:{rsyncDir} ./'
         command = f'"{GIT_BASH_EXECUTABLE}" -c "{rsyncCommand}"'
         print("Command to rsync: " + command)
 

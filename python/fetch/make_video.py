@@ -35,8 +35,10 @@ full_files_file = f"{current_path}/{files_file}"
 try_remove(full_files_file)
 with open(files_file, "wb") as outfile:
     for filename in filenames:
-        outfile.write(f"file '{current_path}/{filename}'\n".encode())
-        outfile.write(f"duration {duration}\n".encode())
+        size = os.path.getsize(filename)
+        if size > 0:
+            outfile.write(f"file '{current_path}/{filename}'\n".encode())
+            outfile.write(f"duration {duration}\n".encode())
 
 full_video_path = f"{current_path}/{output_file_name}.mp4"
 command_line = f"ffmpeg -y -f concat -safe 0 -i {files_file} -c:v libx265 -pix_fmt yuv420p {full_video_path}"
