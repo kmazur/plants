@@ -15,8 +15,17 @@ echo "- libcamera-tools"
 echo "- python3-opencv"
 echo "- jq"
 echo "- motion"
+echo "- openjdk-17-jdk"
 sudo apt-get -y install git vim htop pigpio screen imagemagick libcamera-tools python3-opencv jq
 sudo apt-get -y install motion
+sudo apt-get -y install openjdk-17-jdk
+
+#echo "INSTALLING:"
+#echo "- signal"
+#export VERSION=0.11.9.1
+#wget https://github.com/AsamK/signal-cli/releases/download/v"${VERSION}"/signal-cli-"${VERSION}"-Linux.tar.gz
+#sudo tar xf signal-cli-"${VERSION}"-Linux.tar.gz -C /opt
+#sudo ln -sf /opt/signal-cli-"${VERSION}"/bin/signal-cli /usr/local/bin/
 
 echo "INSTALLING: "
 echo "- python lib: w1thermsensor"

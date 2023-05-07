@@ -39,7 +39,7 @@ with open(files_file, "wb") as outfile:
         outfile.write(f"duration {duration}\n".encode())
 
 full_video_path = f"{current_path}/{output_file_name}.mp4"
-command_line = f"ffmpeg -y -f {fps} -f concat -safe 0 -i {files_file} -c:v libx265 -pix_fmt yuv420p {full_video_path}"
+command_line = f"ffmpeg -y -f concat -safe 0 -i {files_file} -c:v libx265 -pix_fmt yuv420p {full_video_path}"
 print(command_line)
 OsProcess.execute(command_line)
 

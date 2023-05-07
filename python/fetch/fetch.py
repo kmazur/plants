@@ -21,7 +21,7 @@ dayBeforeYesterday = datetime.today() - timedelta(days=2)
 yesterdayStr = yesterday.strftime("%Y-%m-%d")
 dayBeforeYesterdayStr = yesterday.strftime("%Y-%m-%d")
 
-for i in range(0, 2):
+for i in range(0, 1):
     currentTime = datetime.now()
     currentDateStr = currentTime.strftime("%Y-%m-%d")
     idate = datetime.today() - timedelta(days=i)

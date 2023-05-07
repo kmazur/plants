@@ -9,6 +9,7 @@ sys.path.append(parent)
 
 from utils.OsProcess import OsProcess
 
+# motion - captured video resolution
 width = 640
 height = 480
 
