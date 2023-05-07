@@ -45,30 +45,26 @@ mkdir -p "$WORK_DIR/workspace"
 mkdir -p "$WORK_DIR/tmp/Monitoring"
 
 CONFIG_INI="$WORK_DIR/config/config.ini"
-touch "$CONFIG_INI"
 
-ARCH=$(uname -a)
-if [[ "$ARCH" == *"aarch64"* ]]; then
-  camera.width=4608
-  camera.height=2592
-  camera.hflip=1
-  camera.vflip=1
-  echo "camera.width=4608" >"$CONFIG_INI"
-  echo "camera.height=2592" >>"$CONFIG_INI"
-  echo "camera.vflip=1" >>"$CONFIG_INI"
-  echo "camera.hflip=1" >>"$CONFIG_INI"
-else
-  echo "camera.width=2592" >"$CONFIG_INI"
-  echo "camera.height=1944" >>"$CONFIG_INI"
-  echo "camera.vflip=0" >>"$CONFIG_INI"
-  echo "camera.hflip=0" >>"$CONFIG_INI"
+if [ ! -f "$CONFIG_INI" ]; then
+  ARCH=$(uname -a)
+  if [[ "$ARCH" == *"aarch64"* ]]; then
+    echo "camera.width=4608" >"$CONFIG_INI"
+    echo "camera.height=2592" >>"$CONFIG_INI"
+    echo "camera.vflip=1" >>"$CONFIG_INI"
+    echo "camera.hflip=1" >>"$CONFIG_INI"
+  else
+    echo "camera.width=2592" >"$CONFIG_INI"
+    echo "camera.height=1944" >>"$CONFIG_INI"
+    echo "camera.vflip=0" >>"$CONFIG_INI"
+    echo "camera.hflip=0" >>"$CONFIG_INI"
+  fi
 fi
 
 wget https://raw.githubusercontent.com/kmazur/plants/main/meta/git-update.sh
 chmod +x git-update.sh
 ./git-update.sh
 rm git-update.sh
-
 
 echo "INSTALLING DRIVE-CLI"
 if [ -d "$WORK_DIR/workspace/drive-cli" ]; then
@@ -86,4 +82,4 @@ fi
 
 # sudo apt-get install postfix
 
-cp "$WORK_DIR/workspace/plants/shell/.profile" "$HOME"
+cp -f "$WORK_DIR/workspace/plants/shell/.profile" "$HOME"

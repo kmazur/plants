@@ -26,6 +26,15 @@ if [ -d "$HOME/.local/bin" ] ; then
     PATH="$HOME/.local/bin:$PATH"
 fi
 
+export WORK_DIR="$HOME/WORK"
+export TMP_DIR="$WORK_DIR/tmp"
+export CONFIG_DIR="$WORK_DIR/config"
+export LOCKS_DIR="$TMP_DIR/locks"
+export WORKSPACE_DIR="$WORK_DIR/workspace"
+export REPO_DIR="$WORKSPACE_DIR/plants"
+export CAMERA_DIR="$TMP_DIR/camera"
+export VIDEO_DIR="$TMP_DIR/vid"
+
 function get_current_year() {
     echo $(date +%Y)
 }

@@ -45,10 +45,12 @@ command_line = f"ffmpeg -y -f concat -safe 0 -i {files_file} -c:v libx265 -pix_f
 print(command_line)
 OsProcess.execute(command_line)
 
-# "ffmpeg -i input.avi -s 720x480 -c:a copy output.mkv"
-full_scaled_video_path = f"{current_path}\\{output_file_name}_scaled.mp4"
-command_line = f"ffmpeg -y -i {full_video_path} -s {width}x{height} -c:a copy {full_scaled_video_path}"
-print(command_line)
-OsProcess.execute(command_line)
+scaled = False
+if scaled:
+    # "ffmpeg -i input.avi -s 720x480 -c:a copy output.mkv"
+    full_scaled_video_path = f"{current_path}\\{output_file_name}_scaled.mp4"
+    command_line = f"ffmpeg -y -i {full_video_path} -s {width}x{height} -c:a copy {full_scaled_video_path}"
+    print(command_line)
+    OsProcess.execute(command_line)
 
 try_remove(full_files_file)

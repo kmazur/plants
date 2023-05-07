@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
-LOCK_FILE="$HOME/WORK/tmp/drive.lock"
+mkdir -p "$HOME/WORK/tmp/locks"
+LOCK_FILE="$HOME/WORK/tmp/locks/drive.lock"
 if [ -f "$LOCK_FILE" ]; then
   echo "Lock file exists: $LOCK_FILE. Exiting!"
   exit 0

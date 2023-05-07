@@ -108,7 +108,7 @@ class RPiCamera:
         self.picam.set_controls({"AfRange": afrange})
         self.picam.set_controls({"AfMetering": afmetering})
 
-        time.sleep(1)
+        time.sleep(0.2)
         self.picam.capture_file(path)
         self.picam.close()
 

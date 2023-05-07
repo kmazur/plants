@@ -14,23 +14,26 @@ width = 640
 height = 480
 
 current_time = datetime.now()
-current_date_str = current_time.strftime("%Y%m%d")
+year = current_time.strftime("%Y")
+month = current_time.strftime("%m")
+day = current_time.strftime("%d")
+
 current_date_str_out = current_time.strftime("%Y_%m_%d")
 if len(sys.argv) > 1:
-    current_date_str = sys.argv[1] + "" + sys.argv[2] + "" + sys.argv[3]
-    current_date_str_out = sys.argv[1] + "_" + sys.argv[2] + "_" + sys.argv[3]
+    year = sys.argv[1]
+    month = sys.argv[2]
+    day = sys.argv[3]
+    current_date_str_out = f"{year}_{month}_{day}"
 
-glob_pattern = f'*{current_date_str}*'
+glob_pattern = f'*{year}*{month}*{day}*'
 filenames = sorted(glob.glob(glob_pattern), key=os.path.getmtime)
 current_path = os.path.abspath("").replace("\\", "/")
 print(glob_pattern)
 print(current_path)
 
-
 def try_remove(file_path):
     if os.path.exists(file_path):
         os.remove(file_path)
-
 
 files_file = "ffmpeg_join_input.txt"
 full_files_file = f"{current_path}/{files_file}"
@@ -60,7 +63,7 @@ try_remove(full_joined_video_path)
 
 # "ffmpeg -i input.mp4 -vf mpdecimate -vsync vfr out.mp4"
 full_dedup_video_path = f"{current_path}/{current_date_str_out}_scaled_dedup.mp4"
-command_line = f"ffmpeg -y -i {full_scaled_video_path} -vf mpdecimate -fps_mode vfr {full_dedup_video_path}"
+command_line = f"ffmpeg -y -i {full_scaled_video_path} -vf mpdecwimate -fps_mode vfr {full_dedup_video_path}"
 print(command_line)
 OsProcess.execute(command_line)
 try_remove(full_scaled_video_path)
