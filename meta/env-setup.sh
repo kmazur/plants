@@ -43,6 +43,7 @@ mkdir -p "$WORK_DIR/tmp"
 mkdir -p "$WORK_DIR/config"
 mkdir -p "$WORK_DIR/workspace"
 mkdir -p "$WORK_DIR/tmp/Monitoring"
+mkdir -p "$WORK_DIR/logs"
 
 CONFIG_INI="$WORK_DIR/config/config.ini"
 

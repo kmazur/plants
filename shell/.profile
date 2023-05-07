@@ -34,6 +34,7 @@ export WORKSPACE_DIR="$WORK_DIR/workspace"
 export REPO_DIR="$WORKSPACE_DIR/plants"
 export CAMERA_DIR="$TMP_DIR/camera"
 export VIDEO_DIR="$TMP_DIR/vid"
+export LOGS_DIR="$WORK_DIR/logs"
 
 function get_current_year() {
     echo $(date +%Y)
