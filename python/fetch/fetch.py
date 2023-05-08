@@ -10,9 +10,9 @@ PRIV_KEY_PATH = '$HOME/.ssh/id_rsa_pi'
 DEFAULT_USER = "user"
 DEFAULT_RSYNC_ROOT_PATH = f"/home/{DEFAULT_USER}/WORK/tmp/camera"
 SOURCES = [
-    # {"name": "RaspberryPi", "host": "192.168.0.80", "user": DEFAULT_USER, "rsync": DEFAULT_RSYNC_ROOT_PATH + "/{date}", "to": "."},
-    # {"name": "PiZero", "host": "192.168.0.45", "user": DEFAULT_USER, "rsync": DEFAULT_RSYNC_ROOT_PATH + "/{date}", "to": "."},
-    {"name": "RaspberryPi2", "host": "192.168.0.206", "user": DEFAULT_USER, "rsync": f"/home/{DEFAULT_USER}/WORK/tmp/vid/", "to": "{date}"}
+    {"name": "RaspberryPi", "host": "192.168.0.80", "user": DEFAULT_USER, "rsync": DEFAULT_RSYNC_ROOT_PATH + "/{date}", "to": "."},
+    {"name": "PiZero", "host": "192.168.0.45", "user": DEFAULT_USER, "rsync": DEFAULT_RSYNC_ROOT_PATH + "/{date}", "to": "."},
+    # {"name": "RaspberryPi2", "host": "192.168.0.206", "user": DEFAULT_USER, "rsync": f"/home/{DEFAULT_USER}/WORK/tmp/vid/", "to": "{date}"}
 ]
 
 currentTime = datetime.now()

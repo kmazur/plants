@@ -13,9 +13,10 @@ height = 768
 
 glob_pattern = '*.jpg'
 glob_filenames = glob.glob(glob_pattern)
-#filenames = sorted(glob_filenames, key=os.path.getmtime)
+filenames = sorted(glob_filenames, key=os.path.getmtime)
 filenames = glob_filenames
 current_path = os.path.abspath("").replace("\\", "/")
+# TODO: output with date
 output_file_name = "output"
 
 print(current_path)
@@ -45,7 +46,7 @@ command_line = f"ffmpeg -y -f concat -safe 0 -i {files_file} -c:v libx265 -pix_f
 print(command_line)
 OsProcess.execute(command_line)
 
-scaled = False
+scaled = True
 if scaled:
     # "ffmpeg -i input.avi -s 720x480 -c:a copy output.mkv"
     full_scaled_video_path = f"{current_path}\\{output_file_name}_scaled.mp4"

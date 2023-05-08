@@ -48,7 +48,6 @@ for day_dir in month_dirs:
             filename_date = datetime.fromtimestamp(modification_time).strftime('%Y-%m-%d.jpg')
             include = True
         else:
-            print(filename_date)
             hour = int(filename_date[-12:-10])
             minute = int(filename_date[-9:-7])
             seconds = int(filename_date[-6:-4])

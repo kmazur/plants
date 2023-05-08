@@ -17,6 +17,7 @@ current_time = datetime.now()
 year = current_time.strftime("%Y")
 month = current_time.strftime("%m")
 day = current_time.strftime("%d")
+day = "07"
 
 current_date_str_out = current_time.strftime("%Y_%m_%d")
 if len(sys.argv) > 1:
@@ -63,7 +64,7 @@ try_remove(full_joined_video_path)
 
 # "ffmpeg -i input.mp4 -vf mpdecimate -vsync vfr out.mp4"
 full_dedup_video_path = f"{current_path}/{current_date_str_out}_scaled_dedup.mp4"
-command_line = f"ffmpeg -y -i {full_scaled_video_path} -vf mpdecwimate -fps_mode vfr {full_dedup_video_path}"
+command_line = f"ffmpeg -y -i {full_scaled_video_path} -vf mpdecimate -fps_mode vfr {full_dedup_video_path}"
 print(command_line)
 OsProcess.execute(command_line)
 try_remove(full_scaled_video_path)
