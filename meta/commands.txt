@@ -53,3 +53,9 @@ crontab -e
 https://crontab.guru/#*/10_*_*_*_*
 e.g. 30 17 * * 1 /path/to/command
 */10 * * * * /home/user/WORK/workspace/plants/shell/cron/upload_last.sh
+
+
+### GIT
+
+Add executable permissions
+git update-index --chmod=+x <file>
