@@ -24,7 +24,8 @@ current_date_str_out = current_time.strftime("%Y-%m-%d")
 
 OsProcess.execute(f"{PYTHON_EXE} {LOCAL_REPO_PATH}/python/fetch/fetch.py")
 
-for source in ["RaspberryPi", "PiZero"]:
+for source in ["RaspberryPi"]:
+# for source in ["RaspberryPi", "PiZero"]:
     today_path = f"{STORAGE_PATH}/{source}/{current_date_str_out}"
     today_path = today_path.replace("/", "\\")
     print(today_path)

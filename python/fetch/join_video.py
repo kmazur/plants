@@ -17,16 +17,18 @@ current_time = datetime.now()
 year = current_time.strftime("%Y")
 month = current_time.strftime("%m")
 day = current_time.strftime("%d")
-day = "07"
 
-current_date_str_out = current_time.strftime("%Y_%m_%d")
-if len(sys.argv) > 1:
+current_date_str_out = f"{year}_{month}_{day}"
+if len(sys.argv) == 4:
     year = sys.argv[1]
     month = sys.argv[2]
     day = sys.argv[3]
     current_date_str_out = f"{year}_{month}_{day}"
 
-glob_pattern = f'*{year}*{month}*{day}*'
+glob_pattern = f'*{year}?{month}?{day}*'
+if len(sys.argv) == 2:
+    glob_pattern = f'*.mkv'
+
 filenames = sorted(glob.glob(glob_pattern), key=os.path.getmtime)
 current_path = os.path.abspath("").replace("\\", "/")
 print(glob_pattern)
@@ -41,7 +43,7 @@ full_files_file = f"{current_path}/{files_file}"
 try_remove(full_files_file)
 with open(files_file, "wb") as outfile:
     for filename in filenames:
-        if "_scaled" in filename or "_dedup" in filename:
+        if "_scaled" in filename or "_dedup" in filename or ".ts" in filename:
             continue
         outfile.write(f"file '{current_path}/{filename}.ts'\n".encode())
         # ffmpeg -i file1.mp4 -c copy -bsf:v h264_mp4toannexb -f mpegts fileIntermediate1.ts

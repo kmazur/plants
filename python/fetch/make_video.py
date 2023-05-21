@@ -14,7 +14,7 @@ height = 768
 glob_pattern = '*.jpg'
 glob_filenames = glob.glob(glob_pattern)
 filenames = sorted(glob_filenames, key=os.path.getmtime)
-filenames = glob_filenames
+#filenames = glob_filenames
 current_path = os.path.abspath("").replace("\\", "/")
 # TODO: output with date
 output_file_name = "output"

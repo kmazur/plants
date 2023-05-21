@@ -2,3 +2,5 @@
 #*/2 * * * * ping -c 2 8.8.8.8 >/dev/null 2>&1
 #*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/timelapse.sh
 #*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/motion_detection.sh
+#*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/internal_temperatures.sh
+#*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/w1temperatures.sh
