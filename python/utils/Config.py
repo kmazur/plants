@@ -24,9 +24,11 @@ class Config:
         with open(f'{root_dir}/config/config.ini') as f:
             lines = f.readlines()
             for line in lines:
-                tokens = line.split('=')
-                key = tokens[0].strip()
-                value = tokens[1].strip()
+                if len(line.strip()) == 0:
+                    continue
+                index = line.find("=")
+                key = line[0:index].strip()
+                value = line[index+1:].strip()
                 self.data[key] = value
 
         self.root_dir = self.data["root_dir"]
