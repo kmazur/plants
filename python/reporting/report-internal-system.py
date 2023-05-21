@@ -1,13 +1,21 @@
 import os
-import subprocess
+import sys
 import time
 
 import influxdb_client
 from influxdb_client.client.write_api import SYNCHRONOUS
 
+current = os.path.dirname(os.path.realpath(__file__))
+parent = os.path.dirname(current)
+sys.path.append(parent)
+
+from utils.Config import Config
+
+config = Config()
+
 bucket = "main"
 org = "Main"
-token = os.environ['INFLUX_DB_TOKEN']
+token = config.get("influx.token")
 url = "http://34.122.138.205:8086"
 
 client = influxdb_client.InfluxDBClient(

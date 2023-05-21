@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 
 import RPi.GPIO as GPIO
@@ -6,10 +7,18 @@ import influxdb_client
 from influxdb_client.client.write_api import SYNCHRONOUS
 from w1thermsensor import W1ThermSensor, Sensor
 
+current = os.path.dirname(os.path.realpath(__file__))
+parent = os.path.dirname(current)
+sys.path.append(parent)
+
+from utils.Config import Config
+
+config = Config()
+
 # TODO: move this to Config.py
 bucket = "main"
 org = "Main"
-token = os.environ['INFLUX_DB_TOKEN']
+token = config.get("influx.token")
 url = "http://34.122.138.205:8086"
 
 client = influxdb_client.InfluxDBClient(
