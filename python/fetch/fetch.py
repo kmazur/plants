@@ -12,7 +12,7 @@ DEFAULT_RSYNC_ROOT_PATH = f"/home/{DEFAULT_USER}/WORK/tmp/camera"
 SOURCES = [
     {"name": "RaspberryPi", "host": "192.168.0.80", "user": DEFAULT_USER, "rsync": DEFAULT_RSYNC_ROOT_PATH + "/{date}", "to": "."},
     # {"name": "PiZero", "host": "192.168.0.45", "user": DEFAULT_USER, "rsync": DEFAULT_RSYNC_ROOT_PATH + "/{date}", "to": "."},
-    {"name": "RaspberryPi2", "host": "192.168.0.206", "user": DEFAULT_USER, "rsync": f"/home/{DEFAULT_USER}/WORK/tmp/vid/", "to": "{date}"}
+    # {"name": "RaspberryPi2", "host": "192.168.0.206", "user": DEFAULT_USER, "rsync": f"/home/{DEFAULT_USER}/WORK/tmp/vid/", "to": "{date}"}
 ]
 
 currentTime = datetime.now()
@@ -24,7 +24,7 @@ yesterdayStr = yesterday.strftime("%Y-%m-%d")
 dayBeforeYesterdayStr = yesterday.strftime("%Y-%m-%d")
 
 
-for i in range(0, 1):
+for i in range(0, 20):
     currentTime = datetime.now()
     currentDateStr = currentTime.strftime("%Y-%m-%d")
     idate = datetime.today() - timedelta(days=i)

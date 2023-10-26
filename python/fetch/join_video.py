@@ -25,9 +25,12 @@ if len(sys.argv) == 4:
     day = sys.argv[3]
     current_date_str_out = f"{year}_{month}_{day}"
 
+day = 21
 glob_pattern = f'*{year}?{month}?{day}*'
 if len(sys.argv) == 2:
     glob_pattern = f'*.mkv'
+
+glob_pattern = f'{year}{month}{day}_*.h264'
 
 filenames = sorted(glob.glob(glob_pattern), key=os.path.getmtime)
 current_path = os.path.abspath("").replace("\\", "/")
@@ -61,15 +64,16 @@ OsProcess.execute(command_line)
 full_scaled_video_path = f"{current_path}/{current_date_str_out}_scaled.mp4"
 command_line = f"ffmpeg -y -i {full_joined_video_path} -s {width}x{height} -c:a copy {full_scaled_video_path}"
 print(command_line)
-OsProcess.execute(command_line)
-try_remove(full_joined_video_path)
+#OsProcess.execute(command_line)
+#try_remove(full_joined_video_path)
 
 # "ffmpeg -i input.mp4 -vf mpdecimate -vsync vfr out.mp4"
 full_dedup_video_path = f"{current_path}/{current_date_str_out}_scaled_dedup.mp4"
-command_line = f"ffmpeg -y -i {full_scaled_video_path} -vf mpdecimate -fps_mode vfr {full_dedup_video_path}"
+#command_line = f"ffmpeg -y -i {full_scaled_video_path} -vf mpdecimate -fps_mode vfr {full_dedup_video_path}"
+command_line = f"ffmpeg -y -i {full_joined_video_path} -vf mpdecimate -fps_mode vfr {full_dedup_video_path}"
 print(command_line)
-OsProcess.execute(command_line)
-try_remove(full_scaled_video_path)
+#OsProcess.execute(command_line)
+#try_remove(full_scaled_video_path)
 
 for filename in filenames:
     if "_scaled" in filename or "_dedup" in filename:

@@ -58,20 +58,21 @@ for day_dir in month_dirs:
             else:
                 include = False
 
+        include = True
         if include:
             print(file)
             ffmpeg_files.append(file)
             this_day_files.append(file)
     ffmpeg_files_days.append(this_day_files)
 
-SECONDS_PER_DAY = 4
+SECONDS_PER_DAY = 10
 days_count = len(month_dirs)
 movie_seconds = days_count * SECONDS_PER_DAY
 
 ffmpeg_files_result = ffmpeg_files
 
 # override with FPS
-fps = 30
+fps = 24
 ffmpeg_files_result = []
 max_files = SECONDS_PER_DAY * fps
 for day_files in ffmpeg_files_days:
