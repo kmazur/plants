@@ -19,6 +19,7 @@ echo "- openjdk-17-jdk"
 sudo apt-get -y install git vim htop pigpio screen imagemagick libcamera-tools python3-opencv jq
 sudo apt-get -y install motion
 sudo apt-get -y install openjdk-17-jdk
+sudo apt-get -y install python3-pip
 
 #echo "INSTALLING:"
 #echo "- signal"
@@ -29,13 +30,21 @@ sudo apt-get -y install openjdk-17-jdk
 
 echo "INSTALLING: "
 echo "- python lib: w1thermsensor"
-echo "- python lib: influxdb-client"
-echo "- python lib: python-tsl2591"
-echo "- python lib: adafruit-circuitpython-tsl2591"
 sudo pip3 install w1thermsensor
+
+echo "- python lib: influxdb-client"
 sudo pip3 install influxdb-client
+
+echo "- python lib: python-tsl2591"
 sudo pip3 install python-tsl2591
+
+echo "- python lib: adafruit-circuitpython-tsl2591"
 sudo pip3 install adafruit-circuitpython-tsl2591
+
+echo "- python lib: Adafruit I2S MEMS Microphone"
+sudo pip3 install --upgrade adafruit-python-shell
+wget https://raw.githubusercontent.com/adafruit/Raspberry-Pi-Installer-Scripts/master/i2smic.py
+#sudo python3 i2smic.py
 
 echo "MAKING DIR STRUCTURE:"
 WORK_DIR="$HOME/WORK"
@@ -67,19 +76,19 @@ chmod +x git-update.sh
 ./git-update.sh
 rm git-update.sh
 
-echo "INSTALLING DRIVE-CLI"
-if [ -d "$WORK_DIR/workspace/drive-cli" ]; then
-  echo "drive-cli is installed at: $WORK_DIR/workspace/drive-cli"
-  cd "$GIT_REPO_DIR" || exit 1
-  git reset --hard HEAD
-  git clean -x -f
-  git pull
-else
-  cd "$WORK_DIR/workspace" &&
-  git clone https://github.com/nurdtechie98/drive-cli.git &&
-  cd drive-cli &&
-  pip install -e .
-fi
+# echo "INSTALLING DRIVE-CLI"
+# if [ -d "$WORK_DIR/workspace/drive-cli" ]; then
+#   echo "drive-cli is installed at: $WORK_DIR/workspace/drive-cli"
+#   cd "$GIT_REPO_DIR" || exit 1
+#   git reset --hard HEAD
+#   git clean -x -f
+#   git pull
+# else
+#   cd "$WORK_DIR/workspace" &&
+#   git clone https://github.com/nurdtechie98/drive-cli.git &&
+#   cd drive-cli &&
+#   pip3 install -e .
+# fi
 
 # sudo apt-get install postfix
 
