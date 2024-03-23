@@ -66,7 +66,7 @@ function get_video_destination_dir() {
   echo "$MONITORING_DIR/$SOURCE_NAME/$CURRENT_DATE_DASH"
 }
 
-CURRENT_DATE_DASH=$(get_current_date_dash)
+CURRENT_DATE_DASH=$(get_current_date_dashed)
 YEAR=$(extract_year_from_date "$CURRENT_DATE_DASH" "-")
 MONTH=$(extract_month_from_date "$CURRENT_DATE_DASH" "-")
 DAY=$(extract_day_from_date "$CURRENT_DATE_DASH" "-")

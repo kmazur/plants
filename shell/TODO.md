@@ -9,10 +9,11 @@
 
 
 #Disable Power LED (Red)
+dtparam=pwr_led_trigger=none
 dtparam=pwr_led_activelow=off
 #Disable Activity LED (Green)
 dtparam=act_led_trigger=none
-dtparam=act_led_activelow=off
+dtparam=act_led_activelow=on
 #Disable LAN LEDs
 dtparam=eth_led0=14
 dtparam=eth_led1=14

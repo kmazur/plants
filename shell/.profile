@@ -35,72 +35,13 @@ export REPO_DIR="$WORKSPACE_DIR/plants"
 export CAMERA_DIR="$TMP_DIR/camera"
 export VIDEO_DIR="$TMP_DIR/vid"
 export LOGS_DIR="$WORK_DIR/logs"
+export BIN_DIR="$WORK_DIR/bin"
+export USER_BIN="$HOME/bin"
 
-function get_current_year() {
-    echo $(date +%Y)
-}
-function get_current_month() {
-    echo $(date +%m)
-}
-function get_current_day() {
-    echo $(date +%d)
-}
+export CONFIG_INI="$CONFIG_DIR/config.ini"
 
-function extract_year_from_date() {
-    DATE=$1
-    DELIMITER=$2
-    echo $DATE | cut -d "$DELIMITER" -f 1
-}
+export ENV_INITIALIZED="true"
 
-function extract_month_from_date() {
-    DATE=$1
-    DELIMITER=$2
-    echo $DATE | cut -d "$DELIMITER" -f 2
-}
+MACHINE_NAME="$(grep "name=" "$CONFIG_DIR/config.ini" | cut -f 2 -d='')"
 
-function extract_day_from_date() {
-    DATE=$1
-    DELIMITER=$2
-    echo $DATE | cut -d "$DELIMITER" -f 3
-}
-
-function join_date() {
-    YEAR=$1
-    MONTH=$2
-    DAY=$3
-    DELIMITER=$4
-    echo "$YEAR$DELIMITER$MONTH$DELIMITER$DAY"
-}
-
-function get_current_date_compact() {
-    echo $(date +%Y%m%d)
-}
-function get_current_date_dash() {
-    echo $(date +%Y-%m-%d)
-}
-function get_current_date_underscore() {
-    echo $(date +%Y_%m_%d)
-}
-
-function get_wlan_ip() {
-    echo $(/usr/sbin/ifconfig wlan0 | grep inet | tr ' ' "\n" | grep 192 | head -n 1)
-}
-
-function get_machine_name() {
-    MY_IP=$(get_wlan_ip)
-    if [ "$MY_IP" = "192.168.0.45" ]; then
-        echo "PiZero"
-    elif [ "$MY_IP" = "192.168.0.206" ]; then
-        echo "RaspberryPi2"
-    elif [ "$MY_IP" = "192.168.0.80" ]; then
-        echo "RaspberryPi4"
-    else
-        echo "Unknown"
-    fi
-}
-
-function ensure_directory_exists() {
-    if [ ! -d "$1" ]; then
-      mkdir -p "$1";
-    fi
-}
+export PS1="\e[0;32m[$MACHINE_NAME][\w]\$ \e[0m"
