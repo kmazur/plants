@@ -36,7 +36,8 @@ export CAMERA_DIR="$TMP_DIR/camera"
 export VIDEO_DIR="$TMP_DIR/vid"
 export LOGS_DIR="$WORK_DIR/logs"
 export BIN_DIR="$WORK_DIR/bin"
-export USER_BIN="$HOME/bin"
+export USER_BIN_DIR="$HOME/bin"
+export REPO_DIR="$WORK_DIR/workspace/plants"
 
 export CONFIG_INI="$CONFIG_DIR/config.ini"
 

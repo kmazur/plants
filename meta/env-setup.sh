@@ -31,7 +31,7 @@ mkdir -p "$CAMERA_DIR"
 mkdir -p "$VIDEO_DIR"
 mkdir -p "$LOGS_DIR"
 mkdir -p "$BIN_DIR"
-mkdir -p "$USER_BIN"
+mkdir -p "$USER_BIN_DIR"
 
 ARCH=$(uname -a)
 if [ ! -f "$CONFIG_INI" ]; then
@@ -87,8 +87,8 @@ fi
 
 tar xzvf mediamtx_v*.tar.gz
 rm mediamtx_v*.tar.gz 2> /dev/null
-ln -s "$MEDIAMTX_DIR/mediamtx" "$USER_BIN/mediamtx"
-
+ln -s "$MEDIAMTX_DIR/mediamtx" "$USER_BIN_DIR/mediamtx"
+cp "$REPO_DIR/meta/files/mediamtx/mediamtx.yml" "$HOME"
 
 
 

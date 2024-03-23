@@ -18,6 +18,7 @@ function get_current_day() {
     date +%d
 }
 
+
 function get_current_date_compact() {
     date +%Y%m%d
 }
@@ -183,28 +184,3 @@ function get_machine_name() {
 
 
 
-
-function is_locked() {
-  local PROCESS_NAME="$1"
-
-  mkdir -p "$LOCK_DIR"
-  LOCK_FILE="$LOCK_DIR/$PROCESS_NAME.lock"
-  if [ -f "$LOCK_FILE" ]; then
-    true
-  else
-    false
-  fi
-}
-
-function lock_process() {
-  local PROCESS_NAME="$1"
-
-  mkdir -p "$LOCK_DIR"
-  LOCK_FILE="$LOCK_DIR/$PROCESS_NAME.lock"
-  touch "$LOCK_FILE"
-
-  function finally_func() {
-    rm -f "$LOCK_FILE"
-  }
-  trap finally_func EXIT
-}
