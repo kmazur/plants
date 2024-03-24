@@ -50,7 +50,20 @@ if [ ! -f "$CONFIG_INI" ]; then
 fi
 
 
-
+# sudo apt-get -y install software-properties-common
+# sudo apt-get -y install autoconf
+# sudo apt-get -y install libtool
+#
+# if [ ! -d "$BIN_DIR/mp4fpsmod" ]; then
+#   cd "$BIN_DIR"
+#   git clone https://github.com/nu774/mp4fpsmod.git
+#   cd "mp4fpsmod"
+#   ./bootstrap.sh
+#   ./configure
+#   make
+#   strip mp4fpsmod
+#   sudo make install
+# fi
 
 
 echo "INSTALLING:"
@@ -71,24 +84,26 @@ sudo apt-get -y install openjdk-17-jdk
 sudo apt-get -y install python3-pip
 
 
-echo "INSTALLING mediamtx"
-sudo apt-get install libfreetype6 libcamera0
-ARCH=$(uname -a)
+# echo "INSTALLING mediamtx"
+# sudo apt-get install libfreetype6 libcamera0
+# ARCH=$(uname -a)
 
-MEDIAMTX_DIR="$BIN_DIR/mediamtx"
-mkdir -p "$MEDIAMTX_DIR"
-cd "$MEDIAMTX_DIR"
-if [[ "$ARCH" == *"armv7"* ]]; then
-  wget https://github.com/bluenviron/mediamtx/releases/download/v1.6.0/mediamtx_v1.6.0_linux_armv7.tar.gz
-else
-  # TODO: switch to arm64 version
-  wget https://github.com/bluenviron/mediamtx/releases/download/v1.6.0/mediamtx_v1.6.0_linux_armv7.tar.gz
-fi
-
-tar xzvf mediamtx_v*.tar.gz
-rm mediamtx_v*.tar.gz 2> /dev/null
-ln -s "$MEDIAMTX_DIR/mediamtx" "$USER_BIN_DIR/mediamtx"
-cp "$REPO_DIR/meta/files/mediamtx/mediamtx.yml" "$HOME"
+# MEDIAMTX_DIR="$BIN_DIR/mediamtx"
+# if [ ! -d "$MEDIAMTX_DIR" ]; then
+#   mkdir -p "$MEDIAMTX_DIR"
+#   cd "$MEDIAMTX_DIR"
+#   if [[ "$ARCH" == *"armv7"* ]]; then
+#     wget https://github.com/bluenviron/mediamtx/releases/download/v1.6.0/mediamtx_v1.6.0_linux_armv7.tar.gz
+#   else
+#     # TODO: switch to arm64 version
+#     wget https://github.com/bluenviron/mediamtx/releases/download/v1.6.0/mediamtx_v1.6.0_linux_armv7.tar.gz
+#   fi
+#
+#   tar xzvf mediamtx_v*.tar.gz
+#   rm mediamtx_v*.tar.gz 2> /dev/null
+#   ln -s "$MEDIAMTX_DIR/mediamtx" "$USER_BIN_DIR/mediamtx"
+# fi
+# cp -f "$REPO_DIR/meta/files/mediamtx/mediamtx.yml" "$HOME"
 
 
 

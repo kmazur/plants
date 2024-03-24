@@ -45,4 +45,4 @@ export ENV_INITIALIZED="true"
 
 MACHINE_NAME="$(grep "name=" "$CONFIG_DIR/config.ini" | cut -f 2 -d='')"
 
-export PS1="\e[0;32m[$MACHINE_NAME][\w]\$ \e[0m"
+export PS1="\[\e[32m\][$MACHINE_NAME][\w]\$\[\e[m\] "
