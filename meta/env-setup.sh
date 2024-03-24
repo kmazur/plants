@@ -16,6 +16,7 @@ chmod +x git-update.sh
 ./git-update.sh
 rm git-update.sh
 
+WORK_DIR="/home/$USER/WORK"
 cp -f "$WORK_DIR/workspace/plants/shell/.profile" "$HOME"
 source "$HOME/.profile"
 

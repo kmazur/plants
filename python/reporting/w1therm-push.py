@@ -19,7 +19,7 @@ config = Config()
 bucket = "main"
 org = "Main"
 token = config.get("influx.token")
-url = "http://34.122.138.205:8086"
+url = config.get("influx.url")
 
 client = influxdb_client.InfluxDBClient(
     url=url,
@@ -56,7 +56,7 @@ try:
             continue
 
 except KeyboardInterrupt:
-    print('Koniec')
+    print('Done')
     GPIO.cleanup()
 finally:
     GPIO.cleanup()
