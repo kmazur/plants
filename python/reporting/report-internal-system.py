@@ -18,6 +18,7 @@ bucket = "main"
 org = "Main"
 token = config.get("influx.token")
 url = config.get("influx.url")
+machine_name = config.get("name")
 
 client = influxdb_client.InfluxDBClient(
     url=url,
@@ -42,7 +43,7 @@ while True:
     try:
         temp = get_cpu_temp()
         print("Current CPU temperature: " + str(temp))
-        p = influxdb_client.Point("cpu_measurement").tag("location", "Warsaw").field("cpu_temperature", temp)
+        p = influxdb_client.Point("cpu_measurement").tag("location", "Warsaw").tag("machine_name", machine_name).field("cpu_temperature", temp)
         write_api.write(bucket=bucket, org=org, record=p)
         time.sleep(10)
     except Exception as e:
