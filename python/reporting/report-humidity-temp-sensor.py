@@ -38,7 +38,7 @@ sensor = adafruit_ahtx0.AHTx0(i2c)
 while True:
     try:
         temp = sensor.temperature
-        humidity = relative_humidity
+        humidity = sensor.relative_humidity
         print("Current sensor temperature: " + str(temp))
         print("Current sensor humidity: " + str(humidity))
         p = influxdb_client.Point("temp_measurement").tag("location", "Warsaw").tag("machine_name", machine_name).field("temperature", temp)
@@ -49,4 +49,3 @@ while True:
     except Exception as e:
         print("Exception!")
         print(e)
-        continue
