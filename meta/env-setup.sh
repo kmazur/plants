@@ -79,11 +79,39 @@ echo "- python3-opencv"
 echo "- jq"
 echo "- motion"
 echo "- openjdk-17-jdk"
+echo "- bc"
 sudo apt-get -y install git vim htop pigpio screen imagemagick libcamera-tools python3-opencv jq
 sudo apt-get -y install motion
 sudo apt-get -y install openjdk-17-jdk
 sudo apt-get -y install python3-pip
+sudo apt-get -y install bc
 
+echo "CONFIGURING VIM"
+
+echo "VIM: Installing autoloader: pathogen"
+mkdir -p ~/.vim/autoload ~/.vim/bundle && \
+curl -LSso ~/.vim/autoload/pathogen.vim https://tpo.pe/pathogen.vim
+
+function install_vim() {
+  local REPO="$1"
+  local NAME="$2"
+  local DESTINATION="~/.vim/bundle/$NAME"
+
+  if [ -d "$DESTINATION" ]; then
+    cd "$DESTINATION" && git reset --hard HEAD && git pull
+  else
+    git clone "$REPO" "$DESTINATION"
+  fi
+}
+echo "VIM: Installing theme: monokai"
+install_vim "https://github.com/patstockwell/vim-monokai-tasty.git" "vim-monokai-tasty"
+echo "VIM: Installing plugin: NERDTree"
+install_vim "https://github.com/preservim/nerdtree.git" "nerdtree"
+echo "VIM: Installing plugin: EasyMotion"
+install_vim "https://github.com/easymotion/vim-easymotion" "vim-easymotion"
+
+echo "VIM: Configuring .vimrc"
+cp -f "$REPO_DIR/meta/files/vim/.vimrc" "$HOME"
 
 # echo "INSTALLING mediamtx"
 # sudo apt-get install libfreetype6 libcamera0

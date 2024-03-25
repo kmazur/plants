@@ -1,11 +1,33 @@
-1. Zrobić 2 otwory na kamery
-2. Zrobić 2 otwory na IR LED
-3. Zaplanować rozwiązanie
-4. Jak przyczepić mocno rozwiązanie?
-5. Wywiercić otwory z tyłu do kabla
-6. Zabezpieczyć otwory i RPi, etc. przed wilgocią
-7. Zlutować rozwiązanie
-8. Zrobić 50 fps video
+- Zestawić kamerę na budkę z zewnątrz
+- Audio recording:
+  - zapisać skrypty recordingowe
+  - poprawić skoki przy włączaniu (długie nagrania?) -> automatic segment in arecord
+  - zmienić bitrate - optymalniejszy
+  - usuwać gdzie nie wykryto żadnych dźwięków (lub bardzo ciche)
+- Video recording - CTRL
+  - Fix focus - try different lens-position
+  - 
+- Video recording - IR
+- Video recording - general
+  - włączać i wyłączać IR vs CTRL nocą
+  - Zapisywać widoczną jasność - i uploadować do grafany
+  - Automatyczne wykrywanie eventów na AORUS
+- Shell/env improvements
+  - zintegrować skrypty crontab się z lib.sh
+  - automatycznie ustawiać datę + timezone
+    - sudo timedatectl set-timezone Australia/Sydney
+- Reporting
+  - Dodać wykryte eventy do grafany jako alerty?
+    - Może dodać jako heatmap/timemap?
+  - 
+
+
+
+
+
+
+
+
 
 
 #Disable Power LED (Red)
