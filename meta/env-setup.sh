@@ -95,7 +95,7 @@ curl -LSso ~/.vim/autoload/pathogen.vim https://tpo.pe/pathogen.vim
 function install_vim() {
   local REPO="$1"
   local NAME="$2"
-  local DESTINATION="~/.vim/bundle/$NAME"
+  local DESTINATION="$HOME/.vim/bundle/$NAME"
 
   if [ -d "$DESTINATION" ]; then
     cd "$DESTINATION" && git reset --hard HEAD && git pull
@@ -104,7 +104,9 @@ function install_vim() {
   fi
 }
 echo "VIM: Installing theme: monokai"
-install_vim "https://github.com/patstockwell/vim-monokai-tasty.git" "vim-monokai-tasty"
+install_vim "git clone https://github.com/sainnhe/sonokai" "sonokai"
+mkdir -p "$HOME/.vim/colors" && cp -r "$HOME/.vim/bundle/sonokai/colors" "$HOME/.vim/colors"
+
 echo "VIM: Installing plugin: NERDTree"
 install_vim "https://github.com/preservim/nerdtree.git" "nerdtree"
 echo "VIM: Installing plugin: EasyMotion"

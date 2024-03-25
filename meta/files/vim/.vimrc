@@ -1,9 +1,7 @@
 execute pathogen#infect()
 syntax on
 
-if has("gui_running")
-	colorscheme monokai
-endif
+colorscheme sonokai
 
 set laststatus=2
 set number
