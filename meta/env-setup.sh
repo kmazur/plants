@@ -86,6 +86,12 @@ sudo apt-get -y install openjdk-17-jdk
 sudo apt-get -y install python3-pip
 sudo apt-get -y install bc
 
+
+echo "Set timezone to Europe/Warsaw"
+sudo timedatectl set-timezone Europe/Warsaw
+
+
+
 echo "CONFIGURING VIM"
 
 echo "VIM: Installing autoloader: pathogen"
@@ -114,6 +120,9 @@ install_vim "https://github.com/easymotion/vim-easymotion" "vim-easymotion"
 
 echo "VIM: Configuring .vimrc"
 cp -f "$REPO_DIR/meta/files/vim/.vimrc" "$HOME"
+
+
+
 
 # echo "INSTALLING mediamtx"
 # sudo apt-get install libfreetype6 libcamera0
