@@ -46,3 +46,11 @@ export ENV_INITIALIZED="true"
 MACHINE_NAME="$(grep "name=" "$CONFIG_DIR/config.ini" | cut -f 2 -d='')"
 
 export PS1="\[\e[32m\][$MACHINE_NAME][\w]\$\[\e[m\] "
+
+set_terminal_title() {
+    echo -ne "\033]0;"$1"\007"
+}
+function get_wlan_ip() {
+    /usr/sbin/ifconfig wlan0 | grep inet | tr ' ' "\n" | grep 192 | head -n 1
+}
+set_terminal_title "$MACHINE_NAME ($(get_wlan_ip))"
