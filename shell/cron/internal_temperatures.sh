@@ -33,7 +33,7 @@ echo "Pid file does not exist or there is no process with pid! Running process: 
 
 cd "$LOGS_DIR" || exit 1
 
-PROGRAM_AND_ARGS="python $REPO_DIR/python/reporting/report-internal-system.py &>> $LOGS_DIR/$PROCESS_NAME.log"
+PROGRAM_AND_ARGS="python $REPO_DIR/shell/scripts/report-internal-system.sh &>> $LOGS_DIR/$PROCESS_NAME.log"
 CMD='echo $$>'$PID_FILE' && exec '$PROGRAM_AND_ARGS
 echo "Running command: '$CMD'"
 /usr/bin/env bash -c "$CMD" &

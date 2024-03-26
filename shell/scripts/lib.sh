@@ -132,6 +132,24 @@ function is_locked_process_running() {
 }
 
 
+function get_config() {
+  local KEY="$1"
+  ensure_env
+
+  grep "^$KEY=" "$CONFIG_INI" | cut -f 2- -d '='
+}
+
+function get_required_config() {
+  local KEY="$1"
+
+  VALUE="$(get_config "$KEY")"
+  if [[ -z "$VALUE" ]]; then
+    echo "Required config not found! Key='$KEY'"
+    exit 100
+  fi
+  echo "$VALUE"
+}
+
 
 
 

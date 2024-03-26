@@ -59,7 +59,10 @@ rm "$OUTPUT_FILE" 2> /dev/null
 echo "Running audio & video recording commands: $(date)"
 
 AUD_FILE="$AUDIO_OUTPUT_FILE.$AUDIO_FORMAT"
-arecord -D plughw:0 -c1 -r 48000 -f S32_LE -t wav -V mono -v "$AUD_FILE" &
+arecord -D dmic_hw -c1 -r 48000 -f S32_LE -t wav -V mono -v "$AUD_FILE" &
+# arecord  -D dmic_hw -c 2 -r 48000 -f S32_LE -t raw | ffmpeg -f s32le -ar 48000 -ac 2 -i pipe:0 -f wav -ar 48000 -ac 2 - | oggenc - -r -B 16 -C 2 -R 48000 -q 5 -o audio.ogg
+# -d 10
+# arecord -d 10 -D plughw:0 -c1 -r 48000 -f S32_LE -t raw | lame --bitwidth 32 -r -s 48 --preset standard - audio.mp3
 sleep 1
 AUDIO_PID="$(ps aux | grep arecord | grep -v "grep" | tr -s ' ' | cut -d ' ' -f 2)"
 

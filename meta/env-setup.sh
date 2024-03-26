@@ -85,6 +85,8 @@ sudo apt-get -y install motion
 sudo apt-get -y install openjdk-17-jdk
 sudo apt-get -y install python3-pip
 sudo apt-get -y install bc
+sudo apt-get -y install vorbis-tools
+sudo apt-get -y install lame
 
 
 echo "Set timezone to Europe/Warsaw"
@@ -95,8 +97,11 @@ sudo timedatectl set-timezone Europe/Warsaw
 echo "CONFIGURING VIM"
 
 echo "VIM: Installing autoloader: pathogen"
-mkdir -p ~/.vim/autoload ~/.vim/bundle && \
-curl -LSso ~/.vim/autoload/pathogen.vim https://tpo.pe/pathogen.vim
+mkdir -p ~/.vim/autoload ~/.vim/bundle
+
+if [ ! -f "$HOME/.vim/autoload/pathogen.vim" ]; then
+  curl -LSso ~/.vim/autoload/pathogen.vim https://tpo.pe/pathogen.vim
+fi
 
 function install_vim() {
   local REPO="$1"
@@ -110,8 +115,8 @@ function install_vim() {
   fi
 }
 echo "VIM: Installing theme: monokai"
-install_vim "git clone https://github.com/sainnhe/sonokai" "sonokai"
-mkdir -p "$HOME/.vim/colors" && cp -r "$HOME/.vim/bundle/sonokai/colors" "$HOME/.vim/colors"
+install_vim "https://github.com/sainnhe/sonokai" "sonokai"
+mkdir -p "$HOME/.vim/colors" && cp -r "$HOME/.vim/bundle/sonokai/colors" "$HOME/.vim"
 
 echo "VIM: Installing plugin: NERDTree"
 install_vim "https://github.com/preservim/nerdtree.git" "nerdtree"

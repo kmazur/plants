@@ -54,3 +54,8 @@ function get_wlan_ip() {
     /usr/sbin/ifconfig wlan0 | grep inet | tr ' ' "\n" | grep 192 | head -n 1
 }
 set_terminal_title "$MACHINE_NAME ($(get_wlan_ip))"
+
+# Fix for 8bit colors in vim colorscheme
+if [ "$TERM" = xterm ]; then
+    TERM="xterm-256color";
+fi
