@@ -26,7 +26,8 @@ if [ -d "$HOME/.local/bin" ] ; then
     PATH="$HOME/.local/bin:$PATH"
 fi
 
-export WORK_DIR="$HOME/WORK"
+export BASE_DIR="/home/user"
+export WORK_DIR="$BASE_DIR/WORK"
 export TMP_DIR="$WORK_DIR/tmp"
 export CONFIG_DIR="$WORK_DIR/config"
 export LOCKS_DIR="$TMP_DIR/locks"
@@ -37,8 +38,8 @@ export VIDEO_DIR="$TMP_DIR/vid"
 export AUDIO_DIR="$TMP_DIR/audio"
 export LOGS_DIR="$WORK_DIR/logs"
 export BIN_DIR="$WORK_DIR/bin"
-export USER_BIN_DIR="$HOME/bin"
 export REPO_DIR="$WORK_DIR/workspace/plants"
+export INIT_DIR="$REPO_DIR/shell/scripts/init"
 
 export CONFIG_INI="$CONFIG_DIR/config.ini"
 export LIB_INIT_FILE="$REPO_DIR/shell/scripts/lib/lib.sh"
@@ -60,5 +61,3 @@ setup_shell "$MACHINE_NAME"
 if [ "$TERM" = xterm ]; then
     TERM="xterm-256color";
 fi
-
-"$REPO_DIR/scripts/init/init.sh"

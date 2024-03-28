@@ -5,13 +5,13 @@
   - [V] zmienić bitrate - optymalniejszy
   - usuwać gdzie nie wykryto żadnych dźwięków (lub bardzo ciche)
   - usunąć inicjalny skok dźwięku
-  - rollować / crontab -e skrypt record-audio
+  - [V] rollować / crontab -e skrypt record-audio
 - Video recording - CTRL
   - Fix focus - try different lens-position
   - 
 - Video recording - IR
 - Video recording - general
-  - włączać i wyłączać IR vs CTRL nocą
+  - [V] włączać i wyłączać IR vs CTRL nocą
   - Zapisywać widoczną jasność - i uploadować do grafany
   - Automatyczne wykrywanie eventów na AORUS
 - Shell/env improvements
@@ -30,14 +30,12 @@
 - General
   - [V] Lower sampling rate for taking temp measurements etc.
   - Wypróbować Rusta vs C / C++
-  - Reboot on > 80 C temperature
+  - [V] Reboot on > 80 C temperature
   - Reboot automatically every night
   - UPGRADE influxdb & Grafana -> use docker?
   - 80+ C problem
     - scale publication to grafana
-
-
-
+  - Report on the disk/io/netstat/etc. from Raspberry Pi
 
 
 

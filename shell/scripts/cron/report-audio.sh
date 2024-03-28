@@ -89,7 +89,7 @@ function parse_volume_level_files() {
 
   for PTS_FILE in $FILES; do
     declare STUB="${PTS_FILE%.pts}"
-    if [ -f "$DIR/$STUB.txt" ]; then
+    if [ -f "$DIR/$STUB.txt" ] && [ ! -f "$DIR/$STUB.influx" ]; then
       declare NANOS="$(cat "$DIR/$STUB.txt")"
       log "Parsing $STUB.pts"
       "$BIN_DIR/volume_aggregator" "$DIR/$STUB.pts" "$DIR/$STUB.influx" && rm "$DIR/$PTS_FILE"
@@ -153,8 +153,6 @@ $DATAPOINT"
         BATCH=""
       fi
 
-
-      rm "$DIR/$STUB.txt"
       rm "$DIR/$STUB.influx"
     fi
   done
