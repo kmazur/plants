@@ -35,12 +35,12 @@ i2c = board.I2C()  # uses board.SCL and board.SDA
 sensor = adafruit_ahtx0.AHTx0(i2c)
 
 min_period = 30
-if len(sys.argv) > 1:
-    min_period = int(sys.argv[1])
-
 max_period = 300
-if len(sys.argv) > 2:
-    max_period = int(sys.argv[2])
+if len(sys.argv) > 1:
+    params = sys.argv[1]
+    arr = params.split()
+    min_period = int(arr[0])
+    max_period = int(arr[1])
 
 period = config.get_scaled_inverse_value(min_period, max_period)
 
