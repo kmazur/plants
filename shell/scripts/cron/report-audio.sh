@@ -59,7 +59,7 @@ function process_raw_audio_files() {
   for FILE in $FILES; do
     if [ ! -f "$DIR/$FILE.txt" ]; then
       local -i NANOS="$(get_birth_nanos "$DIR/$FILE")"
-      log "$NANOS" > "$DIR/$FILE.txt"
+      echo "$NANOS" > "$DIR/$FILE.txt"
     fi
 
     if [ ! -f "$DIR/$FILE.mp3" ]; then
@@ -88,7 +88,7 @@ function parse_volume_level_files() {
     if [ -f "$DIR/$STUB.txt" ]; then
       declare NANOS="$(cat "$DIR/$STUB.txt")"
       log "Parsing $STUB.pts"
-      ./volume_aggregator "$DIR/$STUB.pts" "$DIR/$STUB.influx" && rm "$DIR/$PTS_FILE"
+      "$BIN_DIR/volume_aggregator" "$DIR/$STUB.pts" "$DIR/$STUB.influx" && rm "$DIR/$PTS_FILE"
     fi
   done
 }
