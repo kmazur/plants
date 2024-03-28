@@ -40,6 +40,7 @@ export USER_BIN_DIR="$HOME/bin"
 export REPO_DIR="$WORK_DIR/workspace/plants"
 
 export CONFIG_INI="$CONFIG_DIR/config.ini"
+export LIB_INIT_FILE="$REPO_DIR/shell/scripts/lib/lib.sh"
 
 export ENV_INITIALIZED="true"
 

@@ -1,9 +1,9 @@
-#*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/upload_last.sh
 #*/2 * * * * ping -c 2 8.8.8.8 >/dev/null 2>&1
 #*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/timelapse.sh
 #*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/motion_detection.sh
-#*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/internal_temperatures.sh
-#*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/temp_humidity_sensor.sh
 #*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/w1temperatures.sh
-#*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/cron_temp_fail_safe.sh
+
+#*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "report-external-temp-humidity" 30 300
+#*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "report-cpu-temp" 20 120
+#*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "temp-fail-safe" 20 60
 

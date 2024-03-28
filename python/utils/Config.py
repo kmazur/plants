@@ -55,3 +55,27 @@ class Config:
         prev = self.data[key]
         self.data[key] = value
         return prev
+
+    def get_scale(self):
+        scale = int(100)
+        with open(f'{self.config_dir}/scale.ini') as f:
+            lines = f.readlines()
+            for line in lines:
+                stripped = line.strip()
+                if len(stripped) == 0:
+                    continue
+                scale = int(stripped)
+                break
+        return scale
+
+    def is_suspended(self):
+        scale = self.get_scale()
+        return scale == 0
+
+    def get_scaled_inverse_value(self, min, max):
+        scale = self.get_scale()
+
+        diff = max - min
+        scaled_diff = (scale * diff / 100)
+        sub = min + scaled_diff
+        return int(min + (max - sub))
