@@ -118,11 +118,12 @@ function publish_volume_levels() {
         declare MAX_VAL="${ARR[2]}"
         declare MEAN_VAL="${ARR[3]}"
         declare LAST_VAL="${ARR[4]}"
+        declare DIFF_VAL="${ARR[5]}"
 
         declare EPOCH_SECONDS="$((START_EPOCH_SECONDS + SECOND))"
 
         local MEASUREMENT_NAME="audio_analysis"
-        local FIELD_VALUES="min_volume_level=$MIN_VAL,max_volume_level=$MAX_VAL,mean_volume_level=$MEAN_VAL,volume_level=$LAST_VAL"
+        local FIELD_VALUES="min_volume_level=$MIN_VAL,max_volume_level=$MAX_VAL,mean_volume_level=$MEAN_VAL,volume_level=$LAST_VAL,volume_pressure=$DIFF_VAL"
         local TAGS="location=Warsaw,machine_name=$MACHINE_NAME"
         local TIMESTAMP="$EPOCH_SECONDS"
 

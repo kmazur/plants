@@ -57,7 +57,8 @@ int main(int argc, char *argv[]) {
 
     for (int i = 0; i <= lastSecond; ++i) {
         float mean = volumeData[i].sum / volumeData[i].count;
-        fprintf(out, "%d %f %f %f %f\n", i, volumeData[i].min, volumeData[i].max, mean, volumeData[i].last);
+        float diff = volumeData[i].max - volumeData[i].min;
+        fprintf(out, "%d %f %f %f %f %f\n", i, volumeData[i].min, volumeData[i].max, mean, volumeData[i].last, diff);
     }
 
     fclose(fp);
