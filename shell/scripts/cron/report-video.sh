@@ -15,7 +15,12 @@ function update_period() {
 
 OUTPUT_DIR="$VIDEO_DIR"
 SEGMENT_DURATION_SECONDS="600"
-VID_CONFIG_FILE="$REPO_DIR/shell/scripts/video/video-config.txt"
+MACHINE_NAME="$(get_required_config "name")"
+if [[ "$MACHINE_NAME" == "birdbox-ctrl" ]]; then
+  VID_CONFIG_FILE="$REPO_DIR/shell/scripts/video/video-config-ctrl.txt"
+else
+  VID_CONFIG_FILE="$REPO_DIR/shell/scripts/video/video-config-ir.txt"
+fi
 
 while true; do
   if ! is_scale_suspended; then
