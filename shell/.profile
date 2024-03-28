@@ -43,21 +43,22 @@ export REPO_DIR="$WORK_DIR/workspace/plants"
 export CONFIG_INI="$CONFIG_DIR/config.ini"
 export LIB_INIT_FILE="$REPO_DIR/shell/scripts/lib/lib.sh"
 
-export ENV_INITIALIZED="true"
+export MACHINE_NAME="$(grep "name=" "$CONFIG_DIR/config.ini" | cut -f 2 -d='')"
 
-MACHINE_NAME="$(grep "name=" "$CONFIG_DIR/config.ini" | cut -f 2 -d='')"
+export ENV_INITIALIZED="true"
 
 export PS1="\[\e[32m\][$MACHINE_NAME][\w]\$\[\e[m\] "
 
-set_terminal_title() {
-    echo -ne "\033]0;"$1"\007"
+function setup_shell() {
+    local MACHINE_NAME="$1"
+    local IP="$(/usr/sbin/ifconfig wlan0 | grep inet | tr ' ' "\n" | grep 192 | head -n 1)"
+    echo -ne "\033]0;$MACHINE_NAME ($IP)\007"
 }
-function get_wlan_ip() {
-    /usr/sbin/ifconfig wlan0 | grep inet | tr ' ' "\n" | grep 192 | head -n 1
-}
-set_terminal_title "$MACHINE_NAME ($(get_wlan_ip))"
+setup_shell "$MACHINE_NAME"
 
 # Fix for 8bit colors in vim colorscheme
 if [ "$TERM" = xterm ]; then
     TERM="xterm-256color";
 fi
+
+"$REPO_DIR/scripts/init/init.sh"

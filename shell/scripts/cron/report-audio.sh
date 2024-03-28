@@ -68,6 +68,10 @@ function process_raw_audio_files() {
       lame -S --bitwidth 32 -r -s 48 --preset standard "$DIR/$FILE" "$DIR/$FILE.mp3" && rm "$DIR/$FILE"
     fi
 
+    if is_scale_suspended; then
+      break
+    fi
+
     if [ ! -f "$DIR/$FILE.pts" ] && [ -f "$DIR/$FILE.mp3" ]; then
       log "Converting $FILE to PTS"
       get_audio_levels "$DIR/$FILE.mp3" > "$DIR/$FILE.pts"
@@ -164,10 +168,19 @@ while true; do
   if ! is_scale_suspended; then
     log "Processing: WAV -> MP3"
     process_raw_audio_files "$AUDIO_DIR_NOW"
+    if is_scale_suspended; then
+      break
+    fi
+
     log "Processing: MP3 -> PTS"
     parse_volume_level_files "$AUDIO_DIR_NOW"
+    if is_scale_suspended; then
+      break
+    fi
+
     log "Processing: PTS -> InfluxDB"
     publish_volume_levels "$AUDIO_DIR_NOW"
+
   else
     log_warn "Audio measurements suspended"
   fi

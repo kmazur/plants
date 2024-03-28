@@ -21,7 +21,7 @@
 - Reporting
   - Dodać wykryte eventy do grafany jako alerty?
     - Może dodać jako heatmap/timemap?
-  - 
+  - Wrzucać do "kolejki" / pliku co do wysłania jest do influxdb i okresowo wysyłać batchami 
 - Control
   - Force video disable/enable
   - Force video publish by mediamtx (remotely as well?)
