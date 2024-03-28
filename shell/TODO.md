@@ -1,9 +1,11 @@
 - Zestawić kamerę na budkę z zewnątrz
 - Audio recording:
-  - zapisać skrypty recordingowe
-  - poprawić skoki przy włączaniu (długie nagrania?) -> automatic segment in arecord
-  - zmienić bitrate - optymalniejszy
+  - [V] zapisać skrypty recordingowe
+  - [V] poprawić skoki przy włączaniu (długie nagrania?) -> automatic segment in arecord
+  - [V] zmienić bitrate - optymalniejszy
   - usuwać gdzie nie wykryto żadnych dźwięków (lub bardzo ciche)
+  - usunąć inicjalny skok dźwięku
+  - rollować / crontab -e skrypt record-audio
 - Video recording - CTRL
   - Fix focus - try different lens-position
   - 
@@ -15,7 +17,7 @@
 - Shell/env improvements
   - zintegrować skrypty crontab się z lib.sh
   - automatycznie ustawiać datę + timezone
-    - sudo timedatectl set-timezone Australia/Sydney
+    - [V] sudo timedatectl set-timezone Australia/Sydney
 - Reporting
   - Dodać wykryte eventy do grafany jako alerty?
     - Może dodać jako heatmap/timemap?
@@ -26,7 +28,13 @@
   - Take screenshot
 
 - General
-  - Lower sampling rate for taking temp measurements etc.
+  - [V] Lower sampling rate for taking temp measurements etc.
+  - Wypróbować Rusta vs C / C++
+  - Reboot on > 80 C temperature
+  - Reboot automatically every night
+  - UPGRADE influxdb & Grafana -> use docker?
+  - 80+ C problem
+    - 
 
 
 

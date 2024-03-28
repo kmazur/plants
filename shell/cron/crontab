@@ -5,4 +5,5 @@
 #*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/internal_temperatures.sh
 #*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/temp_humidity_sensor.sh
 #*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/w1temperatures.sh
+#*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/cron_temp_fail_safe.sh
 

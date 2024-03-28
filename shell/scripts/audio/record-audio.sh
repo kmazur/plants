@@ -78,21 +78,26 @@ declare INFLUX_TOKEN="$(get_required_config "influx.token")"
 declare MACHINE_NAME="$(get_required_config "name")"
 declare INFLUX_URL="$(get_required_config "influx.url")"
 
-function update_measurement() {
-        local MEASUREMENT_NAME="$1"
-        local FIELD_VALUES="$2"
-        local TIMESTAMP="$3"
-        if [[ -z "$TIMESTAMP" ]]; then
-          TIMESTAMP="$(date +%s)"
-        fi
+function update_measurement_raw() {
+  local DATA="$1"
 
-        local TAGS="location=Warsaw,machine_name=$MACHINE_NAME"
-        curl -XPOST "$INFLUX_URL/api/v2/write?org=$INFLUX_ORG&bucket=$INFLUX_BUCKET&precision=s" \
-          --header "Authorization: Token $INFLUX_TOKEN" \
-          --header "Content-Type: text/plain" \
-          --data-raw "$MEASUREMENT_NAME,$TAGS $FIELD_VALUES $TIMESTAMP"
+  local TAGS="location=Warsaw,machine_name=$MACHINE_NAME"
+  curl -XPOST "$INFLUX_URL/api/v2/write?org=$INFLUX_ORG&bucket=$INFLUX_BUCKET&precision=s" \
+    --header "Authorization: Token $INFLUX_TOKEN" \
+    --header "Content-Type: text/plain" \
+    --data-raw "$DATA"
 }
 
+function update_measurement_single() {
+  local MEASUREMENT_NAME="$1"
+  local FIELD_VALUES="$2"
+  local TIMESTAMP="$3"
+  if [[ -z "$TIMESTAMP" ]]; then
+    TIMESTAMP="$(date +%s)"
+  fi
+
+  update_measurement_raw "$MEASUREMENT_NAME,$TAGS $FIELD_VALUES $TIMESTAMP"
+}
 
 function parse_volume_level_files() {
   local FILES="$(ls -1tr | grep -P '^audio-.*\.pts$')"
@@ -122,6 +127,9 @@ function publish_volume_levels() {
       declare NANOS="$(cat "$STUB.txt")"
       declare MILLIS="$((NANOS / 1000000))"
       declare START_EPOCH_SECONDS="$((MILLIS / 1000))"
+
+      declare BATCH_COUNT="0"
+      declare BATCH=""
       while read -r LINE; do
         declare -a ARR=($LINE)
 
@@ -133,9 +141,33 @@ function publish_volume_levels() {
 
         declare EPOCH_SECONDS="$((START_EPOCH_SECONDS + SECOND))"
 
-        update_measurement "audio_analysis" "min_volume_level=$MIN_VAL,max_volume_level=$MAX_VAL,mean_volume_level=$MEAN_VAL,volume_level=$LAST_VAL" "$EPOCH_SECONDS"
+        local MEASUREMENT_NAME="audio_analysis"
+        local FIELD_VALUES="min_volume_level=$MIN_VAL,max_volume_level=$MAX_VAL,mean_volume_level=$MEAN_VAL,volume_level=$LAST_VAL"
+        local TAGS="location=Warsaw,machine_name=$MACHINE_NAME"
+        local TIMESTAMP="$EPOCH_SECONDS"
 
+        DATAPOINT="$MEASUREMENT_NAME,$TAGS $FIELD_VALUES $TIMESTAMP"
+        if [[ -z "$BATCH" ]]; then
+          BATCH="$DATAPOINT"
+        else
+          BATCH="$BATCH
+$DATAPOINT"
+        fi
+
+        BATCH_COUNT="$((BATCH_COUNT + 1))"
+        if [[ "$BATCH_COUNT" -ge "5000" ]]; then
+          update_measurement_raw "$BATCH"
+          BATCH_COUNT="0"
+          BATCH=""
+        fi
       done < "$INFLUX_FILE"
+
+      if [[ "$BATCH_COUNT" -gt "0" ]]; then
+        update_measurement_raw "$BATCH"
+        BATCH_COUNT="0"
+        BATCH=""
+      fi
+
 
       rm "$STUB.txt"
       rm "$STUB.influx"
@@ -149,7 +181,7 @@ BITRATE_K="$((BITRATE / 1000))"
 
 AUDIO_FILE="audio.wav"
 DURATION_SECONDS="$((24 * 60 * 60))"
-SPLIT_SECONDS="$((60))"
+SPLIT_SECONDS="$((10 * 60))"
 
 arecord --max-file-time "$SPLIT_SECONDS" -d "$DURATION_SECONDS" -D dmic_hw -c 2 -r "$BITRATE" -f S32_LE -t wav "$AUDIO_FILE" &
 

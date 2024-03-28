@@ -45,7 +45,7 @@ while True:
         write_api.write(bucket=bucket, org=org, record=p)
         p = influxdb_client.Point("humidity_measurement").tag("location", "Warsaw").tag("machine_name", machine_name).field("humidity", humidity)
         write_api.write(bucket=bucket, org=org, record=p)
-        time.sleep(10)
+        time.sleep(30)
     except Exception as e:
         print("Exception!")
         print(e)
