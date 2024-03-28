@@ -19,9 +19,9 @@ if [ -z "$ACT_LED_ACTIVELOW" ]; then
 fi
 
 # Disable HDMI
-sudo /opt/vc/bin/tvservice -o
+sudo /usr/bin/tvservice -o
 # ENABLE:
-# sudo /opt/vc/bin/tvservice -p
+# sudo /usr/bin/tvservice -p
 
 
 # Disable LAN/USB
