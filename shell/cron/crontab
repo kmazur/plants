@@ -3,7 +3,8 @@
 #*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/motion_detection.sh
 #*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/w1temperatures.sh
 
-#*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "report-video" 30 300
+#*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "report-audio" 20 300
+#*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "report-video" 0 300
 #*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "report-external-temp-humidity" 30 300
 #*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "report-cpu-temp" 20 120
 #*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "temp-fail-safe" 20 60

@@ -15,7 +15,7 @@ function log_error() {
 }
 
 function log_warn() {
-  local MESSAGE="[\$?]=$? $1"
+  local MESSAGE="$1"
   log "$MESSAGE" "WARN"
 }
 
