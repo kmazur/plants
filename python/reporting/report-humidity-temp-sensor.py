@@ -44,6 +44,7 @@ if len(sys.argv) > 1:
 
 period = config.get_scaled_inverse_value(min_period, max_period)
 
+print("Starting measurement with period: " + str(period) + " s")
 while True:
     try:
         if not config.is_suspended():
@@ -58,6 +59,7 @@ while True:
             print("Sensor measurements are suspended")
 
         period = config.get_scaled_inverse_value(min_period, max_period)
+        print("Period is: " + str(period) + " s")
         time.sleep(period)
     except Exception as e:
         print("Exception!")

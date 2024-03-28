@@ -23,6 +23,7 @@ while true; do
   fi
 
   update_period
+  log "Period is: $PERIOD s"
   sleep "$PERIOD"
 
 done
