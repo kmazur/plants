@@ -60,6 +60,7 @@ while True:
 
         period = config.get_scaled_inverse_value(min_period, max_period)
         print("Period is: " + str(period) + " s")
+        sys.stdout.flush()
         time.sleep(period)
     except Exception as e:
         print("Exception!")
