@@ -196,4 +196,4 @@ sudo pip3 install influxdb-client
 
 "$REPO_DIR/meta/compile.sh"
 
-sudo cp -f "REPO_DIR/meta/files/root/rc.local" "/etc/rc.local"
+sudo cp -f "$REPO_DIR/meta/files/root/rc.local" "/etc/rc.local"
