@@ -23,6 +23,7 @@ AUDIO_PATH="$AUDIO_DIR_NOW/$AUDIO_FILE"
 
 DURATION_SECONDS="$((24 * 60 * 60))"
 SPLIT_SECONDS="$((10 * 60))"
+MACHINE_NAME=$(get_required_config "name")
 
 arecord --max-file-time "$SPLIT_SECONDS" -d "$DURATION_SECONDS" -D dmic_hw -c 2 -r "$BITRATE" -f S32_LE -t wav "$AUDIO_PATH" &
 

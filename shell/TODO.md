@@ -34,7 +34,7 @@
   - Reboot automatically every night
   - UPGRADE influxdb & Grafana -> use docker?
   - 80+ C problem
-    - 
+    - scale publication to grafana
 
 
 
