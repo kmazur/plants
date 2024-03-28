@@ -36,6 +36,8 @@
   - 80+ C problem
     - scale publication to grafana
   - Report on the disk/io/netstat/etc. from Raspberry Pi
+  - Init
+    - Cron fill
 
 
 

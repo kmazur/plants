@@ -195,3 +195,5 @@ sudo pip3 install influxdb-client
 # sudo apt-get install postfix
 
 "$REPO_DIR/meta/compile.sh"
+
+sudo cp -f "REPO_DIR/meta/files/root/rc.local" "/etc/rc.local"
