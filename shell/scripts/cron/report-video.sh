@@ -30,7 +30,7 @@ while true; do
     FILE_PATH="$OUTPUT_DIR/$FILE_NAME"
 
     log "Recording segment: $FILE_NAME"
-    libcamera-vid -c "$VID_CONFIG_FILE" -t "${SEGMENT_DURATION}000" -o "$FILE_PATH"
+    libcamera-vid -c "$VID_CONFIG_FILE" -t "${SEGMENT_DURATION_SECONDS}000" -o "$FILE_PATH"
   else
     log_warn "Video recording suspended"
   fi

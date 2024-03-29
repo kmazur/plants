@@ -37,6 +37,7 @@
     - scale publication to grafana
   - Report on the disk/io/netstat/etc. from Raspberry Pi
   - Init
+    - [V] Setup init rc.local 
     - Cron fill
 
 
