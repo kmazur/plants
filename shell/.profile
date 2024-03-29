@@ -61,3 +61,5 @@ setup_shell "$MACHINE_NAME"
 if [ "$TERM" = xterm ]; then
     TERM="xterm-256color";
 fi
+
+shopt -s direxpand

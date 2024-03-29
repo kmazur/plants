@@ -26,6 +26,10 @@ while true; do
   if ! is_scale_suspended; then
     START_DATE_TIME="$(get_current_date_time_compact)"
 
+    log "Capturing image for light level"
+    LIGHT_LEVEL="$("$REPO_DIR/shell/scripts/video/capture-light-level.sh")"
+    update_measurement_single "image_analysis" "light_level=$LIGHT_LEVEL"
+
     FILE_NAME="video_$START_DATE_TIME.h264"
     FILE_PATH="$OUTPUT_DIR/$FILE_NAME"
 

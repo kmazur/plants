@@ -88,6 +88,7 @@ sudo apt-get -y install python3-pip
 sudo apt-get -y install bc
 sudo apt-get -y install vorbis-tools
 sudo apt-get -y install lame
+sudo apt-get -y install libopencv-dev
 
 
 echo "Set timezone to Europe/Warsaw"
