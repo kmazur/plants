@@ -132,26 +132,25 @@ cp -f "$REPO_DIR/meta/files/vim/.vimrc" "$HOME"
 
 
 
-# echo "INSTALLING mediamtx"
-# sudo apt-get install libfreetype6 libcamera0
-# ARCH=$(uname -a)
+echo "INSTALLING mediamtx"
+sudo apt-get install libfreetype6 libcamera0
+ARCH=$(uname -a)
 
-# MEDIAMTX_DIR="$BIN_DIR/mediamtx"
-# if [ ! -d "$MEDIAMTX_DIR" ]; then
-#   mkdir -p "$MEDIAMTX_DIR"
-#   cd "$MEDIAMTX_DIR"
-#   if [[ "$ARCH" == *"armv7"* ]]; then
-#     wget https://github.com/bluenviron/mediamtx/releases/download/v1.6.0/mediamtx_v1.6.0_linux_armv7.tar.gz
-#   else
-#     # TODO: switch to arm64 version
-#     wget https://github.com/bluenviron/mediamtx/releases/download/v1.6.0/mediamtx_v1.6.0_linux_armv7.tar.gz
-#   fi
-#
-#   tar xzvf mediamtx_v*.tar.gz
-#   rm mediamtx_v*.tar.gz 2> /dev/null
-#   ln -s "$MEDIAMTX_DIR/mediamtx" "$USER_BIN_DIR/mediamtx"
-# fi
-# cp -f "$REPO_DIR/meta/files/mediamtx/mediamtx.yml" "$HOME"
+MEDIAMTX_DIR="$BIN_DIR/mediamtx"
+if [ ! -d "$MEDIAMTX_DIR" ]; then
+ mkdir -p "$MEDIAMTX_DIR"
+ cd "$MEDIAMTX_DIR"
+ if [[ "$ARCH" == *"armv7"* ]]; then
+   wget https://github.com/bluenviron/mediamtx/releases/download/v1.6.0/mediamtx_v1.6.0_linux_armv7.tar.gz
+ else
+   # TODO: switch to arm64 version
+   wget https://github.com/bluenviron/mediamtx/releases/download/v1.6.0/mediamtx_v1.6.0_linux_arm64v8.tar.gz
+ fi
+ tar xzvf mediamtx_v*.tar.gz
+ rm mediamtx_v*.tar.gz 2> /dev/null
+ ln -s "$MEDIAMTX_DIR/mediamtx" "$USER_BIN_DIR/mediamtx"
+fi
+cp -f "$REPO_DIR/meta/files/mediamtx/mediamtx.yml" "$HOME"
 
 
 
