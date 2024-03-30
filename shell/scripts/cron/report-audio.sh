@@ -57,33 +57,35 @@ function process_raw_audio_files() {
   log "Processing raw *.wav files: $FILE_COUNT files"
 
   for FILE in $FILES; do
-    if [ ! -f "$DIR/$FILE.txt" ]; then
-      local -i NANOS="$(get_birth_nanos "$DIR/$FILE")"
-      echo "$NANOS" > "$DIR/$FILE.txt"
+    local -i NANOS="$(get_birth_nanos "$DIR/$FILE")"
+    local STUB="audio_$(epoch_to_date_time_compact "$NANOS")"
+
+    echo "$NANOS" > "$DIR/$STUB.txt"
+    local MP3_FILE_NAME="$STUB.mp3"
+    local MP3_PATH="$DIR/$MP3_FILE_NAME"
+
+    if [ ! -f "$MP3_PATH" ]; then
+      log "Converting $FILE to mp3"
+      lame -S --bitwidth 32 -r -s 48 --preset standard "$DIR/$FILE" "$MP3_PATH"
     fi
 
-    if [ ! -f "$DIR/$FILE.mp3" ]; then
-      log "Converting $FILE to mp3"
-      lame -S --bitwidth 32 -r -s 48 --preset standard "$DIR/$FILE" "$DIR/$FILE.mp3" && rm "$DIR/$FILE"
+    if [ ! -f "$STUB.pts" ] && [ -f "$MP3_PATH" ]; then
+      log "Converting $FILE to PTS"
+      get_audio_levels "$MP3_PATH" > "$STUB.pts"
     fi
+
+    rm "$DIR/$FILE"
 
     if is_scale_suspended; then
       break
     fi
 
-    if [ ! -f "$DIR/$FILE.pts" ] && [ -f "$DIR/$FILE.mp3" ]; then
-      log "Converting $FILE to PTS"
-      get_audio_levels "$DIR/$FILE.mp3" > "$DIR/$FILE.pts"
-    fi
-
   done
 }
 
-
-
 function parse_volume_level_files() {
   local DIR="$1"
-  local FILES="$(ls -1tr "$DIR" | grep -P '^audio-.*\.pts$')"
+  local FILES="$(ls -1tr "$DIR" | grep -P '^audio.*\.pts$')"
   local FILE_COUNT="$(echo -n  "$FILES" | wc -l)"
   log "Parsing volume level files: $FILE_COUNT files"
 
@@ -100,7 +102,7 @@ function parse_volume_level_files() {
 
 function publish_volume_levels() {
   local DIR="$1"
-  local FILES="$(ls -1tr "$DIR" | grep -P '^audio-.*\.influx')"
+  local FILES="$(ls -1tr "$DIR" | grep -P '^audio.*\.influx')"
   local FILE_COUNT="$(echo -n "$FILES" | wc -l)"
   log "Publishing volume level files: $FILE_COUNT files"
 
@@ -125,6 +127,10 @@ function publish_volume_levels() {
         declare DIFF_VAL="${ARR[5]}"
 
         declare EPOCH_SECONDS="$((START_EPOCH_SECONDS + SECOND))"
+
+        if [ "$(echo "$DIFF_VAL > 1.7" | bc)" -eq 1 ]; then
+          log "Detected volume spike at: $SECOND s (at: $(epoch_to_date_time_compact "$EPOCH_SECONDS") in file: $STUB.mp3"
+        fi
 
         local MEASUREMENT_NAME="audio_analysis"
         local FIELD_VALUES="min_volume_level=$MIN_VAL,max_volume_level=$MAX_VAL,mean_volume_level=$MEAN_VAL,volume_level=$LAST_VAL,volume_pressure=$DIFF_VAL"
