@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# shellcheck source=shell/scripts/lib.sh
+source "$LIB_INIT_FILE"
+ensure_env
+
 # Disable BlueTooth
 BLUETOOTH_DISABLE="$(sudo cat "/boot/config.txt" | grep "dtoverlay=pi3-disable-bt")"
 if [ -z "$BLUETOOTH_DISABLE" ]; then
@@ -30,7 +34,3 @@ echo '1-1' |sudo tee /sys/bus/usb/drivers/usb/unbind
 # echo '1-1' |sudo tee /sys/bus/usb/drivers/usb/bind
 
 
-# Update crontab
-add_crontab_entry '0 0 * * * sudo reboot -h now'
-add_crontab_entry '*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "temp-fail-safe" 20 60'
-add_crontab_entry '*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "report-cpu-temp" 20 120'
