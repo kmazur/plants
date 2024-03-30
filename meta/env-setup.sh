@@ -34,6 +34,7 @@ mkdir -p "$AUDIO_DIR"
 mkdir -p "$LOGS_DIR"
 mkdir -p "$BIN_DIR"
 mkdir -p "$USER_BIN_DIR"
+mkdir -p "$INFLUX_DIR"
 
 ARCH=$(uname -a)
 if [ ! -f "$CONFIG_INI" ]; then

@@ -127,3 +127,9 @@ function get_required_config() {
 }
 
 
+
+function add_crontab_entry() {
+  local ENTRY="$1"
+  (crontab -l | grep "^#"; (crontab -l;  echo "$ENTRY") | grep -v "^#" | sort -u;) | crontab -
+}
+

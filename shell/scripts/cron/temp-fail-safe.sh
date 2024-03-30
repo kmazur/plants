@@ -23,7 +23,7 @@ while true; do
     set_scale "100"
   elif [[ "$TEMP" -ge "$MAX_THRESHOLD" ]]; then
     log_error "${TEMP} ºC is too hot! -> CRITICAL (action: reboot)"
-    reboot -h now
+    sudo reboot -h now
   else
     SCALE="$(( 100 * (MAX_THRESHOLD - TEMP) / (MAX_THRESHOLD - NORMAL_THRESHOLD) ))"
     log_warn "${TEMP} ºC is warning -> SCALED operation (action: scale=$SCALE)"

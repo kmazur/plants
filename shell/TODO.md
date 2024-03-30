@@ -22,6 +22,7 @@
   - Dodać wykryte eventy do grafany jako alerty?
     - Może dodać jako heatmap/timemap?
   - Wrzucać do "kolejki" / pliku co do wysłania jest do influxdb i okresowo wysyłać batchami 
+  - scale publication to grafana
 - Control
   - Force video disable/enable
   - Force video publish by mediamtx (remotely as well?)
@@ -34,7 +35,7 @@
   - Reboot automatically every night
   - UPGRADE influxdb & Grafana -> use docker?
   - 80+ C problem
-    - scale publication to grafana
+    - lower
   - Report on the disk/io/netstat/etc. from Raspberry Pi
   - Init
     - [V] Setup init rc.local 

@@ -40,6 +40,7 @@ export LOGS_DIR="$WORK_DIR/logs"
 export BIN_DIR="$WORK_DIR/bin"
 export REPO_DIR="$WORK_DIR/workspace/plants"
 export INIT_DIR="$REPO_DIR/shell/scripts/init"
+export INFLUX_DIR="$TMP_DIR/influx"
 
 export CONFIG_INI="$CONFIG_DIR/config.ini"
 export LIB_INIT_FILE="$REPO_DIR/shell/scripts/lib/lib.sh"
