@@ -26,6 +26,7 @@ if [ -d "$HOME/.local/bin" ] ; then
     PATH="$HOME/.local/bin:$PATH"
 fi
 
+
 export BASE_DIR="/home/user"
 export WORK_DIR="$BASE_DIR/WORK"
 export TMP_DIR="$WORK_DIR/tmp"
@@ -46,6 +47,11 @@ export CONFIG_INI="$CONFIG_DIR/config.ini"
 export LIB_INIT_FILE="$REPO_DIR/shell/scripts/lib/lib.sh"
 
 export MACHINE_NAME="$(grep "name=" "$CONFIG_DIR/config.ini" | cut -f 2 -d='')"
+
+# set PATH so it includes WORK bin if it exists
+if [ -d "$BIN_DIR" ] ; then
+    PATH="$BIN_DIR:$PATH"
+fi
 
 export ENV_INITIALIZED="true"
 

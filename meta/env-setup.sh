@@ -33,7 +33,6 @@ mkdir -p "$VIDEO_DIR"
 mkdir -p "$AUDIO_DIR"
 mkdir -p "$LOGS_DIR"
 mkdir -p "$BIN_DIR"
-mkdir -p "$USER_BIN_DIR"
 mkdir -p "$INFLUX_DIR"
 
 ARCH=$(uname -a)
@@ -136,7 +135,7 @@ echo "INSTALLING mediamtx"
 sudo apt-get install libfreetype6 libcamera0
 ARCH=$(uname -a)
 
-MEDIAMTX_DIR="$BIN_DIR/mediamtx"
+MEDIAMTX_DIR="$BIN_DIR/apps/mediamtx"
 if [ ! -d "$MEDIAMTX_DIR" ]; then
  mkdir -p "$MEDIAMTX_DIR"
  cd "$MEDIAMTX_DIR"
@@ -148,7 +147,7 @@ if [ ! -d "$MEDIAMTX_DIR" ]; then
  fi
  tar xzvf mediamtx_v*.tar.gz
  rm mediamtx_v*.tar.gz 2> /dev/null
- ln -s "$MEDIAMTX_DIR/mediamtx" "$USER_BIN_DIR/mediamtx"
+ ln -s "$MEDIAMTX_DIR/mediamtx" "$BIN_DIR/mediamtx"
 fi
 cp -f "$REPO_DIR/meta/files/mediamtx/mediamtx.yml" "$HOME"
 
