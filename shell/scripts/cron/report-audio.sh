@@ -58,7 +58,8 @@ function process_raw_audio_files() {
 
   for FILE in $FILES; do
     local -i NANOS="$(get_birth_nanos "$DIR/$FILE")"
-    local STUB="audio_$(epoch_to_date_time_compact "$NANOS")"
+    local -i SECONDS="$((NANOS / 1000000000))"
+    local STUB="audio_$(epoch_to_date_time_compact "$SECONDS")"
 
     echo "$NANOS" > "$DIR/$STUB.txt"
     local MP3_FILE_NAME="$STUB.mp3"
