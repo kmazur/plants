@@ -1,6 +1,6 @@
 verbose=1
-width=1280
-height=720
+width=1332
+height=990
 nopreview=1
 gain=0.0
 awb=auto
