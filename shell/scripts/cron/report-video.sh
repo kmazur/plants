@@ -28,10 +28,23 @@ while true; do
   if ! is_scale_suspended; then
     START_DATE_TIME="$(get_current_date_time_compact)"
 
-    if [[ "$MACHINE_NAME" == "birdbox-ctrl" ]]; then
+    if [[ "$MACHINE_NAME" != "birdbox-ir" ]]; then
       log "Capturing image for light level"
       LIGHT_LEVEL="$("$REPO_DIR/shell/scripts/video/capture-light-level.sh")"
       update_measurement_single "image_analysis" "light_level=$LIGHT_LEVEL"
+
+      if [ "$(echo "$LIGHT_LEVEL <= 5" | bc)" -eq 1 ]; then
+        log "Light level too low to record video: $LIGHT_LEVEL"
+
+        HOUR="$(get_current_hour)"
+        if [[ "$HOUR" -le "5" || "$HOUR" -ge "22" ]]; then
+          update_period
+          MIN_LOW_LIGHT_PERIOD="$(( 20 * 60 ))"
+          SLEEP_LOW_LIGHT="$(( PERIOD > MIN_LOW_LIGHT_PERIOD ? PERIOD : MIN_LOW_LIGHT_PERIOD ))"
+          sleep "$SLEEP_LOW_LIGHT"
+          continue
+        fi
+      fi
     fi
 
     FILE_NAME="video_$START_DATE_TIME.h264"

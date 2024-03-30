@@ -10,6 +10,15 @@ function get_current_month() {
 function get_current_day() {
     date "+%d"
 }
+function get_current_hour() {
+    date "+%H"
+}
+function get_current_minute() {
+    date "+%M"
+}
+function get_current_second() {
+    date "+%S"
+}
 
 function epoch_to_year() {
   local -i EPOCH_SECONDS="$1"
