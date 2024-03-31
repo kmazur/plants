@@ -32,6 +32,7 @@ while true; do
     LIGHT_LEVEL="$("$REPO_DIR/shell/scripts/video/capture-light-level.sh")"
     log "Light level is: $LIGHT_LEVEL"
     cp -f "$TMP_DIR/light_level.jpg" "$TMP_DIR/$MACHINE_NAME.jpg"
+    draw_text_bl "$TMP_DIR/light_level.jpg" "$TMP_DIR/$MACHINE_NAME.jpg" "$(get_current_date_time_dashed)"
     upload_file "$TMP_DIR" "$MACHINE_NAME.jpg" "image/jpg"
 
     if [[ "$MACHINE_NAME" != "birdbox-ir" ]]; then
