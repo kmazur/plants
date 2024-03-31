@@ -44,8 +44,8 @@ while true; do
     if [[ "$PREV_SCALE" != "$SCALE" ]]; then
       set_scale "$SCALE"
       CPU_FREQ="$(get_scaled_inverse_value "$MIN_CPU_FREQ" "$MAX_CPU_FREQ")"
-      log "Setting cpu frequency to: '${CPU_FREQ}Hz'"
-      sudo cpufreq-set -g "${CPU_FREQ}Hz"
+      log "Setting cpu frequency to: '${CPU_FREQ}MHz'"
+      sudo cpufreq-set -f "${CPU_FREQ}MHz"
     fi
   fi
 
