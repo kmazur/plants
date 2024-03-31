@@ -133,10 +133,6 @@ function publish_volume_levels() {
           continue
         fi
 
-        if [ "$(echo "$DIFF_VAL > 1.7" | bc)" -eq 1 ]; then
-          log "Detected volume spike at: $SECOND s (at: $(epoch_to_date_time_compact "$EPOCH_SECONDS") in file: $STUB.mp3"
-        fi
-
         local MEASUREMENT_NAME="audio_analysis"
         local FIELD_VALUES="min_volume_level=$MIN_VAL,max_volume_level=$MAX_VAL,mean_volume_level=$MEAN_VAL,volume_level=$LAST_VAL,volume_pressure=$DIFF_VAL"
         local TAGS="location=Warsaw,machine_name=$MACHINE_NAME"
