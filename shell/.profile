@@ -70,3 +70,7 @@ if [ "$TERM" = xterm ]; then
 fi
 
 shopt -s direxpand
+
+function update_repo() {
+    "$REPO_DIR/meta/git-update.sh"
+}
