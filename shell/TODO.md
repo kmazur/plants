@@ -36,7 +36,8 @@
   - UPGRADE influxdb & Grafana -> use docker?
   - 80+ C problem
     - lower
-  - Report on the disk/io/netstat/memory,etc. from Raspberry Pi
+  - Report on the disk/io/netstat/memory,freq,etc. from Raspberry Pi
+  - alert / events reporting on reboots
   - Init
     - [V] Setup init rc.local 
     - Cron fill
