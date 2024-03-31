@@ -4,29 +4,13 @@
 source "$LIB_INIT_FILE"
 ensure_env
 
-MIN_PERIOD="${1:-20}"
-MAX_PERIOD="${2:-300}"
-PERIOD="$MIN_PERIOD"
-
-function update_period() {
-  PERIOD="$(get_scaled_inverse_value "$MIN_PERIOD" "$MAX_PERIOD")"
-}
-
-
 BITRATE="48000"
 BITRATE_K="$((BITRATE / 1000))"
 
 AUDIO_FILE="audio.wav"
-AUDIO_DIR_NOW="$AUDIO_DIR/$(get_current_date_time_compact)"
-mkdir -p "$AUDIO_DIR_NOW"
-AUDIO_PATH="$AUDIO_DIR_NOW/$AUDIO_FILE"
+AUDIO_DIR_NOW="$1"
 
-SPLIT_SECONDS="$((10 * 60))"
 MACHINE_NAME=$(get_required_config "name")
-
-arecord --max-file-time "$SPLIT_SECONDS" -D dmic_hw -c 2 -r "$BITRATE" -f S32_LE -t wav "$AUDIO_PATH" &
-
-
 
 
 function get_audio_levels() {
@@ -52,7 +36,7 @@ function get_birth_nanos() {
 
 function process_raw_audio_files() {
   local DIR="$1"
-  local FILES="$(ls -1tr "$DIR" | grep -P '^audio-\d+\.wav$' | head -n -1)"
+  local FILES="$(ls -1tr "$DIR" | grep -P '^audio-\d+\.wav$')"
   local FILE_COUNT="$(echo -n "$FILES" | grep -c '^')"
   log "Processing raw *.wav files: $FILE_COUNT files: $FILES"
 
@@ -70,12 +54,26 @@ function process_raw_audio_files() {
       lame -S --bitwidth 32 -r -s 48 --preset standard "$DIR/$FILE" "$MP3_PATH"
     fi
 
+    rm "$DIR/$FILE"
+
+  done
+}
+
+function process_mp3_audio_files() {
+  local DIR="$1"
+  local FILES="$(ls -1tr "$DIR" | grep -P '^audio-\d+\.mp3')"
+  local FILE_COUNT="$(echo -n "$FILES" | grep -c '^')"
+  log "Processing *.mp3 files: $FILE_COUNT files: $FILES"
+
+  for MP3_FILE_NAME in $FILES; do
+    declare STUB="${PTS_FILE%.pts}"
+
+    local MP3_PATH="$DIR/$MP3_FILE_NAME"
+
     if [ ! -f "$STUB.pts" ] && [ -f "$MP3_PATH" ]; then
-      log "Converting $FILE ($MP3_FILE_NAME) to PTS > $STUB.pts"
+      log "Converting ($MP3_FILE_NAME) to PTS > $STUB.pts"
       get_audio_levels "$MP3_PATH" > "$STUB.pts"
     fi
-
-    rm "$DIR/$FILE"
 
     if is_scale_suspended; then
       break
@@ -165,31 +163,8 @@ $DATAPOINT"
   done
 }
 
+process_raw_audio_files "$AUDIO_DIR_NOW"
+process_mp3_audio_files "$AUDIO_DIR_NOW"
+parse_volume_level_files "$AUDIO_DIR_NOW"
+publish_volume_levels "$AUDIO_DIR_NOW"
 
-
-
-while true; do
-  if ! is_scale_suspended; then
-    log "Processing: WAV -> MP3"
-    process_raw_audio_files "$AUDIO_DIR_NOW"
-    if is_scale_suspended; then
-      break
-    fi
-
-    log "Processing: MP3 -> PTS"
-    parse_volume_level_files "$AUDIO_DIR_NOW"
-    if is_scale_suspended; then
-      break
-    fi
-
-    log "Processing: PTS -> InfluxDB"
-    publish_volume_levels "$AUDIO_DIR_NOW"
-
-  else
-    log_warn "Audio measurements suspended"
-  fi
-
-  update_period
-  log "Period is: $PERIOD s"
-  sleep "$PERIOD"
-done

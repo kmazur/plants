@@ -37,10 +37,11 @@ while true; do
         log "Light level too low to record video: $LIGHT_LEVEL"
 
         HOUR="$(get_current_hour)"
-        if [[ "$HOUR" -le "5" || "$HOUR" -ge "22" ]]; then
+        if [[ "$HOUR" -le "5" || "$HOUR" -ge "21" ]]; then
           update_period
           MIN_LOW_LIGHT_PERIOD="$(( 20 * 60 ))"
           SLEEP_LOW_LIGHT="$(( PERIOD > MIN_LOW_LIGHT_PERIOD ? PERIOD : MIN_LOW_LIGHT_PERIOD ))"
+          log "Sleeping for $SLEEP_LOW_LIGHT"
           sleep "$SLEEP_LOW_LIGHT"
           continue
         fi
