@@ -36,10 +36,14 @@
   - UPGRADE influxdb & Grafana -> use docker?
   - 80+ C problem
     - lower
-  - Report on the disk/io/netstat/etc. from Raspberry Pi
+  - Report on the disk/io/netstat/memory,etc. from Raspberry Pi
   - Init
     - [V] Setup init rc.local 
     - Cron fill
+  - Improve logging
+    - common to bash & python
+    - kibana logs?
+  - https://github.com/mcguirepr89/BirdNET-Pi
 
 
 

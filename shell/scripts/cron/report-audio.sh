@@ -129,6 +129,10 @@ function publish_volume_levels() {
 
         declare EPOCH_SECONDS="$((START_EPOCH_SECONDS + SECOND))"
 
+        if [[ "$SECOND" == "0" && "$(echo "$DIFF_VAL > 3.1 && $DIFF_VAL < 3.5" | bc)" -eq 1 ]]; then
+          continue
+        fi
+
         if [ "$(echo "$DIFF_VAL > 1.7" | bc)" -eq 1 ]; then
           log "Detected volume spike at: $SECOND s (at: $(epoch_to_date_time_compact "$EPOCH_SECONDS") in file: $STUB.mp3"
         fi
