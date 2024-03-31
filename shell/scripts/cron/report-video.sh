@@ -28,9 +28,13 @@ while true; do
   if ! is_scale_suspended; then
     START_DATE_TIME="$(get_current_date_time_compact)"
 
+    log "Capturing image for light level"
+    LIGHT_LEVEL="$("$REPO_DIR/shell/scripts/video/capture-light-level.sh")"
+    log "Light level is: $LIGHT_LEVEL"
+    cp -f "$TMP/light_level.jpg" "$TMP/$MACHINE_NAME.jpg"
+    upload_file "$TMP" "$MACHINE_NAME.jpg" "image/jpg"
+
     if [[ "$MACHINE_NAME" != "birdbox-ir" ]]; then
-      log "Capturing image for light level"
-      LIGHT_LEVEL="$("$REPO_DIR/shell/scripts/video/capture-light-level.sh")"
       update_measurement_single "image_analysis" "light_level=$LIGHT_LEVEL"
 
       if [ "$(echo "$LIGHT_LEVEL <= 5" | bc)" -eq 1 ]; then
