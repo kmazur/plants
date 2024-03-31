@@ -43,7 +43,7 @@ while true; do
     log_warn "${TEMP} ºC is warning -> SCALED operation (action: scale=$SCALE)"
     if [[ "$PREV_SCALE" != "$SCALE" ]]; then
       set_scale "$SCALE"
-      CPU_FREQ="$(get_scaled_inverse_value "$MIN_CPU_FREQ" "$MAX_CPU_FREQ")"
+      CPU_FREQ="$(get_scaled_value "$MIN_CPU_FREQ" "$MAX_CPU_FREQ")"
       log "Setting cpu frequency to: '${CPU_FREQ}MHz'"
       sudo cpufreq-set -f "${CPU_FREQ}MHz"
     fi
