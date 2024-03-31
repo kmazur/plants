@@ -9,5 +9,5 @@ function upload_file() {
   local HTTP_AUTH="$(get_required_config "http.token")"
   cd "$FILE_PATH"
 
-  curl -XPOST "http://34.133.13.235:8089/tmp/$FILE_NAME?auth=$HTTP_AUTH" --form "file=@$FILE_NAME;type=$FILE_TYPE"
+  curl -XPOST "http://34.133.13.235:8089/tmp/?auth=$HTTP_AUTH" --form "file=@$FILE_NAME;type=$FILE_TYPE"
 }
