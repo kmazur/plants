@@ -17,7 +17,7 @@ BITRATE="48000"
 BITRATE_K="$((BITRATE / 1000))"
 
 AUDIO_FILE="audio.wav"
-AUDIO_DIR_NOW="$AUDIO_DIR/$(get_current_date_time_compact)"
+AUDIO_DIR_NOW="$AUDIO_DIR"
 mkdir -p "$AUDIO_DIR_NOW"
 AUDIO_PATH="$AUDIO_DIR_NOW/$AUDIO_FILE"
 
@@ -52,7 +52,7 @@ function get_birth_nanos() {
 
 function process_raw_audio_files() {
   local DIR="$1"
-  local FILES="$(ls -1tr "$DIR" | grep -P '^audio-\d+\.wav$' | head -n -1)"
+  local FILES="$(ls -1tr "$DIR" | grep -P '^audio.*\.wav$' | head -n -1)"
   local FILE_COUNT="$(echo -n "$FILES" | grep -c '^')"
   log "Processing raw *.wav files: $FILE_COUNT files: $FILES"
 
@@ -61,7 +61,9 @@ function process_raw_audio_files() {
     local -i SECONDS="$((NANOS / 1000000000))"
     local STUB="audio_$(epoch_to_date_time_compact "$SECONDS")"
 
-    echo "$NANOS" > "$DIR/$STUB.txt"
+    if [ ! -f "$DIR/$STUB.txt" ]; then
+      echo "$NANOS" > "$DIR/$STUB.txt"
+    fi
     local MP3_FILE_NAME="$STUB.mp3"
     local MP3_PATH="$DIR/$MP3_FILE_NAME"
 
@@ -109,7 +111,7 @@ function publish_volume_levels() {
 
   for INFLUX_FILE in $FILES; do
     declare STUB="${INFLUX_FILE%.influx}"
-    if [ -f "$DIR/$STUB.txt" ]; then
+    if [ -f "$DIR/$STUB.txt" ] && [ ! -f "$DIR/$STUB.done" ]; then
       log "Publishing data from file: $INFLUX_FILE"
       declare NANOS="$(cat "$DIR/$STUB.txt")"
       declare MILLIS="$((NANOS / 1000000))"
@@ -160,7 +162,7 @@ $DATAPOINT"
         BATCH=""
       fi
 
-      rm "$DIR/$STUB.influx"
+      touch "$DIR/$STUB.done"
     fi
   done
 }
