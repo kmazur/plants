@@ -15,19 +15,38 @@ function update_period() {
   PERIOD="$(get_scaled_inverse_value "$MIN_PERIOD" "$MAX_PERIOD")"
 }
 
+MIN_CPU_FREQ=600
+MAX_CPU_FREQ=1000
+
+SCALE="100"
 while true; do
   TEMP="$(get_cpu_temp | cut -d'.' -f 1)"
 
+  PREV_SCALE="$SCALE"
   if [[ "$TEMP" -le "$NORMAL_THRESHOLD" ]]; then
     log "${TEMP} ºC is ok -> NORMAL operation"
-    set_scale "100"
+    SCALE="100"
+    if [[ "$PREV_SCALE" != "$SCALE" ]]; then
+      set_scale "$SCALE"
+      log "Setting cpu frequency to: 'ondemand'"
+      sudo cpufreq-set -g ondemand
+    fi
   elif [[ "$TEMP" -ge "$MAX_THRESHOLD" ]]; then
+    set_scale "0"
+
+    log "Setting cpu frequency to: 'powersave'"
+    sudo cpufreq-set -g powersave
     log_error "${TEMP} ºC is too hot! -> CRITICAL (action: reboot)"
     sudo reboot -h now
   else
     SCALE="$(( 100 * (MAX_THRESHOLD - TEMP) / (MAX_THRESHOLD - NORMAL_THRESHOLD) ))"
     log_warn "${TEMP} ºC is warning -> SCALED operation (action: scale=$SCALE)"
-    set_scale "$SCALE"
+    if [[ "$PREV_SCALE" != "$SCALE" ]]; then
+      set_scale "$SCALE"
+      CPU_FREQ="$(get_scaled_inverse_value "$MIN_CPU_FREQ" "$MAX_CPU_FREQ")"
+      log "Setting cpu frequency to: '${CPU_FREQ}Hz'"
+      sudo cpufreq-set -g "${CPU_FREQ}Hz"
+    fi
   fi
 
   update_period
