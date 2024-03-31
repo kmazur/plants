@@ -18,7 +18,7 @@ function update_period() {
 MIN_CPU_FREQ=600
 MAX_CPU_FREQ=1000
 
-SCALE="100"
+SCALE=""
 while true; do
   TEMP="$(get_cpu_temp | cut -d'.' -f 1)"
 
