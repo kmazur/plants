@@ -20,6 +20,10 @@ function get_current_second() {
     date "+%S"
 }
 
+function get_current_epoch_seconds() {
+    date "+%s"
+}
+
 function epoch_to_year() {
   local -i EPOCH_SECONDS="$1"
   date -d@"$EPOCH_SECONDS" "+%Y"

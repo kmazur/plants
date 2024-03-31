@@ -49,6 +49,29 @@ while true; do
     fi
   fi
 
+  declare EPOCH_SECONDS="$(get_current_epoch_seconds)"
+  declare BATCH=""
+  for cpu in /sys/devices/system/cpu/cpu*/cpufreq/scaling_cur_freq; do
+    CORE="${cpu:27:1}"
+    FREQ="$(cat "$cpu")"
+    MHZ="$((FREQ/1000))"
+
+    declare MEASUREMENT_NAME="cpu"
+    declare FIELD_VALUES="frequency=$MHZ"
+    declare TAGS="location=Warsaw,machine_name=$MACHINE_NAME,core=$CORE"
+    declare TIMESTAMP="$EPOCH_SECONDS"
+
+    DATAPOINT="$MEASUREMENT_NAME,$TAGS $FIELD_VALUES $TIMESTAMP"
+    if [[ -z "$BATCH" ]]; then
+      BATCH="$DATAPOINT"
+    else
+      BATCH="$BATCH
+$DATAPOINT"
+    fi
+
+  done
+  update_measurement_raw "$BATCH"
+
   update_period
   log "Period is: $PERIOD s"
   sleep "$PERIOD"
