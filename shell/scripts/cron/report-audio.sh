@@ -72,7 +72,7 @@ function process_raw_audio_files() {
 
     if [ ! -f "$STUB.pts" ] && [ -f "$MP3_PATH" ]; then
       log "Converting $FILE ($MP3_FILE_NAME) to PTS > $STUB.pts"
-      get_audio_levels "$MP3_PATH" > "$STUB.pts"
+      get_audio_levels "$MP3_PATH" > "$DIR/$STUB.pts"
     fi
 
     rm "$DIR/$FILE"
@@ -103,7 +103,7 @@ function parse_volume_level_files() {
 
 function publish_volume_levels() {
   local DIR="$1"
-  local FILES="$(ls -1tr "$DIR" | grep -P '^audio.*\.influx')"
+  local FILES="$(ls -1tr "$DIR" | grep -P '^audio.*\.influx$')"
   local FILE_COUNT="$(echo -n "$FILES" | grep -c '^')"
   log "Publishing volume level files: $FILE_COUNT files"
 
