@@ -40,6 +40,7 @@ function detect_events() {
 
     START_REC=""
     LAST_BUMP=""
+    LAST_SECOND=""
     while IFS=' ' read -r LINE; do
       declare -a ARR=($LINE)
       declare SECOND="${ARR[0]}"
@@ -52,6 +53,7 @@ function detect_events() {
       declare EPOCH_SECONDS="$(( START_EPOCH_SECONDS + SECOND ))"
       declare DIFF_ABS="${DIFF_VAL#-}"
       declare DIFF_INT="${DIFF_ABS%%.*}"
+      LAST_SECOND="$SECOND"
 
       if [[ "$DIFF_INT" -ge "3" ]]; then
         if [[ -z "$START_REC" ]]; then
@@ -66,11 +68,22 @@ function detect_events() {
           START="$(date -u -d @"$START_SECOND" +'%H:%M:%S')"
           DURATION="$(( SECOND - START_REC ))"
           ffmpeg -y -nostdin -i "$DIR/$FILE" -ss "$START" -t "$DURATION" -c copy "$DIR/segment_${STUB}_$(epoch_to_date_time_compact "$EPOCH_START").mp3"
+
+          START_REC=""
+          LAST_BUMP=""
       fi
 
-      touch "$DIR/$STUB.audio_detected"
-
     done < "$DIR/$PTS_FILE"
+
+    if [[ -n "$START_REC" ]]; then
+      START_SECOND="$(( START_REC - 1 < 0 ? 0 : START_REC - 1))"
+      EPOCH_START="$(( START_EPOCH_SECONDS + START_SECOND ))"
+      START="$(date -u -d @"$START_SECOND" +'%H:%M:%S')"
+      DURATION="$(( LAST_SECOND - START_REC ))"
+      ffmpeg -y -nostdin -i "$DIR/$FILE" -ss "$START" -t "$DURATION" -c copy "$DIR/segment_${STUB}_$(epoch_to_date_time_compact "$EPOCH_START").mp3"
+    fi
+
+    touch "$DIR/$STUB.audio_detected"
 
   done
 }
