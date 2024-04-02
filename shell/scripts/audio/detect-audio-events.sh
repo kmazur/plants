@@ -65,7 +65,7 @@ function detect_events() {
           EPOCH_START="$(( START_EPOCH_SECONDS + START_SECOND ))"
           START="$(date -u -d @"$START_SECOND" +'%H:%M:%S')"
           DURATION="$(( SECOND - START_REC ))"
-          ffmpeg -nostdin -i "$DIR/$FILE" -ss "$START" -t "$DURATION" -c copy "$DIR/segment_${STUB}_$(epoch_to_date_time_compact "$EPOCH_START").mp3"
+          ffmpeg -y -nostdin -i "$DIR/$FILE" -ss "$START" -t "$DURATION" -c copy "$DIR/segment_${STUB}_$(epoch_to_date_time_compact "$EPOCH_START").mp3"
       fi
 
       touch "$DIR/$STUB.audio_detected"
