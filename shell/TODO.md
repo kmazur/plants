@@ -6,23 +6,24 @@
   - usuwać gdzie nie wykryto żadnych dźwięków (lub bardzo ciche)
   - usunąć inicjalny skok dźwięku
   - [V] rollować / crontab -e skrypt record-audio
+  - wykrywać dźwięki i je wycinać - nie brać pod uwagę skoków z błędów nagrywania
 - Video recording - CTRL
   - Fix focus - try different lens-position
-  - 
 - Video recording - IR
 - Video recording - general
   - [V] włączać i wyłączać IR vs CTRL nocą
-  - Zapisywać widoczną jasność - i uploadować do grafany
+  - [V] Zapisywać widoczną jasność - i uploadować do grafany
   - Automatyczne wykrywanie eventów na AORUS
 - Shell/env improvements
-  - zintegrować skrypty crontab się z lib.sh
-  - automatycznie ustawiać datę + timezone
-    - [V] sudo timedatectl set-timezone Australia/Sydney
+  - [V] zintegrować skrypty crontab się z lib.sh
+  - [V] automatycznie ustawiać datę + timezone
+    - [V] sudo timedatectl set-timezone Europe/Warsaw
 - Reporting
   - Dodać wykryte eventy do grafany jako alerty?
     - Może dodać jako heatmap/timemap?
   - Wrzucać do "kolejki" / pliku co do wysłania jest do influxdb i okresowo wysyłać batchami 
   - scale publication to grafana
+  - move cpu freq reporting to cpu measurements & cpu temp reporting script
 - Control
   - Force video disable/enable
   - Force video publish by mediamtx (remotely as well?)
@@ -32,10 +33,9 @@
   - [V] Lower sampling rate for taking temp measurements etc.
   - Wypróbować Rusta vs C / C++
   - [V] Reboot on > 80 C temperature
+    - Improve reboot on 80 C temp -> when it persists for several cycles or breaches some threshold / increasing
   - Reboot automatically every night
   - UPGRADE influxdb & Grafana -> use docker?
-  - 80+ C problem
-    - lower
   - Report on the disk/io/netstat/memory,freq,etc. from Raspberry Pi
   - alert / events reporting on reboots
   - Init
