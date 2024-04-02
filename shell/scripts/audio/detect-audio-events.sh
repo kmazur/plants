@@ -31,7 +31,7 @@ function detect_events() {
       continue
     fi
 
-    declare NANOS="$(cat "$STUB.txt")"
+    declare NANOS="$(cat "$DIR/$STUB.txt")"
     declare START_EPOCH_SECONDS="$(( NANOS / 1000000000 ))"
 
     if is_scale_suspended; then
@@ -55,12 +55,12 @@ function detect_events() {
         START_SECOND="$(( SECOND - 1 < 0 ? 0 : SECOND - 1))"
         EPOCH_START="$(( START_EPOCH_SECONDS + START_SECOND ))"
         START=$(date -u -d @"$START_SECOND" +'%H:%M:%S')
-        ffmpeg -nostdin -i "$FILE" -ss "$START" -t 3 -c copy "$DIR/segment_${STUB}_$(epoch_to_date_time_compact "$EPOCH_START").mp3"
+        ffmpeg -nostdin -i "$DIR/$FILE" -ss "$START" -t 3 -c copy "$DIR/segment_${STUB}_$(epoch_to_date_time_compact "$EPOCH_START").mp3"
       fi
 
       touch "$DIR/$STUB.audio_detected"
 
-    done < "$PTS_FILE"
+    done < "$DIR/$PTS_FILE"
 
   done
 }
