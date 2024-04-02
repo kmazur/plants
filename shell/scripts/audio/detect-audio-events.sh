@@ -62,7 +62,7 @@ function detect_events() {
         else
           LAST_BUMP="$SECOND"
         fi
-      elif [[ "$(( SECOND - LAST_BUMP ))" -gt "5" ]]; then
+      elif [[ -n "$START_REC" && "$(( SECOND - LAST_BUMP ))" -gt "5" ]]; then
           START_SECOND="$(( START_REC - 1 < 0 ? 0 : START_REC - 1))"
           EPOCH_START="$(( START_EPOCH_SECONDS + START_SECOND ))"
           START="$(date -u -d @"$START_SECOND" +'%H:%M:%S')"
