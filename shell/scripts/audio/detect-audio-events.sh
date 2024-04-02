@@ -10,6 +10,7 @@ PERIOD="$MIN_PERIOD"
 
 function update_period() {
   PERIOD="$(get_scaled_inverse_value "$MIN_PERIOD" "$MAX_PERIOD")"
+}
 
 AUDIO_DIR_NOW="$AUDIO_DIR"
 
