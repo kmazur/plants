@@ -131,7 +131,7 @@ function publish_volume_levels() {
 
         declare EPOCH_SECONDS="$((START_EPOCH_SECONDS + SECOND))"
 
-        if [[ "$SECOND" == "0" && "$(echo "$DIFF_VAL > 3.1 && $DIFF_VAL < 3.5" | bc)" -eq 1 ]]; then
+        if [[ "$SECOND" == "0" && "$(echo "$DIFF_VAL > 3.1" | bc)" -eq 1 ]]; then
           continue
         fi
 
