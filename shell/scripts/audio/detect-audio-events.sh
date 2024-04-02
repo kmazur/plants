@@ -81,6 +81,9 @@ function detect_events() {
       START="$(date -u -d @"$START_SECOND" +'%H:%M:%S')"
       DURATION="$(( LAST_SECOND - START_REC ))"
       ffmpeg -y -nostdin -i "$DIR/$FILE" -ss "$START" -t "$DURATION" -c copy "$DIR/segment_${STUB}_$(epoch_to_date_time_compact "$EPOCH_START").mp3"
+
+      START_REC=""
+      LAST_BUMP=""
     fi
 
     touch "$DIR/$STUB.audio_detected"
