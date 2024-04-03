@@ -43,7 +43,7 @@ function detect_audio_events() {
 while true; do
   if ! is_scale_suspended; then
     log "Processing: MP3"
-    detect_events "$AUDIO_DIR_NOW"
+    detect_audio_events "$AUDIO_DIR_NOW"
   else
     log_warn "Audio detection suspended"
   fi

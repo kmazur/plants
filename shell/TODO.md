@@ -32,6 +32,7 @@
   - Take screenshot
 
 - General
+  - Update git repo & reinitialize (env + processes) when detected changes
   - [V] Lower sampling rate for taking temp measurements etc.
   - Wypróbować Rusta vs C / C++
   - [V] Reboot on > 80 C temperature
