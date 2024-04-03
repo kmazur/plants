@@ -34,7 +34,13 @@ function detect_events_in_mp3_file() {
       else
         LAST_BUMP="$SECOND"
       fi
-    elif [[ -n "$START_REC" && "$(( SECOND - LAST_BUMP ))" -gt "5" ]]; then
+    elif [[ "$DIFF_INT" -ge "3" ]]; then
+      if [[ -n "$START_REC" ]]; then
+        LAST_BUMP="$SECOND"
+      fi
+    fi
+
+    if [[ -n "$START_REC" && "$(( SECOND - LAST_BUMP ))" -gt "5" ]]; then
         START_SECOND="$(( START_REC - 1 < 0 ? 0 : START_REC - 1))"
         EPOCH_START="$(( FILE_START_EPOCH_SECONDS + START_SECOND ))"
         START="$(date -u -d @"$START_SECOND" +'%H:%M:%S')"
