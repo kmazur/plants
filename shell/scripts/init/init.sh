@@ -8,6 +8,7 @@ ensure_env
 
 log "Starting init"
 "$INIT_DIR/init-general.sh"
+"$INIT_DIR/init-env-refresh.sh"
 
 declare INIT_FILE="$REPO_DIR/shell/scripts/init/$MACHINE_NAME.sh"
 if [ -f "$INIT_FILE" ]; then
