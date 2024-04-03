@@ -26,6 +26,7 @@
   - Wrzucać do "kolejki" / pliku co do wysłania jest do influxdb i okresowo wysyłać batchami 
   - scale publication to grafana
   - move cpu freq reporting to cpu measurements & cpu temp reporting script
+  - remove location & other tags from influxdb
 - Control
   - Force video disable/enable
   - Force video publish by mediamtx (remotely as well?)
