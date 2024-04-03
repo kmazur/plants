@@ -33,9 +33,7 @@ function detect_audio_events() {
       continue
     fi
 
-
     detect_events_in_mp3_file "$DIR" "$FILE"
-
   done
 }
 

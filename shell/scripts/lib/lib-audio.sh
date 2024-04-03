@@ -27,7 +27,7 @@ function detect_events_in_mp3_file() {
     declare DIFF_INT="${DIFF_ABS%%.*}"
     LAST_SECOND="$SECOND"
 
-    if [[ "$DIFF_INT" -ge "3" ]]; then
+    if [[ "$DIFF_INT" -ge "4" ]]; then
       if [[ -z "$START_REC" ]]; then
         START_REC="$SECOND"
         LAST_BUMP="$SECOND"

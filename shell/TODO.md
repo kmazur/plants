@@ -29,21 +29,24 @@
 - Control
   - Force video disable/enable
   - Force video publish by mediamtx (remotely as well?)
-  - Take screenshot
+  - [V] Take screenshot
 
 - General
   - Update git repo & reinitialize (env + processes) when detected changes
+  - restart cron processes easily (bash auto complete support? / choice?)
+  - setup rsync
+  - All metrics monitoring -> https://grafana.com/docs/grafana-cloud/monitor-infrastructure/integrations/integration-reference/integration-raspberry-pi-node/
+    - Report on the disk/io/netstat/memory,freq,etc. from Raspberry Pi
   - [V] Lower sampling rate for taking temp measurements etc.
   - Wypróbować Rusta vs C / C++
   - [V] Reboot on > 80 C temperature
     - Improve reboot on 80 C temp -> when it persists for several cycles or breaches some threshold / increasing
-  - Reboot automatically every night
+  - [V] Reboot automatically every night
   - UPGRADE influxdb & Grafana -> use docker?
-  - Report on the disk/io/netstat/memory,freq,etc. from Raspberry Pi
   - alert / events reporting on reboots
   - Init
     - [V] Setup init rc.local 
-    - Cron fill
+    - [V] Cron fill
   - Improve logging
     - common to bash & python
     - kibana logs?
