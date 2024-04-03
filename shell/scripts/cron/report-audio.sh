@@ -57,6 +57,10 @@ function process_raw_audio_files() {
   log "Processing raw *.wav files: $FILE_COUNT files: $FILES"
 
   for FILE in $FILES; do
+    if is_scale_suspended; then
+      break
+    fi
+
     local -i NANOS="$(get_birth_nanos "$DIR/$FILE")"
     local -i SECONDS="$((NANOS / 1000000000))"
     local STUB="audio_$(epoch_to_date_time_compact "$SECONDS")"
@@ -79,10 +83,6 @@ function process_raw_audio_files() {
 
     rm "$DIR/$FILE"
 
-    if is_scale_suspended; then
-      break
-    fi
-
   done
 }
 
@@ -93,6 +93,10 @@ function parse_volume_level_files() {
   log "Parsing volume level files: $FILE_COUNT files"
 
   for PTS_FILE in $FILES; do
+    if is_scale_suspended; then
+      break
+    fi
+
     declare STUB="${PTS_FILE%.pts}"
     if [ -f "$DIR/$STUB.txt" ] && [ ! -f "$DIR/$STUB.influx" ]; then
       declare NANOS="$(cat "$DIR/$STUB.txt")"
@@ -110,6 +114,10 @@ function publish_volume_levels() {
   log "Publishing volume level files: $FILE_COUNT files"
 
   for INFLUX_FILE in $FILES; do
+    if is_scale_suspended; then
+      break
+    fi
+
     declare STUB="${INFLUX_FILE%.influx}"
     if [ -f "$DIR/$STUB.txt" ] && [ ! -f "$DIR/$STUB.done" ]; then
       log "Publishing data from file: $INFLUX_FILE"
@@ -175,18 +183,17 @@ while true; do
     log "Processing: WAV -> MP3"
     process_raw_audio_files "$AUDIO_DIR_NOW"
     if is_scale_suspended; then
-      break
+      continue
     fi
 
     log "Processing: MP3 -> PTS"
     parse_volume_level_files "$AUDIO_DIR_NOW"
     if is_scale_suspended; then
-      break
+      continue
     fi
 
     log "Processing: PTS -> InfluxDB"
     publish_volume_levels "$AUDIO_DIR_NOW"
-
   else
     log_warn "Audio measurements suspended"
   fi

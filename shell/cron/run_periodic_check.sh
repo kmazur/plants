@@ -36,7 +36,7 @@ LOG_FILE="$LOGS_DIR/$PROCESS_NAME.log"
 
 {
   echo "# ========="
-  echo "# Starting '$PROCESS_NAME' at $(date +%Y-%m-%d_%H:%M:%S)"
+  echo "# Starting '$PROCESS_NAME' at $(get_current_date_time_dashed)"
   echo "# ---------"
 } >> "$LOG_FILE"
 

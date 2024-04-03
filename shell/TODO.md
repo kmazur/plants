@@ -7,6 +7,7 @@
   - usunąć inicjalny skok dźwięku
   - [V] rollować / crontab -e skrypt record-audio
   - wykrywać dźwięki i je wycinać - nie brać pod uwagę skoków z błędów nagrywania
+  - Rollować per dzień audio -> record only today & process today & yesterday
 - Video recording - CTRL
   - Fix focus - try different lens-position
 - Video recording - IR
@@ -14,6 +15,7 @@
   - [V] włączać i wyłączać IR vs CTRL nocą
   - [V] Zapisywać widoczną jasność - i uploadować do grafany
   - Automatyczne wykrywanie eventów na AORUS
+  - Dodać rolowanie per dzień
 - Shell/env improvements
   - [V] zintegrować skrypty crontab się z lib.sh
   - [V] automatycznie ustawiać datę + timezone
