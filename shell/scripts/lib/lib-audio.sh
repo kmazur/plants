@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# multiplied by 10 (25 == 2.5 dB)
+CONTINUE_THRESHOLD_DB="3"
+TRIGGER_THRESHOLD_DB="35"
+
 function detect_events_in_mp3_file() {
   local DIR="$1"
   local FILE="$2"
@@ -25,16 +29,23 @@ function detect_events_in_mp3_file() {
     declare PRCESSED_EPOCH_SECONDS="$(( FILE_START_EPOCH_SECONDS + SECOND ))"
     declare DIFF_ABS="${DIFF_VAL#-}"
     declare DIFF_INT="${DIFF_ABS%%.*}"
+    declare DIFF_FRAC="${DIFF_ABS##*.}"
+    if [ -z "$DIFF_FRAC" ]; then
+      DIFF_FRAC="0"
+    fi
+    declare DIFF_FRAC_V="${DIFF_FRAC:0:1}"
+    declare DIFF_10="${DIFF_INT}${DIFF_FRAC_V}"
+
     LAST_SECOND="$SECOND"
 
-    if [[ "$DIFF_INT" -ge "4" ]]; then
+    if [[ "$DIFF_10" -ge "$TRIGGER_THRESHOLD_DB" ]]; then
       if [[ -z "$START_REC" ]]; then
         START_REC="$SECOND"
         LAST_BUMP="$SECOND"
       else
         LAST_BUMP="$SECOND"
       fi
-    elif [[ "$DIFF_INT" -ge "3" ]]; then
+    elif [[ "$DIFF_10" -ge "$CONTINUE_THRESHOLD_DB" ]]; then
       if [[ -n "$START_REC" ]]; then
         LAST_BUMP="$SECOND"
       fi
