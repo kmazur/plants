@@ -31,6 +31,10 @@ function detect_video_events() {
     fi
 
     "$BIN_DIR/motion_detector" "$DIR/$FILE"
+
+    update_period
+    log "Period is: $PERIOD s"
+    sleep "$PERIOD"
   done
 }
 
