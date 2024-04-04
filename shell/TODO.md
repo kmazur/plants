@@ -34,6 +34,8 @@
 
 - General
   - Update git repo & reinitialize (env + processes) when detected changes
+  - Different level of operation - start when temp is only low / stages
+  - Kill long running process that is known to generate heat when running
   - restart cron processes easily (bash auto complete support? / choice?)
   - setup rsync
   - All metrics monitoring -> https://grafana.com/docs/grafana-cloud/monitor-infrastructure/integrations/integration-reference/integration-raspberry-pi-node/

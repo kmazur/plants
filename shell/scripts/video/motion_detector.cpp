@@ -8,6 +8,10 @@
 #include <numeric>
 #include <algorithm>
 #include <cstdlib>
+#include <thread>
+#include <future>
+#include <mutex>
+#include <vector>
 
 namespace fs = std::filesystem;
 
@@ -21,9 +25,9 @@ public:
             return;
         }
 
-        detectMotion();
+        detectMotionConcurrently();
         if (!motionSegments.empty()) {
-            extractSegments();
+            extractSegmentsConcurrently();
         }
     }
 
@@ -31,21 +35,32 @@ private:
     std::string videoPath;
     cv::VideoCapture cap;
     std::vector<std::pair<double, double>> motionSegments; // Stores start and end times of motion segments
+    std::mutex motionSegmentsMutex; // Mutex for thread-safe access to motionSegments
 
     static constexpr double motionThreshold = 0.0095; // Example threshold, adjust based on your needs
     static constexpr int frameStep = 20; // Analyze every 20th frame for motion
 
-    void detectMotion() {
+    void detectMotionConcurrently() {
+        size_t threadCount = std::thread::hardware_concurrency();
+        std::vector<std::future<void>> futures;
+        for (size_t i = 0; i < threadCount; ++i) {
+            futures.emplace_back(std::async(std::launch::async, &VideoProcessor::detectMotion, this, i, threadCount));
+        }
+        for (auto& future : futures) {
+            future.wait();
+        }
+    }
+
+    void detectMotion(size_t threadId, size_t threadCount) {
         cv::Mat prevFrame, currFrame, frameDiff;
         double prevTime = 0, motionStartTime = -1;
         int frameIndex = 0;
 
+        // Adjust reading to only handle frames for this thread
         while (true) {
-            // Skip frames to meet the frameStep requirement
-            for (int i = 0; i < frameStep; ++i) {
-                if (!cap.read(currFrame)) return; // Break the loop if no more frames
-                prevTime = cap.get(cv::CAP_PROP_POS_MSEC) / 1000.0; // Time in seconds
-            }
+            cap.set(cv::CAP_PROP_POS_FRAMES, frameIndex * frameStep + threadId * frameStep / threadCount);
+            if (!cap.read(currFrame)) return; // Break the loop if no more frames
+            prevTime = cap.get(cv::CAP_PROP_POS_MSEC) / 1000.0; // Time in seconds
 
             cv::cvtColor(currFrame, currFrame, cv::COLOR_BGR2GRAY);
             if (!prevFrame.empty()) {
@@ -53,24 +68,27 @@ private:
                 double motionScore = cv::sum(frameDiff)[0] / (frameDiff.rows * frameDiff.cols); // Normalize motion score
 
                 if (motionScore > motionThreshold) {
-                    if (motionStartTime < 0) motionStartTime = std::max(prevTime - 1.0, 0.0); // Mark start of motion, 1s earlier, not less than 0
+                    if (motionStartTime < 0) motionStartTime = std::max(prevTime - 1.0, 0.0); // Mark start of motion
                 } else if (motionStartTime >= 0) {
-                    // Ensure the end time does not exceed the video length
                     double videoLength = cap.get(cv::CAP_PROP_POS_MSEC) / 1000.0;
-                    motionSegments.emplace_back(motionStartTime, std::min(prevTime + 1.0, videoLength)); // End of motion segment, 1s later
+                    std::lock_guard<std::mutex> guard(motionSegmentsMutex);
+                    motionSegments.emplace_back(motionStartTime, std::min(prevTime + 1.0, videoLength)); // End of motion segment
                     motionStartTime = -1; // Reset for next motion segment
                 }
             }
 
             currFrame.copyTo(prevFrame);
-            ++frameIndex;
+            frameIndex += threadCount; // Jump to the next frame this thread is responsible for
         }
     }
 
-    void extractSegments() {
-        for (const auto& [start, end] : motionSegments) {
-            std::string outputFileName = generateOutputFilename(start, end);
-            extractSegmentWithFFmpeg(videoPath, start, end, outputFileName);
+    void extractSegmentsConcurrently() {
+        std::vector<std::future<void>> futures;
+        for (const auto& segment : motionSegments) {
+            futures.emplace_back(std::async(std::launch::async, &VideoProcessor::extractSegmentWithFFmpeg, videoPath, segment.first, segment.second, generateOutputFilename(segment.first, segment.second)));
+        }
+        for (auto& future : futures) {
+            future.wait();
         }
     }
 
