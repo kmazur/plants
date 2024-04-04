@@ -30,8 +30,11 @@ function detect_video_events() {
       continue
     fi
 
+    BEFORE_TIME=$(get_current_epoch_seconds)
     log "Processing: $FILE"
     "$BIN_DIR/motion_detector" "$DIR/$FILE"
+    AFTER_TIME=$(get_current_epoch_seconds)
+    log "Processing $FILE took: $(( AFTER_TIME - BEFORE_TIME )) s"
 
     touch "$DIR/$STUB.motion_detected"
 
