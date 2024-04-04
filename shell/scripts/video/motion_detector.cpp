@@ -75,10 +75,21 @@ private:
     }
 
     std::string generateOutputFilename(double start, double end) {
-        // Create a unique filename for each segment
-        std::string baseName = fs::path(videoPath).stem().string();
-        std::string extension = fs::path(videoPath).extension().string();
-        return baseName + "_" + std::to_string(start) + "_" + std::to_string(end) + extension;
+            // Get the full path of the video file
+            fs::path videoFilePath(videoPath);
+
+            // Extract the directory, base name, and extension of the video file
+            fs::path dirPath = videoFilePath.parent_path();
+            std::string baseName = videoFilePath.stem().string();
+            std::string extension = videoFilePath.extension().string();
+
+            // Construct the new filename with start and end times
+            std::string newFilename = baseName + "_" + std::to_string(start) + "_" + std::to_string(end) + extension;
+
+            // Combine the directory path with the new filename to preserve the directory location
+            fs::path outputPath = dirPath / newFilename;
+
+            return outputPath.string();
     }
 
     static void extractSegmentWithFFmpeg(const std::string& inputFile, double start, double end, const std::string& outputFile) {
