@@ -30,6 +30,7 @@ function detect_video_events() {
       continue
     fi
 
+    log "Processing: $FILE"
     "$BIN_DIR/motion_detector" "$DIR/$FILE"
 
     touch "$DIR/$STUB.motion_detected"
