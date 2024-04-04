@@ -8,5 +8,9 @@ mv volume_aggregator "$BIN_DIR"
 
 
 cd "$REPO_DIR/shell/scripts/video/" || exit 1
-g++ -o light_level light_level.cpp `pkg-config --cflags --libs opencv4`  -O3 -march=native -flto
+g++ -o light_level light_level.cpp `pkg-config --cflags --libs opencv4` -O3 -march=native -flto
 mv light_level "$BIN_DIR"
+
+cd "$REPO_DIR/shell/scripts/video/" || exit 1
+g++ -o motion_detector video_processor.cpp `pkg-config --cflags --libs opencv4` -O3 -march=native -flto
+mv motion_detector "$BIN_DIR"
