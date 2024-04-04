@@ -4,3 +4,4 @@
 source "$LIB_INIT_FILE"
 ensure_env
 
+update_daylight_info
