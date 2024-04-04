@@ -37,15 +37,30 @@ function epoch_to_day() {
   date -d@"$EPOCH_SECONDS" "+%d"
 }
 
+function get_date_format_compact() {
+  echo "%Y%m%d"
+}
+function get_date_time_format_compact() {
+  echo "%Y%m%d_%H%M%S"
+}
+function get_zoned_date_time_format_compact() {
+  echo "%Y%m%d_%H%M%S_%Z"
+}
+function get_date_time_format_dashed() {
+  echo "%Y-%m-%dT%H:%M:%S"
+}
+function get_zoned_date_time_format_dashed() {
+  echo "%Y-%m-%dT%H:%M:%S %Z"
+}
 
 function get_current_date_compact() {
-    date +%Y%m%d
+    date +"$(get_date_format_compact)"
 }
 function get_current_date_time_compact() {
-  date +%Y%m%d_%H%M%S
+  date +"$(get_date_time_format_compact)"
 }
 function get_current_date_time_dashed() {
-  date +%Y-%m-%dT%H:%M:%S
+  date +"$(get_date_time_format_dashed)"
 }
 function get_current_date_dashed() {
     date +%Y-%m-%d
