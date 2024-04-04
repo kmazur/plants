@@ -107,6 +107,22 @@ function is_locked_process_running() {
   fi
 }
 
+function set_config() {
+  local KEY="$1"
+  local VAL="$2"
+  ensure_env
+
+  (
+    flock -x 200
+
+    if grep "^$KEY=" "$CONFIG_INI"; then
+      sed -i "/^$KEY=/c\\$KEY=$VAL" "$CONFIG_INI"
+    else
+      echo "$KEY=$VAL" >> "$CONFIG_INI"
+    fi
+
+  ) 200>"$LOCKS_DIR/config.ini.flock"
+}
 
 function get_config() {
   local KEY="$1"

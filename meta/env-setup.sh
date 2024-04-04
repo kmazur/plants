@@ -49,6 +49,8 @@ if [ ! -f "$CONFIG_INI" ]; then
     echo "camera.vflip=0" >>"$CONFIG_INI"
     echo "camera.hflip=0" >>"$CONFIG_INI"
   fi
+  echo "location.lat=52.133846" >> "$CONFIG_INI"
+  echo "location.lng=21.056411" >> "$CONFIG_INI"
 fi
 
 
