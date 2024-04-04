@@ -35,21 +35,25 @@ while true; do
     draw_text_bl "$TMP_DIR/light_level.jpg" "$TMP_DIR/$MACHINE_NAME.jpg" "$(get_current_date_time_dashed)"
     upload_file "$TMP_DIR" "$MACHINE_NAME.jpg" "image/jpg"
 
-    if [[ "$MACHINE_NAME" != "birdbox-ir" ]]; then
-      update_measurement_single "image_analysis" "light_level=$LIGHT_LEVEL"
+    update_measurement_single "image_analysis" "light_level=$LIGHT_LEVEL"
 
-      if [ "$(echo "$LIGHT_LEVEL <= 5" | bc)" -eq 1 ]; then
-        log "Light level too low to record video: $LIGHT_LEVEL"
+    declare LIGHT_LEVEL_INT="${LIGHT_LEVEL%%.*}"
 
-        HOUR="$(get_current_hour)"
-        if [[ "$HOUR" -le "5" || "$HOUR" -ge "21" ]]; then
-          update_period
-          MIN_LOW_LIGHT_PERIOD="$(( 20 * 60 ))"
-          SLEEP_LOW_LIGHT="$(( PERIOD > MIN_LOW_LIGHT_PERIOD ? PERIOD : MIN_LOW_LIGHT_PERIOD ))"
-          log "Sleeping for $SLEEP_LOW_LIGHT"
-          sleep "$SLEEP_LOW_LIGHT"
-          continue
-        fi
+    if [[ "$LIGHT_LEVEL_INT" -le "5" ]]; then
+      log "Light level too low to record video: $LIGHT_LEVEL"
+
+      HOUR="$(get_current_hour)"
+      SUNRISE="$(get_config "daylight.sunrise" "6")"
+      SUNSET="$(get_config "daylight.sunset" "21")"
+      SUNRISE_HOUR="${SUNRISE:9:2}"
+      SUNSET_HOUR="${SUNSET:9:2}"
+      if [[ "$HOUR" -le "$SUNRISE_HOUR" || "$HOUR" -ge "$SUNSET_HOUR" ]]; then
+        update_period
+        MIN_LOW_LIGHT_PERIOD="$(( 20 * 60 ))"
+        SLEEP_LOW_LIGHT="$(( PERIOD > MIN_LOW_LIGHT_PERIOD ? PERIOD : MIN_LOW_LIGHT_PERIOD ))"
+        log "Sleeping for $SLEEP_LOW_LIGHT"
+        sleep "$SLEEP_LOW_LIGHT"
+        continue
       fi
     fi
 

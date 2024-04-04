@@ -116,7 +116,7 @@ function set_config() {
     flock -x 200
 
     if grep "^$KEY=" "$CONFIG_INI"; then
-      sed -i "/^$KEY=/c\\$KEY=$VAL" "$CONFIG_INI"
+      sed -i "/^$KEY=/c\\$KEY=$VAL" "$CONFIG_INI" &> /dev/null
     else
       echo "$KEY=$VAL" >> "$CONFIG_INI"
     fi
@@ -126,9 +126,15 @@ function set_config() {
 
 function get_config() {
   local KEY="$1"
+  local DEFAULT_VALUE="$2"
   ensure_env
 
-  grep "^$KEY=" "$CONFIG_INI" | cut -f 2- -d '='
+  local VALUE="$(grep "^$KEY=" "$CONFIG_INI" | cut -f 2- -d '=')"
+  if [ -n "$VALUE" ]; then
+    echo "$VALUE"
+  elif [ -n "$DEFAULT_VALUE" ]; then
+    echo "$DEFAULT_VALUE"
+  fi
 }
 
 function get_required_config() {
