@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # multiplied by 10 (25 == 2.5 dB)
-CONTINUE_THRESHOLD_DB="3"
+CONTINUE_THRESHOLD_DB="30"
 TRIGGER_THRESHOLD_DB="35"
 
 function detect_events_in_mp3_file() {

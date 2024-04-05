@@ -115,7 +115,7 @@ function set_config() {
   (
     flock -x 200
 
-    if grep "^$KEY=" "$CONFIG_INI"; then
+    if grep "^$KEY=" "$CONFIG_INI" &> /dev/null; then
       sed -i "/^$KEY=/c\\$KEY=$VAL" "$CONFIG_INI" &> /dev/null
     else
       echo "$KEY=$VAL" >> "$CONFIG_INI"
