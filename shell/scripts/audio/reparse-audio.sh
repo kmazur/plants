@@ -133,7 +133,7 @@ function publish_volume_levels() {
 
         local MEASUREMENT_NAME="audio_analysis"
         local FIELD_VALUES="min_volume_level=$MIN_VAL,max_volume_level=$MAX_VAL,mean_volume_level=$MEAN_VAL,volume_level=$LAST_VAL,volume_pressure=$DIFF_VAL"
-        local TAGS="location=Warsaw,machine_name=$MACHINE_NAME"
+        local TAGS="machine_name=$MACHINE_NAME"
         local TIMESTAMP="$EPOCH_SECONDS"
 
         DATAPOINT="$MEASUREMENT_NAME,$TAGS $FIELD_VALUES $TIMESTAMP"

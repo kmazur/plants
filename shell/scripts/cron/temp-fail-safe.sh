@@ -58,7 +58,7 @@ while true; do
 
     declare MEASUREMENT_NAME="cpu"
     declare FIELD_VALUES="frequency=$MHZ"
-    declare TAGS="location=Warsaw,machine_name=$MACHINE_NAME,core=$CORE"
+    declare TAGS="machine_name=$MACHINE_NAME,core=$CORE"
     declare TIMESTAMP="$EPOCH_SECONDS"
 
     DATAPOINT="$MEASUREMENT_NAME,$TAGS $FIELD_VALUES $TIMESTAMP"

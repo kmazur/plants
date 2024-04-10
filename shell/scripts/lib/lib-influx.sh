@@ -24,7 +24,7 @@ function update_measurement_single() {
     TIMESTAMP="$(date +%s)"
   fi
 
-  local TAGS="location=Warsaw,machine_name=$INFLUX_MACHINE_NAME"
+  local TAGS="machine_name=$INFLUX_MACHINE_NAME"
   update_measurement_raw "$MEASUREMENT_NAME,$TAGS $FIELD_VALUES $TIMESTAMP"
 }
 
