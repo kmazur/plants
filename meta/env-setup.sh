@@ -21,20 +21,6 @@ cp -f "$WORK_DIR/workspace/plants/shell/.profile" "$HOME"
 source "$HOME/.profile"
 
 
-echo "CREATING DIR STRUCTURE:"
-mkdir -p "$WORK_DIR"
-mkdir -p "$TMP_DIR"
-mkdir -p "$CONFIG_DIR"
-mkdir -p "$LOCKS_DIR"
-mkdir -p "$WORKSPACE_DIR"
-mkdir -p "$REPO_DIR"
-mkdir -p "$CAMERA_DIR"
-mkdir -p "$VIDEO_DIR"
-mkdir -p "$AUDIO_DIR"
-mkdir -p "$LOGS_DIR"
-mkdir -p "$BIN_DIR"
-mkdir -p "$INFLUX_DIR"
-
 ARCH=$(uname -a)
 if [ ! -f "$CONFIG_INI" ]; then
   echo "name=UNKNOWN" > "$CONFIG_INI"

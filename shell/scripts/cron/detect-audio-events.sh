@@ -14,6 +14,7 @@ function update_period() {
 
 function detect_audio_events() {
   local DIR="$1"
+  local OUTPUT_DIR="$2"
   local FILES="$(ls -1tr "$DIR" | grep -P '^audio.*\.mp3' | head -n -1)"
   local FILE_COUNT="$(echo -n "$FILES" | grep -c '^')"
   log "Processing $FILE_COUNT mp3 files"
@@ -31,7 +32,7 @@ function detect_audio_events() {
       continue
     fi
 
-    detect_events_in_mp3_file "$DIR" "$FILE"
+    detect_events_in_mp3_file "$DIR" "$FILE" "$OUTPUT_DIR"
   done
 }
 
@@ -39,7 +40,7 @@ function detect_audio_events() {
 while true; do
   if ! is_scale_suspended; then
     log "Processing: MP3"
-    detect_audio_events "$(get_audio_dir)"
+    detect_audio_events "$(get_audio_dir)" "$(get_audio_segment_dir)"
   else
     log_warn "Audio detection suspended"
   fi

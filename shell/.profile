@@ -37,6 +37,7 @@ export REPO_DIR="$WORKSPACE_DIR/plants"
 export CAMERA_DIR="$TMP_DIR/camera"
 export VIDEO_DIR="$TMP_DIR/vid"
 export AUDIO_DIR="$TMP_DIR/audio"
+export AUDIO_SEGMENT_DIR="$TMP_DIR/audio_segments"
 export LOGS_DIR="$WORK_DIR/logs"
 export BIN_DIR="$WORK_DIR/bin"
 export REPO_DIR="$WORK_DIR/workspace/plants"
@@ -45,6 +46,14 @@ export INFLUX_DIR="$TMP_DIR/influx"
 
 export CONFIG_INI="$CONFIG_DIR/config.ini"
 export LIB_INIT_FILE="$REPO_DIR/shell/scripts/lib/lib.sh"
+
+function _create_env_dirs() {
+    local DIRS="$(env | grep "_DIR" | grep "/home/user/" | cut -d '=' -f 2)"
+    for DIR in $DIRS; do
+        mkdir -p "$DIR" &> /dev/null
+    done
+}
+_create_env_dirs
 
 export MACHINE_NAME="$(grep "name=" "$CONFIG_DIR/config.ini" | cut -f 2 -d='')"
 

@@ -7,6 +7,7 @@ TRIGGER_THRESHOLD_DB="35"
 function detect_events_in_mp3_file() {
   local DIR="$1"
   local FILE="$2"
+  local OUTPUT_DIR="${3:-$DIR}"
 
   local STUB="${FILE%.mp3}"
 
@@ -57,7 +58,7 @@ function detect_events_in_mp3_file() {
         START="$(date -u -d @"$START_SECOND" +'%H:%M:%S')"
         DURATION="$(( SECOND - START_REC ))"
         SEGMENT_FILE="segment_${STUB}_$(epoch_to_date_time_compact "$EPOCH_START").mp3"
-        ffmpeg -y -nostdin -i "$DIR/$STUB.mp3" -ss "$START" -t "$DURATION" -c copy "$DIR/$SEGMENT_FILE" &> /dev/null
+        ffmpeg -y -nostdin -i "$DIR/$STUB.mp3" -ss "$START" -t "$DURATION" -c copy "$OUTPUT_DIR/$SEGMENT_FILE" &> /dev/null
 
         log "Detected in $STUB.mp3 -> $START(duration: $DURATION s). Writing to file: $SEGMENT_FILE"
         START_REC=""
@@ -72,7 +73,7 @@ function detect_events_in_mp3_file() {
     START="$(date -u -d @"$START_SECOND" +'%H:%M:%S')"
     DURATION="$(( LAST_SECOND - START_REC ))"
     SEGMENT_FILE="segment_${STUB}_$(epoch_to_date_time_compact "$EPOCH_START").mp3"
-    ffmpeg -y -nostdin -i "$DIR/$STUB.mp3" -ss "$START" -t "$DURATION" -c copy "$DIR/$SEGMENT_FILE" &> /dev/null
+    ffmpeg -y -nostdin -i "$DIR/$STUB.mp3" -ss "$START" -t "$DURATION" -c copy "$OUTPUT_DIR/$SEGMENT_FILE" &> /dev/null
 
     log "Detected in $STUB.mp3 -> $START(duration: $DURATION s). Writing to file: $SEGMENT_FILE"
     START_REC=""
