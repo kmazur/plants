@@ -14,6 +14,7 @@ function update_period() {
 
 function detect_video_events() {
   local DIR="$1"
+  local OUTPUT_DIR="$2"
   local FILES="$(ls -1tr "$DIR" | grep -P '^video_.*\.h264' | head -n -1)"
   local FILE_COUNT="$(echo -n "$FILES" | grep -c '^')"
   log "Processing $FILE_COUNT h264 files"
@@ -30,7 +31,7 @@ function detect_video_events() {
 
     BEFORE_TIME=$(get_current_epoch_seconds)
     log "Processing: $FILE"
-    "$BIN_DIR/motion_detector" "$DIR/$FILE"
+    "$BIN_DIR/motion_detector" "$DIR/$FILE" "$OUTPUT_DIR"
     AFTER_TIME=$(get_current_epoch_seconds)
     log "Processing $FILE took: $(( AFTER_TIME - BEFORE_TIME )) s"
 
@@ -42,11 +43,10 @@ function detect_video_events() {
   done
 }
 
-
 while true; do
   if ! is_scale_suspended; then
     log "Processing: h264 files"
-    detect_video_events "$(get_audio_dir)"
+    detect_video_events "$(get_audio_dir)" "$(get_video_segment_dir)"
   else
     log_warn "Video detection suspended"
   fi

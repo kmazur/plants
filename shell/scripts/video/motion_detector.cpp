@@ -17,7 +17,7 @@ namespace fs = std::filesystem;
 
 class VideoProcessor {
 public:
-    VideoProcessor(const std::string& videoPath) : videoPath(videoPath) {}
+    VideoProcessor(const std::string& videoPath, const std::string& outputPath) : videoPath(videoPath), outputPath(outputPath) {}
 
     void process() {
         if (!cap.open(videoPath)) {
@@ -33,6 +33,7 @@ public:
 
 private:
     std::string videoPath;
+    std::string outputPath;
     cv::VideoCapture cap;
     std::vector<std::pair<double, double>> motionSegments; // Stores start and end times of motion segments
     std::mutex motionSegmentsMutex; // Mutex for thread-safe access to motionSegments
@@ -95,9 +96,10 @@ private:
     std::string generateOutputFilename(double start, double end) {
             // Get the full path of the video file
             fs::path videoFilePath(videoPath);
+            fs::path outputFilePath(outputPath);
 
             // Extract the directory, base name, and extension of the video file
-            fs::path dirPath = videoFilePath.parent_path();
+            fs::path dirPath = outputFilePath.parent_path();
             std::string baseName = videoFilePath.stem().string();
             std::string extension = videoFilePath.extension().string();
 
@@ -119,12 +121,13 @@ private:
 };
 
 int main(int argc, char** argv) {
-    if (argc < 2) {
-        std::cerr << "Usage: " << argv[0] << " <video_path>" << std::endl;
+    if (argc < 3) {
+        std::cerr << "Usage: " << argv[0] << " <video_path> <segment_output_path>" << std::endl;
         return 1;
     }
     std::string videoPath = argv[1];
-    VideoProcessor processor(videoPath);
+    std::string outputPath = argv[2];
+    VideoProcessor processor(videoPath, outputPath);
     processor.process();
 
     return 0;

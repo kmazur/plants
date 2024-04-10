@@ -186,6 +186,10 @@ function get_audio_segment_dir() {
   get_output_dir "$AUDIO_SEGMENT_DIR"
 }
 
+function get_video_segment_dir() {
+  get_output_dir "$VIDEO_SEGMENT_DIR"
+}
+
 function get_used_space_percent() {
   df -h | grep root | cut -d '%' -f 1 | rev | cut -d ' ' -f 1 | rev
 }
