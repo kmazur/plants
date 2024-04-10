@@ -44,6 +44,22 @@ function detect_video_events() {
 }
 
 while true; do
+
+  HOUR="$(get_current_hour)"
+  SUNRISE="$(get_config "daylight.sunrise" "6")"
+  SUNSET="$(get_config "daylight.sunset" "21")"
+  SUNRISE_HOUR="${SUNRISE:9:2}"
+  SUNSET_HOUR="${SUNSET:9:2}"
+
+  if [[ "$HOUR" -ge "$SUNRISE_HOUR" && "$HOUR" -le "$SUNSET_HOUR" ]]; then
+    log "It's not night: $SUNRISE_HOUR <= $HOUR <= $SUNSET_HOUR"
+    update_period
+    log "Period is: $PERIOD s"
+    sleep "$PERIOD"
+    continue
+  fi
+
+
   if ! is_scale_suspended; then
     log "Processing: h264 files"
     detect_video_events "$(get_audio_dir)" "$(get_video_segment_dir)"
