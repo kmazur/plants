@@ -12,13 +12,11 @@ function update_period() {
   PERIOD="$(get_scaled_inverse_value "$MIN_PERIOD" "$MAX_PERIOD")"
 }
 
-
-OUTPUT_DIR="$VIDEO_DIR"
 SEGMENT_DURATION_SECONDS="600"
 MACHINE_NAME="$(get_required_config "name")"
 if [[ "$MACHINE_NAME" == "birdbox-ctrl" ]]; then
   VID_CONFIG_FILE="$REPO_DIR/shell/scripts/video/video-config-ctrl.txt"
-elif [[ "$MACHIINE_NAME" == "pi4b" ]]; then
+elif [[ "$MACHINE_NAME" == "pi4b" ]]; then
   VID_CONFIG_FILE="$REPO_DIR/shell/scripts/video/video-config-pi4b.txt"
 else
   VID_CONFIG_FILE="$REPO_DIR/shell/scripts/video/video-config-ir.txt"
@@ -58,7 +56,7 @@ while true; do
     fi
 
     FILE_NAME="video_$START_DATE_TIME.h264"
-    FILE_PATH="$OUTPUT_DIR/$FILE_NAME"
+    FILE_PATH="$(get_video_dir)/$FILE_NAME"
 
     log "Recording segment: $FILE_NAME"
     libcamera-vid -c "$VID_CONFIG_FILE" -t "${SEGMENT_DURATION_SECONDS}000" -o "$FILE_PATH"

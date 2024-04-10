@@ -12,12 +12,11 @@ function update_period() {
   PERIOD="$(get_scaled_inverse_value "$MIN_PERIOD" "$MAX_PERIOD")"
 }
 
-
 BITRATE="48000"
 BITRATE_K="$((BITRATE / 1000))"
 
 AUDIO_FILE="audio.wav"
-AUDIO_DIR_NOW="$AUDIO_DIR"
+AUDIO_DIR_NOW="$(get_audio_dir)"
 mkdir -p "$AUDIO_DIR_NOW"
 AUDIO_PATH="$AUDIO_DIR_NOW/$AUDIO_FILE"
 

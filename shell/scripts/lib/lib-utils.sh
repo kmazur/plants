@@ -110,26 +110,28 @@ function is_locked_process_running() {
 function set_config() {
   local KEY="$1"
   local VAL="$2"
+  local FILE="${3:-$CONFIG_INI}"
   ensure_env
 
   (
     flock -x 200
 
-    if grep "^$KEY=" "$CONFIG_INI" &> /dev/null; then
-      sed -i "/^$KEY=/c\\$KEY=$VAL" "$CONFIG_INI" &> /dev/null
+    if grep "^$KEY=" "$FILE" &> /dev/null; then
+      sed -i "/^$KEY=/c\\$KEY=$VAL" "$FILE" &> /dev/null
     else
-      echo "$KEY=$VAL" >> "$CONFIG_INI"
+      echo "$KEY=$VAL" >> "$FILE"
     fi
 
-  ) 200>"$LOCKS_DIR/config.ini.flock"
+  ) 200>"$LOCKS_DIR/$FILE.flock"
 }
 
 function get_config() {
   local KEY="$1"
   local DEFAULT_VALUE="$2"
+  local FILE="${3:-$CONFIG_INI}"
   ensure_env
 
-  local VALUE="$(grep "^$KEY=" "$CONFIG_INI" | cut -f 2- -d '=')"
+  local VALUE="$(grep "^$KEY=" "$FILE" | cut -f 2- -d '=')"
   if [ -n "$VALUE" ]; then
     echo "$VALUE"
   elif [ -n "$DEFAULT_VALUE" ]; then
@@ -139,13 +141,20 @@ function get_config() {
 
 function get_required_config() {
   local KEY="$1"
+  local FILE="${2:-$CONFIG_INI}"
 
-  VALUE="$(get_config "$KEY")"
+  VALUE="$(get_config "$KEY" "" "$FILE")"
   if [[ -z "$VALUE" ]]; then
     echo "Required config not found! Key='$KEY'"
     exit 100
   fi
   echo "$VALUE"
+}
+
+function get_config_keys() {
+  local FILE="${1:-$CONFIG_INI}"
+  local KEYS="$(cat "$FILE" | cut -f 1 -d '=' | sort -ur)"
+  echo "$KEYS"
 }
 
 
@@ -155,3 +164,20 @@ function add_crontab_entry() {
   (crontab -l | grep "^#"; (crontab -l;  echo "$ENTRY") | grep -v "^#" | sort -u;) | crontab -
 }
 
+
+function get_output_dir() {
+  local ROOT_DIR="$1"
+  local DATE
+  DATE="$(get_current_date_compact)"
+  local OUTPUT_DIR="$ROOT_DIR/$DATE"
+  mkdir -p "$OUTPUT_DIR" &> /dev/null
+  echo "$OUTPUT_DIR"
+}
+
+function get_video_dir() {
+  get_output_dir "$VIDEO_DIR"
+}
+
+function get_audio_dir() {
+  get_output_dir "$AUDIO_DIR"
+}

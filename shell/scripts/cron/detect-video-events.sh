@@ -12,8 +12,6 @@ function update_period() {
   PERIOD="$(get_scaled_inverse_value "$MIN_PERIOD" "$MAX_PERIOD")"
 }
 
-VIDEO_DIR_NOW="$VIDEO_DIR"
-
 function detect_video_events() {
   local DIR="$1"
   local FILES="$(ls -1tr "$DIR" | grep -P '^video_.*\.h264' | head -n -1)"
@@ -48,7 +46,7 @@ function detect_video_events() {
 while true; do
   if ! is_scale_suspended; then
     log "Processing: h264 files"
-    detect_video_events "$VIDEO_DIR_NOW"
+    detect_video_events "$(get_audio_dir)"
   else
     log_warn "Video detection suspended"
   fi

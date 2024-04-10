@@ -16,6 +16,9 @@
   - [V] Zapisywać widoczną jasność - i uploadować do grafany
   - Automatyczne wykrywanie eventów na AORUS
   - Dodać rolowanie per dzień
+  - usuwać stare nagrania
+  - zwiększyć bitrate / speed + nagrywać mp4? flv? + krótsze video
+  - Dodać video configuration from config.ini (config file)
 - Shell/env improvements
   - [V] zintegrować skrypty crontab się z lib.sh
   - [V] automatycznie ustawiać datę + timezone
@@ -27,6 +30,7 @@
   - scale publication to grafana
   - move cpu freq reporting to cpu measurements & cpu temp reporting script
   - remove location & other tags from influxdb
+  - report shutdowns & restarts
 - Control
   - Force video disable/enable
   - Force video publish by mediamtx (remotely as well?)
@@ -35,6 +39,7 @@
 - General
   - Update git repo & reinitialize (env + processes) when detected changes
   - Different level of operation - start when temp is only low / stages
+  - Temperature scheduler - ask for chunk of work & priority - cpu time availability based on temp
   - Kill long running process that is known to generate heat when running
   - restart cron processes easily (bash auto complete support? / choice?)
   - setup rsync
@@ -50,6 +55,7 @@
   - Init
     - [V] Setup init rc.local 
     - [V] Cron fill
+    - Recheck LED blinking turnoff works
   - Improve logging
     - common to bash & python
     - kibana logs?

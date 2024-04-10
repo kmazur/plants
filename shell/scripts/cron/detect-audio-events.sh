@@ -12,8 +12,6 @@ function update_period() {
   PERIOD="$(get_scaled_inverse_value "$MIN_PERIOD" "$MAX_PERIOD")"
 }
 
-AUDIO_DIR_NOW="$AUDIO_DIR"
-
 function detect_audio_events() {
   local DIR="$1"
   local FILES="$(ls -1tr "$DIR" | grep -P '^audio.*\.mp3' | head -n -1)"
@@ -41,7 +39,7 @@ function detect_audio_events() {
 while true; do
   if ! is_scale_suspended; then
     log "Processing: MP3"
-    detect_audio_events "$AUDIO_DIR_NOW"
+    detect_audio_events "$(get_audio_dir)"
   else
     log_warn "Audio detection suspended"
   fi

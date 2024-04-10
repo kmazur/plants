@@ -1,47 +1,4 @@
 {
-  "__inputs": [
-    {
-      "name": "DS_INFLUXDB",
-      "label": "InfluxDB",
-      "description": "",
-      "type": "datasource",
-      "pluginId": "influxdb",
-      "pluginName": "InfluxDB"
-    }
-  ],
-  "__elements": {},
-  "__requires": [
-    {
-      "type": "panel",
-      "id": "gauge",
-      "name": "Gauge",
-      "version": ""
-    },
-    {
-      "type": "grafana",
-      "id": "grafana",
-      "name": "Grafana",
-      "version": "9.4.7"
-    },
-    {
-      "type": "datasource",
-      "id": "influxdb",
-      "name": "InfluxDB",
-      "version": "1.0.0"
-    },
-    {
-      "type": "panel",
-      "id": "text",
-      "name": "Text",
-      "version": ""
-    },
-    {
-      "type": "panel",
-      "id": "timeseries",
-      "name": "Time series",
-      "version": ""
-    }
-  ],
   "annotations": {
     "list": [
       {
@@ -61,20 +18,39 @@
           "type": "dashboard"
         },
         "type": "dashboard"
+      },
+      {
+        "datasource": {
+          "type": "fetzerch-sunandmoon-datasource",
+          "uid": "iK0_pUxSz"
+        },
+        "enable": true,
+        "iconColor": "super-light-orange",
+        "name": "Sunrise / Sunset",
+        "target": {
+          "limit": 100,
+          "matchAny": false,
+          "tags": [],
+          "target": [
+            "sunrise",
+            "sunset"
+          ],
+          "type": "dashboard"
+        }
       }
     ]
   },
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": null,
+  "id": 1,
   "links": [],
   "liveNow": true,
   "panels": [
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "${DS_INFLUXDB}"
+        "uid": "0Yfl3WY4k"
       },
       "gridPos": {
         "h": 10,
@@ -99,7 +75,7 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "${DS_INFLUXDB}"
+        "uid": "0Yfl3WY4k"
       },
       "gridPos": {
         "h": 10,
@@ -124,7 +100,7 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "${DS_INFLUXDB}"
+        "uid": "0Yfl3WY4k"
       },
       "gridPos": {
         "h": 10,
@@ -149,7 +125,7 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "${DS_INFLUXDB}"
+        "uid": "0Yfl3WY4k"
       },
       "description": "",
       "fieldConfig": {
@@ -234,7 +210,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "${DS_INFLUXDB}"
+            "uid": "0Yfl3WY4k"
           },
           "query": "from(bucket: \"main\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"temp_measurement\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"temperature\")\r\n  |> filter(fn: (r) => r[\"location\"] == \"Warsaw\")\r\n  |> filter(fn: (r) => r[\"machine_name\"] == \"birdbox-ctrl\")\r\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\r\n  |> yield(name: \"temperature\")",
           "refId": "A"
@@ -246,7 +222,7 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "${DS_INFLUXDB}"
+        "uid": "0Yfl3WY4k"
       },
       "description": "",
       "fieldConfig": {
@@ -331,7 +307,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "${DS_INFLUXDB}"
+            "uid": "0Yfl3WY4k"
           },
           "query": "from(bucket: \"main\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"humidity_measurement\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"humidity\")\r\n  |> filter(fn: (r) => r[\"location\"] == \"Warsaw\")\r\n  |> filter(fn: (r) => r[\"machine_name\"] == \"birdbox-ctrl\")\r\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\r\n  |> yield(name: \"humidity\")",
           "refId": "A"
@@ -343,7 +319,7 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "${DS_INFLUXDB}"
+        "uid": "0Yfl3WY4k"
       },
       "fieldConfig": {
         "defaults": {
@@ -472,7 +448,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "${DS_INFLUXDB}"
+            "uid": "0Yfl3WY4k"
           },
           "query": "from(bucket: \"main\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_field\"] == \"max_volume_level\")\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"audio_analysis\")\r\n  |> filter(fn: (r) => r[\"location\"] == \"Warsaw\")\r\n  |> filter(fn: (r) => r[\"machine_name\"] == \"birdbox-ctrl\")\r\n  |> aggregateWindow(every: v.windowPeriod, fn: max, createEmpty: false)\r\n  |> yield(name: \"max\")\r\n  \r\n\r\nfrom(bucket: \"main\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_field\"] == \"volume_level\")\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"audio_analysis\")\r\n  |> filter(fn: (r) => r[\"location\"] == \"Warsaw\")\r\n  |> filter(fn: (r) => r[\"machine_name\"] == \"birdbox-ctrl\")\r\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\r\n  |> yield(name: \"level\")\r\n\r\nfrom(bucket: \"main\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_field\"] == \"min_volume_level\")\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"audio_analysis\")\r\n  |> filter(fn: (r) => r[\"location\"] == \"Warsaw\")\r\n  |> filter(fn: (r) => r[\"machine_name\"] == \"birdbox-ctrl\")\r\n  |> aggregateWindow(every: v.windowPeriod, fn: min, createEmpty: false)\r\n  |> yield(name: \"min\")\r\n\r\nfrom(bucket: \"main\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_field\"] == \"mean_volume_level\")\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"audio_analysis\")\r\n  |> filter(fn: (r) => r[\"location\"] == \"Warsaw\")\r\n  |> filter(fn: (r) => r[\"machine_name\"] == \"birdbox-ctrl\")\r\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\r\n  |> yield(name: \"mean\")",
           "refId": "A"
@@ -484,7 +460,7 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "${DS_INFLUXDB}"
+        "uid": "0Yfl3WY4k"
       },
       "fieldConfig": {
         "defaults": {
@@ -660,7 +636,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "${DS_INFLUXDB}"
+            "uid": "0Yfl3WY4k"
           },
           "query": "from(bucket: \"main\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"temp_measurement\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"temperature\")\r\n  |> filter(fn: (r) => r[\"location\"] == \"Warsaw\")\r\n  |> filter(fn: (r) => r[\"machine_name\"] == \"birdbox-ctrl\")\r\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\r\n  |> yield(name: \"temperature\")\r\n",
           "refId": "A"
@@ -672,7 +648,7 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "${DS_INFLUXDB}"
+        "uid": "0Yfl3WY4k"
       },
       "description": "",
       "fieldConfig": {
@@ -849,7 +825,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "${DS_INFLUXDB}"
+            "uid": "0Yfl3WY4k"
           },
           "query": "from(bucket: \"main\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"humidity_measurement\")\r\n  |> filter(fn: (r) => r[\"_field\"] == \"humidity\")\r\n  |> filter(fn: (r) => r[\"location\"] == \"Warsaw\")\r\n  |> filter(fn: (r) => r[\"machine_name\"] == \"birdbox-ctrl\")\r\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\r\n  |> yield(name: \"humidity\")",
           "refId": "A"
@@ -861,7 +837,7 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "${DS_INFLUXDB}"
+        "uid": "0Yfl3WY4k"
       },
       "fieldConfig": {
         "defaults": {
@@ -898,10 +874,9 @@
               "mode": "none"
             },
             "thresholdsStyle": {
-              "mode": "off"
+              "mode": "dashed"
             }
           },
-          "displayName": "Volume pressure",
           "mappings": [],
           "min": 0,
           "thresholds": {
@@ -912,8 +887,12 @@
                 "value": null
               },
               {
+                "color": "orange",
+                "value": 3
+              },
+              {
                 "color": "red",
-                "value": 80
+                "value": 3.5
               }
             ]
           },
@@ -944,7 +923,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "${DS_INFLUXDB}"
+            "uid": "0Yfl3WY4k"
           },
           "query": "from(bucket: \"main\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_field\"] == \"volume_pressure\")\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"audio_analysis\")\r\n  |> filter(fn: (r) => r[\"location\"] == \"Warsaw\")\r\n  |> filter(fn: (r) => r[\"machine_name\"] == \"birdbox-ctrl\")\r\n  |> aggregateWindow(every: v.windowPeriod, fn: max, createEmpty: false)\r\n  |> yield(name: \"volume_pressure\")",
           "refId": "A"
@@ -955,8 +934,8 @@
     },
     {
       "datasource": {
-        "type": "influxdb",
-        "uid": "${DS_INFLUXDB}"
+        "type": "datasource",
+        "uid": "-- Mixed --"
       },
       "fieldConfig": {
         "defaults": {
@@ -1064,6 +1043,35 @@
                 "value": "pi4b"
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Sun altitude"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "dash": [
+                    10,
+                    10
+                  ],
+                  "fill": "dash"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 5
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "super-light-yellow",
+                  "mode": "fixed"
+                }
+              }
+            ]
           }
         ]
       },
@@ -1092,10 +1100,21 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "${DS_INFLUXDB}"
+            "uid": "0Yfl3WY4k"
           },
           "query": "from(bucket: \"main\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"cpu_measurement\")\r\n  |> filter(fn: (r) => r[\"machine_name\"] == \"birdbox-ir\")\r\n  |> aggregateWindow(every: v.windowPeriod, fn: max, createEmpty: false)\r\n  |> yield(name: \"birdbox-ir\")\r\n\r\nfrom(bucket: \"main\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"cpu_measurement\")\r\n  |> filter(fn: (r) => r[\"machine_name\"] == \"birdbox-ctrl\")\r\n  |> aggregateWindow(every: v.windowPeriod, fn: max, createEmpty: false)\r\n  |> yield(name: \"birdbox-ctrl\")\r\n\r\nfrom(bucket: \"main\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"cpu_measurement\")\r\n  |> filter(fn: (r) => r[\"machine_name\"] == \"pi4b\")\r\n  |> aggregateWindow(every: v.windowPeriod, fn: max, createEmpty: false)\r\n  |> yield(name: \"pi4b\")",
           "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "fetzerch-sunandmoon-datasource",
+            "uid": "iK0_pUxSz"
+          },
+          "hide": false,
+          "refId": "B",
+          "target": [
+            "sun_altitude"
+          ]
         }
       ],
       "title": "RaspberryPi - cpu_temperature",
@@ -1103,8 +1122,8 @@
     },
     {
       "datasource": {
-        "type": "influxdb",
-        "uid": "${DS_INFLUXDB}"
+        "type": "datasource",
+        "uid": "-- Mixed --"
       },
       "fieldConfig": {
         "defaults": {
@@ -1145,7 +1164,6 @@
               "mode": "dashed"
             }
           },
-          "displayName": "Light level",
           "mappings": [],
           "min": 0,
           "thresholds": {
@@ -1154,15 +1172,118 @@
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "orange",
-                "value": 5
               }
             ]
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "image_analysis light_level {location=\"Warsaw\", machine_name=\"birdbox-ctrl\"}"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Light level - birdbox-ctrl"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "orange",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "dark-orange",
+                      "value": 5
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "image_analysis light_level {location=\"Warsaw\", machine_name=\"pi4b\"}"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Light level - pi4b"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "green",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Sun altitude"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "yellow",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 5
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "dash": [
+                    5,
+                    5
+                  ],
+                  "fill": "dash"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "image_analysis light_level {location=\"Warsaw\", machine_name=\"birdbox-ir\"}"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Light level - birdbox-ir"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "blue",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 13,
@@ -1179,7 +1300,7 @@
           "showLegend": true
         },
         "tooltip": {
-          "mode": "single",
+          "mode": "multi",
           "sort": "none"
         }
       },
@@ -1187,10 +1308,21 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "${DS_INFLUXDB}"
+            "uid": "0Yfl3WY4k"
           },
-          "query": "from(bucket: \"main\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_field\"] == \"light_level\")\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"image_analysis\")\r\n  |> filter(fn: (r) => r[\"location\"] == \"Warsaw\")\r\n  |> filter(fn: (r) => r[\"machine_name\"] == \"birdbox-ctrl\")\r\n  |> aggregateWindow(every: v.windowPeriod, fn: max, createEmpty: false)\r\n  |> yield(name: \"birdbox-ctrl\")\r\n\r\nfrom(bucket: \"main\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_field\"] == \"light_level\")\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"image_analysis\")\r\n  |> filter(fn: (r) => r[\"location\"] == \"Warsaw\")\r\n  |> filter(fn: (r) => r[\"machine_name\"] == \"pi4b\")\r\n  |> aggregateWindow(every: v.windowPeriod, fn: max, createEmpty: false)\r\n  |> yield(name: \"pi4b\")\r\n\r\n",
+          "query": "from(bucket: \"main\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_field\"] == \"light_level\")\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"image_analysis\")\r\n  |> filter(fn: (r) => r[\"location\"] == \"Warsaw\")\r\n  |> filter(fn: (r) => r[\"machine_name\"] == \"birdbox-ctrl\")\r\n  |> aggregateWindow(every: v.windowPeriod, fn: max, createEmpty: false)\r\n  |> yield(name: \"birdbox-ctrl\")\r\n\r\nfrom(bucket: \"main\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_field\"] == \"light_level\")\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"image_analysis\")\r\n  |> filter(fn: (r) => r[\"location\"] == \"Warsaw\")\r\n  |> filter(fn: (r) => r[\"machine_name\"] == \"pi4b\")\r\n  |> aggregateWindow(every: v.windowPeriod, fn: max, createEmpty: false)\r\n  |> yield(name: \"pi4b\")\r\n\r\n\r\nfrom(bucket: \"main\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_field\"] == \"light_level\")\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"image_analysis\")\r\n  |> filter(fn: (r) => r[\"location\"] == \"Warsaw\")\r\n  |> filter(fn: (r) => r[\"machine_name\"] == \"birdbox-ir\")\r\n  |> aggregateWindow(every: v.windowPeriod, fn: max, createEmpty: false)\r\n  |> yield(name: \"birdbox-ir\")\r\n\r\n",
           "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "fetzerch-sunandmoon-datasource",
+            "uid": "iK0_pUxSz"
+          },
+          "hide": false,
+          "refId": "B",
+          "target": [
+            "sun_altitude"
+          ]
         }
       ],
       "title": "Light level",
@@ -1199,7 +1331,7 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "${DS_INFLUXDB}"
+        "uid": "0Yfl3WY4k"
       },
       "fieldConfig": {
         "defaults": {
@@ -1279,7 +1411,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "${DS_INFLUXDB}"
+            "uid": "0Yfl3WY4k"
           },
           "query": "from(bucket: \"main\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_field\"] == \"frequency\")\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"cpu\")\r\n  |> filter(fn: (r) => r[\"machine_name\"] == \"birdbox-ctrl\")\r\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\r\n  |> yield(name: \"freq\")\r\n",
           "refId": "A"
@@ -1291,7 +1423,7 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "${DS_INFLUXDB}"
+        "uid": "0Yfl3WY4k"
       },
       "fieldConfig": {
         "defaults": {
@@ -1371,7 +1503,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "${DS_INFLUXDB}"
+            "uid": "0Yfl3WY4k"
           },
           "query": "from(bucket: \"main\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_field\"] == \"frequency\")\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"cpu\")\r\n  |> filter(fn: (r) => r[\"machine_name\"] == \"birdbox-ir\")\r\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\r\n  |> yield(name: \"freq\")\r\n",
           "refId": "A"
@@ -1383,7 +1515,7 @@
     {
       "datasource": {
         "type": "influxdb",
-        "uid": "${DS_INFLUXDB}"
+        "uid": "0Yfl3WY4k"
       },
       "fieldConfig": {
         "defaults": {
@@ -1463,7 +1595,7 @@
         {
           "datasource": {
             "type": "influxdb",
-            "uid": "${DS_INFLUXDB}"
+            "uid": "0Yfl3WY4k"
           },
           "query": "from(bucket: \"main\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r[\"_field\"] == \"frequency\")\r\n  |> filter(fn: (r) => r[\"_measurement\"] == \"cpu\")\r\n  |> filter(fn: (r) => r[\"machine_name\"] == \"pi4b\")\r\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\r\n  |> yield(name: \"freq\")\r\n",
           "refId": "A"
@@ -1473,7 +1605,7 @@
       "type": "timeseries"
     }
   ],
-  "refresh": "10s",
+  "refresh": "",
   "revision": 1,
   "schemaVersion": 38,
   "style": "dark",
@@ -1482,13 +1614,13 @@
     "list": []
   },
   "time": {
-    "from": "now-3h",
+    "from": "now-24h",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "",
   "title": "System monitoring",
   "uid": "QkXZwWY4z",
-  "version": 99,
+  "version": 111,
   "weekStart": ""
 }

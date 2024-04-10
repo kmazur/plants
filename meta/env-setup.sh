@@ -202,6 +202,8 @@ sudo pip3 install influxdb-client
 sudo cp -f "$REPO_DIR/meta/files/root/rc.local" "/etc/rc.local"
 
 
+source "$LIB_INIT_FILE"
+
 # Update crontab
 add_crontab_entry '0 0 * * * sudo reboot -h now'
 add_crontab_entry '*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "temp-fail-safe" 20 60'
