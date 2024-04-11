@@ -22,6 +22,9 @@ else
   VID_CONFIG_FILE="$REPO_DIR/shell/scripts/video/video-config-ir.txt"
 fi
 
+PUBLISHER="LIGHT_LEVEL"
+register_publisher "$PUBLISHER"
+
 while true; do
   if ! is_scale_suspended; then
     START_DATE_TIME="$(get_current_date_time_compact)"
@@ -33,7 +36,7 @@ while true; do
     draw_text_bl "$TMP_DIR/light_level.jpg" "$TMP_DIR/$MACHINE_NAME.jpg" "$(get_current_date_time_dashed)"
     upload_file "$TMP_DIR" "$MACHINE_NAME.jpg" "image/jpg"
 
-    update_measurement_single "image_analysis" "light_level=$LIGHT_LEVEL"
+    publish_measurement_single "$PUBLISHER" "image_analysis" "light_level=$LIGHT_LEVEL"
 
     declare LIGHT_LEVEL_INT="${LIGHT_LEVEL%%.*}"
 

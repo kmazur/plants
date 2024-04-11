@@ -18,6 +18,9 @@ function update_period() {
 MIN_CPU_FREQ=600
 MAX_CPU_FREQ=1000
 
+PUBLISHER="TEMP_FAIL_SAFE"
+register_publisher "$PUBLISHER"
+
 SCALE=""
 while true; do
   TEMP="$(get_cpu_temp | cut -d'.' -f 1)"
@@ -70,7 +73,7 @@ $DATAPOINT"
     fi
 
   done
-  update_measurement_raw "$BATCH"
+  publish_measurement_raw "$PUBLISHER" "$BATCH"
 
   update_period
   log "Period is: $PERIOD s"

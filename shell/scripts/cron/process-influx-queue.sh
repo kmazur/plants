@@ -12,10 +12,10 @@ function update_period() {
   PERIOD="$(get_scaled_inverse_value "$MIN_PERIOD" "$MAX_PERIOD")"
 }
 
-
 while true; do
   if ! is_scale_suspended; then
-    echo "Skip"
+    PUBLISHED_COUNT="$(publish_main_queue)"
+    log "Published $PUBLISHED_COUNT data points"
   else
     log_warn "Influx publishing suspended"
   fi

@@ -12,12 +12,15 @@ function update_period() {
   PERIOD="$(get_scaled_inverse_value "$MIN_PERIOD" "$MAX_PERIOD")"
 }
 
+PUBLISHER="CPU_TEMP"
+register_publisher "$PUBLISHER"
+
 while true; do
   if ! is_scale_suspended; then
     CPU_TEMPERATURE="$(get_cpu_temp)"
     log "CPU temperature is: $CPU_TEMPERATURE"
 
-    update_measurement_single "cpu_measurement" "cpu_temperature=$CPU_TEMPERATURE"
+    publish_measurement_single "$PUBLISHER" "cpu_measurement" "cpu_temperature=$CPU_TEMPERATURE"
   else
     log_warn "CPU measurments suspended"
   fi

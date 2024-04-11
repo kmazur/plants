@@ -41,7 +41,7 @@ function get_publisher_queue_state() {
 }
 
 
-declare MAIN_INFLUX_QUEUE="$(get_publisher_queue "main")"
+declare MAIN_INFLUX_QUEUE_FILE="$(get_publisher_queue "main")"
 declare MAIN_INFLUX_QUEUE_STATE_FILE="$(get_publisher_queue_state "main")"
 
 declare INFLUX_PUBLISHER_REGISTRY_FILE="$INFLUX_DIR/registry.txt"
@@ -90,7 +90,10 @@ function collect_publisher_data() {
   local PUBLISHER_NAMES
   local QUEUE_FILE
   local QUEUE_STATE_FILE
+  local QUEUE_STATE
   local QUEUE_DATA
+  local LINE_COUNT
+  local NEW_QUEUE_STATE
 
   PUBLISHER_NAMES="$(get_config_keys "$INFLUX_PUBLISHER_REGISTRY_FILE")"
   for PUBLISHER_NAME in $PUBLISHER_NAMES; do
@@ -98,12 +101,69 @@ function collect_publisher_data() {
     QUEUE_STATE_FILE="$(get_publisher_queue_state "$PUBLISHER_NAME")"
     QUEUE_STATE="$(cat "$QUEUE_STATE_FILE")"
     QUEUE_DATA="$(tail -n +"$((QUEUE_STATE + 1))" "$QUEUE_FILE")"
-    LINE_COUNT="$(echo -n "$QUEUE_DATA" | wc -l)"
-    NEW_QUEUE_STATE="$((QUEUE_STATE + LINE_COUNT))"
-
-    if [ -n "$QUEUE_DATA" ]; then
-      echo "$QUEUE_DATA" >> "$MAIN_INFLUX_QUEUE"
+    if [ -z "$QUEUE_DATA" ]; then
+      continue
     fi
+
+    LINE_COUNT="$(echo "$QUEUE_DATA" | wc -l)"
+    NEW_QUEUE_STATE="$((QUEUE_STATE + LINE_COUNT))"
+    echo "$QUEUE_DATA" >> "$MAIN_INFLUX_QUEUE_FILE"
     echo "$NEW_QUEUE_STATE" > "$QUEUE_STATE_FILE"
   done
+}
+
+function publish_main_queue() {
+  local QUEUE_STATE="$(cat "$MAIN_INFLUX_QUEUE_STATE_FILE")"
+  local -i PUBLISHED="0"
+
+  local QUEUE_DATA="$(tail -n +"$((QUEUE_STATE + 1))" "$MAIN_INFLUX_QUEUE_FILE")"
+  if [ -z "$QUEUE_DATA" ]; then
+    return
+  fi
+  local LINE_COUNT="$(echo "$QUEUE_DATA" | wc -l)"
+
+  local -i BATCH_COUNT="0"
+  local BATCH=""
+
+  for LINE in "$QUEUE_DATA"; do
+    DATAPOINT="$LINE"
+
+    if [[ -z "$BATCH" ]]; then
+      BATCH="$DATAPOINT"
+    else
+      BATCH="$BATCH
+$DATAPOINT"
+    fi
+
+    BATCH_COUNT="$((BATCH_COUNT + 1))"
+    if [[ "$BATCH_COUNT" -ge "5000" ]]; then
+      if update_measurement_raw "$BATCH"; then
+        PUBLISHED="$((PUBLISHED + BATCH_COUNT))"
+        QUEUE_STATE="$((QUEUE_STATE + BATCH_COUNT))"
+        echo "$QUEUE_STATE" > "$QUEUE_STATE_FILE"
+
+        BATCH_COUNT="0"
+        BATCH=""
+      else
+        echo "$PUBLISHED"
+        return 1
+      fi
+    fi
+  done
+
+  if [[ "$BATCH_COUNT" -gt "0" ]]; then
+    if update_measurement_raw "$BATCH"; then
+      PUBLISHED="$((PUBLISHED + BATCH_COUNT))"
+      QUEUE_STATE="$((QUEUE_STATE + BATCH_COUNT))"
+      echo "$QUEUE_STATE" > "$QUEUE_STATE_FILE"
+
+      BATCH_COUNT="0"
+      BATCH=""
+    else
+      echo "$PUBLISHED"
+      return 1
+    fi
+  fi
+
+  echo "$PUBLISHED"
 }

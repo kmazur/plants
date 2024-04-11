@@ -11,4 +11,5 @@
 #*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "report-external-temp-humidity" 30 300
 #*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "report-cpu-temp" 20 120
 #*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "temp-fail-safe" 20 60
+#*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "process-influx-queue" 10 500
 

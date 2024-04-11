@@ -112,6 +112,7 @@ function publish_volume_levels() {
   local FILE_COUNT="$(echo -n "$FILES" | grep -c '^')"
   log "Publishing volume level files: $FILE_COUNT files"
 
+  local PUBLISHER="VOLUME_LEVEL"
   for INFLUX_FILE in $FILES; do
     if is_scale_suspended; then
       break
@@ -157,14 +158,14 @@ $DATAPOINT"
 
         BATCH_COUNT="$((BATCH_COUNT + 1))"
         if [[ "$BATCH_COUNT" -ge "5000" ]]; then
-          update_measurement_raw "$BATCH"
+          publish_measurement_raw "$PUBLISHER" "$BATCH"
           BATCH_COUNT="0"
           BATCH=""
         fi
       done < "$DIR/$INFLUX_FILE"
 
       if [[ "$BATCH_COUNT" -gt "0" ]]; then
-        update_measurement_raw "$BATCH"
+        publish_measurement_raw "$PUBLISHER" "$BATCH"
         BATCH_COUNT="0"
         BATCH=""
       fi
