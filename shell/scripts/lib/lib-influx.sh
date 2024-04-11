@@ -101,7 +101,9 @@ function collect_publisher_data() {
     LINE_COUNT="$(echo -n "$QUEUE_DATA" | wc -l)"
     NEW_QUEUE_STATE="$((QUEUE_STATE + LINE_COUNT))"
 
-    echo "$QUEUE_DATA" >> "$MAIN_INFLUX_QUEUE"
+    if [ -n "$QUEUE_DATA" ]; then
+      echo "$QUEUE_DATA" >> "$MAIN_INFLUX_QUEUE"
+    fi
     echo "$NEW_QUEUE_STATE" > "$QUEUE_STATE_FILE"
   done
 }
