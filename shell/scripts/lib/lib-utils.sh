@@ -126,7 +126,8 @@ function set_config() {
       echo "$KEY=$VAL" >> "$FILE"
     fi
 
-  ) 200>"$LOCKS_DIR/$FILE.flock"
+  ) 200>"$FILE.flock"
+    rm "$FILE.flock"
 }
 
 function get_config() {
