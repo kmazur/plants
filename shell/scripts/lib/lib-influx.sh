@@ -59,7 +59,7 @@ function register_publisher() {
     echo "0" > "$QUEUE_STATE"
   fi
 
-  set_config "${PUBLISHER_NAME}=${QUEUE_FILE}" "$INFLUX_PUBLISHER_REGISTRY_FILE"
+  set_config "${PUBLISHER_NAME}" "${QUEUE_FILE}" "$INFLUX_PUBLISHER_REGISTRY_FILE"
 }
 
 function publish_measurement_single() {
