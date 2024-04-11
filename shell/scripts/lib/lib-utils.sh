@@ -116,6 +116,10 @@ function set_config() {
   (
     flock -x 200
 
+    if [ ! -f "$FILE" ]; then
+      touch "$FILE"
+    fi
+
     if grep "^$KEY=" "$FILE" &> /dev/null; then
       sed -i "/^$KEY=/c\\$KEY=$VAL" "$FILE" &> /dev/null
     else
@@ -129,7 +133,10 @@ function get_config() {
   local KEY="$1"
   local DEFAULT_VALUE="$2"
   local FILE="${3:-$CONFIG_INI}"
-  ensure_env
+
+  if [ ! -f "$FILE" ]; then
+    touch "$FILE"
+  fi
 
   local VALUE="$(grep "^$KEY=" "$FILE" | cut -f 2- -d '=')"
   if [ -n "$VALUE" ]; then
@@ -143,7 +150,11 @@ function get_required_config() {
   local KEY="$1"
   local FILE="${2:-$CONFIG_INI}"
 
-  VALUE="$(get_config "$KEY" "" "$FILE")"
+  if [ ! -f "$FILE" ]; then
+    touch "$FILE"
+  fi
+
+  local VALUE="$(get_config "$KEY" "" "$FILE")"
   if [[ -z "$VALUE" ]]; then
     echo "Required config not found! Key='$KEY'"
     exit 100
@@ -153,6 +164,11 @@ function get_required_config() {
 
 function get_config_keys() {
   local FILE="${1:-$CONFIG_INI}"
+
+  if [ ! -f "$FILE" ]; then
+    touch "$FILE"
+  fi
+
   local KEYS="$(cat "$FILE" | cut -f 1 -d '=' | sort -ur)"
   echo "$KEYS"
 }

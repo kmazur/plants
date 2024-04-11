@@ -31,6 +31,7 @@
   - move cpu freq reporting to cpu measurements & cpu temp reporting script
   - remove location & other tags from influxdb
   - report shutdowns & restarts
+  - process previous day detections & reporting
 - Control
   - Force video disable/enable
   - Force video publish by mediamtx (remotely as well?)

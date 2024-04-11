@@ -81,8 +81,9 @@ function publish_measurement_batch() {
   local PUBLISHER_NAME="$1"
   local DATA="$2"
 
+  local CLEANED_DATA="$(echo "$DATA" | grep -v "^$")"
   local QUEUE_FILE="$(get_publisher_queue "$PUBLISHER_NAME")"
-  echo "$DATA" >> "$QUEUE_FILE"
+  echo "$CLEANED_DATA" >> "$QUEUE_FILE"
 }
 
 function collect_publisher_data() {
@@ -96,7 +97,7 @@ function collect_publisher_data() {
     QUEUE_FILE="$(get_publisher_queue "$PUBLISHER_NAME")"
     QUEUE_STATE_FILE="$(get_publisher_queue_state "$PUBLISHER_NAME")"
     QUEUE_STATE="$(cat "$QUEUE_STATE_FILE")"
-    QUEUE_DATA="$(tail -n +"$((QUEUE_STATE + 1))" "$QUEUE_FILE" | grep -v "^$")"
+    QUEUE_DATA="$(tail -n +"$((QUEUE_STATE + 1))" "$QUEUE_FILE")"
     LINE_COUNT="$(echo "$QUEUE_DATA" | wc -l)"
     NEW_QUEUE_STATE="$((QUEUE_STATE + LINE_COUNT))"
 
