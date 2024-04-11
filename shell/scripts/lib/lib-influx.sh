@@ -98,7 +98,7 @@ function collect_publisher_data() {
     QUEUE_STATE_FILE="$(get_publisher_queue_state "$PUBLISHER_NAME")"
     QUEUE_STATE="$(cat "$QUEUE_STATE_FILE")"
     QUEUE_DATA="$(tail -n +"$((QUEUE_STATE + 1))" "$QUEUE_FILE")"
-    LINE_COUNT="$(echo "$QUEUE_DATA" | wc -l)"
+    LINE_COUNT="$(echo -n "$QUEUE_DATA" | wc -l)"
     NEW_QUEUE_STATE="$((QUEUE_STATE + LINE_COUNT))"
 
     echo "$QUEUE_DATA" >> "$MAIN_INFLUX_QUEUE"
