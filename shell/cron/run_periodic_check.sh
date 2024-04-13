@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 source "$HOME/.profile"
-source "$LIB_INIT_DIR/lib-datetime.sh"
+source "$LIB_INIT_FILE"
 
 PROCESS_NAME="$1"
 LOCK_FILE="$LOCKS_DIR/$PROCESS_NAME.lock"
