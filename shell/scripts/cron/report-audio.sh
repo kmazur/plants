@@ -105,7 +105,6 @@ function parse_volume_level_files() {
   done
 }
 
-
 function publish_volume_levels() {
   local DIR="$1"
   local FILES="$(ls -1tr "$DIR" | grep -P '^audio.*\.influx$')"
