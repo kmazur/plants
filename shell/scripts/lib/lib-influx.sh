@@ -10,13 +10,17 @@ function update_measurement_raw() {
   local DATA="$1"
 
   local TMP_FILE=$(mktemp "$TMP_DIR/influx_batch.XXX")
+  echo "$DATA" > "$TMP_FILE"
 
   curl -XPOST "$INFLUX_URL/api/v2/write?org=$INFLUX_ORG&bucket=$INFLUX_BUCKET&precision=s" \
     --header "Authorization: Token $INFLUX_TOKEN" \
     --header "Content-Type: text/plain" \
     -d "@$TMP_FILE"
 
+  local EXIT_CODE="$?"
+
   rm "$TMP_FILE"
+  return "$EXIT_CODE"
 }
 
 function update_measurement_single() {
