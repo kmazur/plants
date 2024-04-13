@@ -52,6 +52,8 @@ while true; do
     fi
   fi
 
+  publish_measurement_single "$PUBLISHER" "scale" "scale=$SCALE"
+
   declare EPOCH_SECONDS="$(get_current_epoch_seconds)"
   declare BATCH=""
   for cpu in /sys/devices/system/cpu/cpu*/cpufreq/scaling_cur_freq; do
