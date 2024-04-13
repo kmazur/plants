@@ -12,7 +12,9 @@ function restart_cron_process() {
   fi
 
   local ENTRY_CMD="$(crontab -l | grep -v "^#" | sort -u | grep "$PROCESS_SUBSTRING" | cut -d ' ' -f 6-)"
-  local ENTRY="$(crontab -l | grep -v "^#" | sort -u | grep "$PROCESS_SUBSTRING" | cut -d ' ' -f 6)"
+  local ENTRY="$(crontab -l | grep -v "^#" | sort -u | grep "$PROCESS_SUBSTRING" | cut -d ' ' -f 7)"
+  ENTRY="${ENTRY%\"}"
+  ENTRY="${ENTRY#\"}"
   local LINES="$(echo -n "$ENTRY" | grep -c '^')"
   if [[ "$LINES" -ne "1" ]]; then
     return 2
