@@ -8,6 +8,9 @@ MIN_PERIOD="${1:-0}"
 MAX_PERIOD="${2:-300}"
 PERIOD="$MIN_PERIOD"
 
+PUBLISHER="main"
+register_publisher "$PUBLISHER"
+
 function update_period() {
   PERIOD="$(get_scaled_inverse_value "$MIN_PERIOD" "$MAX_PERIOD")"
 }
