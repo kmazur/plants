@@ -22,6 +22,10 @@ function stop_cron_process() {
   fi
   local PID="$(ps aux | grep "$ENTRY" | grep -v "grep.*$ENTRY" | tr -s ' ' | cut -f 2 -d ' ')"
   local PLINES="$(echo -n "$PID" | grep -c "^")"
+  if [[ "$PLINES" -eq "0" ]]; then
+    return 0
+  fi
+
   if [[ "$PLINES" -ne "1" ]]; then
     return 3
   fi
