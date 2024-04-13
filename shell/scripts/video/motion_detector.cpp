@@ -8,10 +8,6 @@
 #include <numeric>
 #include <algorithm>
 #include <cstdlib>
-#include <thread>
-#include <future>
-#include <mutex>
-#include <vector>
 
 namespace fs = std::filesystem;
 
@@ -25,9 +21,9 @@ public:
             return;
         }
 
-        detectMotionConcurrently();
+        detectMotion();
         if (!motionSegments.empty()) {
-            extractSegmentsConcurrently();
+            extractSegments();
         }
     }
 
@@ -36,32 +32,17 @@ private:
     std::string outputPath;
     cv::VideoCapture cap;
     std::vector<std::pair<double, double>> motionSegments; // Stores start and end times of motion segments
-    std::mutex motionSegmentsMutex; // Mutex for thread-safe access to motionSegments
 
     static constexpr double motionThreshold = 0.0095; // Example threshold, adjust based on your needs
     static constexpr int frameStep = 20; // Analyze every 20th frame for motion
 
-    void detectMotionConcurrently() {
-        size_t threadCount = std::thread::hardware_concurrency();
-        std::vector<std::future<void>> futures;
-        for (size_t i = 0; i < threadCount; ++i) {
-            futures.emplace_back(std::async(std::launch::async, &VideoProcessor::detectMotion, this, i, threadCount));
-        }
-        for (auto& future : futures) {
-            future.wait();
-        }
-    }
-
-    void detectMotion(size_t threadId, size_t threadCount) {
+    void detectMotion() {
         cv::Mat prevFrame, currFrame, frameDiff;
-        double prevTime = 0, motionStartTime = -1;
+        double motionStartTime = -1;
         int frameIndex = 0;
 
-        // Adjust reading to only handle frames for this thread
-        while (true) {
-            cap.set(cv::CAP_PROP_POS_FRAMES, frameIndex * frameStep + threadId * frameStep / threadCount);
-            if (!cap.read(currFrame)) return; // Break the loop if no more frames
-            prevTime = cap.get(cv::CAP_PROP_POS_MSEC) / 1000.0; // Time in seconds
+        while (cap.read(currFrame)) {
+            double prevTime = cap.get(cv::CAP_PROP_POS_MSEC) / 1000.0; // Time in seconds
 
             cv::cvtColor(currFrame, currFrame, cv::COLOR_BGR2GRAY);
             if (!prevFrame.empty()) {
@@ -72,48 +53,38 @@ private:
                     if (motionStartTime < 0) motionStartTime = std::max(prevTime - 1.0, 0.0); // Mark start of motion
                 } else if (motionStartTime >= 0) {
                     double videoLength = cap.get(cv::CAP_PROP_POS_MSEC) / 1000.0;
-                    std::lock_guard<std::mutex> guard(motionSegmentsMutex);
                     motionSegments.emplace_back(motionStartTime, std::min(prevTime + 1.0, videoLength)); // End of motion segment
                     motionStartTime = -1; // Reset for next motion segment
                 }
             }
 
-            currFrame.copyTo(prevFrame);
-            frameIndex += threadCount; // Jump to the next frame this thread is responsible for
+            prevFrame = currFrame.clone();
+            frameIndex += frameStep; // Jump to the next frame
+            cap.set(cv::CAP_PROP_POS_FRAMES, frameIndex);
         }
     }
 
-    void extractSegmentsConcurrently() {
-        std::vector<std::future<void>> futures;
+    void extractSegments() {
         for (const auto& segment : motionSegments) {
-            futures.emplace_back(std::async(std::launch::async, &VideoProcessor::extractSegmentWithFFmpeg, videoPath, segment.first, segment.second, generateOutputFilename(segment.first, segment.second)));
-        }
-        for (auto& future : futures) {
-            future.wait();
+            extractSegmentWithFFmpeg(videoPath, segment.first, segment.second, generateOutputFilename(segment.first, segment.second));
         }
     }
 
     std::string generateOutputFilename(double start, double end) {
-            // Get the full path of the video file
             fs::path videoFilePath(videoPath);
             fs::path outputFilePath(outputPath);
 
-            // Extract the directory, base name, and extension of the video file
             fs::path dirPath = outputFilePath.parent_path();
             std::string baseName = videoFilePath.stem().string();
             std::string extension = videoFilePath.extension().string();
 
-            // Construct the new filename with start and end times
             std::string newFilename = baseName + "_" + std::to_string(start) + "_" + std::to_string(end) + extension;
-
-            // Combine the directory path with the new filename to preserve the directory location
             fs::path outputPath = dirPath / newFilename;
 
             return outputPath.string();
     }
 
     static void extractSegmentWithFFmpeg(const std::string& inputFile, double start, double end, const std::string& outputFile) {
-        // Construct and execute FFmpeg command
         std::string command = "ffmpeg -y -loglevel error -ss " + std::to_string(start) + " -i \"" + inputFile +
                               "\" -to " + std::to_string(end - start) + " -c copy \"" + outputFile + "\"";
         std::system(command.c_str());
