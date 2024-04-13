@@ -125,7 +125,7 @@ function publish_main_queue() {
   local -i BATCH_COUNT="0"
   local BATCH=""
 
-  for LINE in "$QUEUE_DATA"; do
+  while read -r LINE; do
     DATAPOINT="$LINE"
 
     if [[ -z "$BATCH" ]]; then
@@ -149,7 +149,7 @@ $DATAPOINT"
         return 1
       fi
     fi
-  done
+  done < "$QUEUE_DATA"
 
   if [[ "$BATCH_COUNT" -gt "0" ]]; then
     if update_measurement_raw "$BATCH"; then
