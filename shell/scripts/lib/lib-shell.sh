@@ -35,5 +35,5 @@ function stop_cron_process() {
 function restart_cron_process() {
   local PROCESS_SUBSTRING="$1"
   local ENTRY_CMD="$(crontab -l | grep -v "^#" | sort -u | grep "$PROCESS_SUBSTRING" | cut -d ' ' -f 6-)"
-  stop_cron_process "$1" && "$ENTRY_CMD"
+  stop_cron_process "$1" && $ENTRY_CMD
 }
