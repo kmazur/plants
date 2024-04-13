@@ -149,7 +149,7 @@ $DATAPOINT"
         return 1
       fi
     fi
-  done < "$QUEUE_DATA"
+  done < <(echo "$QUEUE_DATA")
 
   if [[ "$BATCH_COUNT" -gt "0" ]]; then
     if update_measurement_raw "$BATCH"; then
