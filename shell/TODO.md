@@ -4,10 +4,10 @@
   - [V] poprawić skoki przy włączaniu (długie nagrania?) -> automatic segment in arecord
   - [V] zmienić bitrate - optymalniejszy
   - usuwać gdzie nie wykryto żadnych dźwięków (lub bardzo ciche)
-  - usunąć inicjalny skok dźwięku
+  - [V] usunąć inicjalny skok dźwięku
   - [V] rollować / crontab -e skrypt record-audio
-  - wykrywać dźwięki i je wycinać - nie brać pod uwagę skoków z błędów nagrywania
-  - Rollować per dzień audio -> record only today & process today & yesterday
+  - [V] wykrywać dźwięki i je wycinać - nie brać pod uwagę skoków z błędów nagrywania
+  - [V] Rollować per dzień audio -> record only today & process today & yesterday
 - Video recording - CTRL
   - Fix focus - try different lens-position
 - Video recording - IR
@@ -15,8 +15,8 @@
   - [V] włączać i wyłączać IR vs CTRL nocą
   - [V] Zapisywać widoczną jasność - i uploadować do grafany
   - Automatyczne wykrywanie eventów na AORUS
-  - Dodać rolowanie per dzień
-  - usuwać stare nagrania
+  - [V] Dodać rolowanie per dzień
+  - [V] usuwać stare nagrania
   - zwiększyć bitrate / speed + nagrywać mp4? flv? + krótsze video
   - Dodać video configuration from config.ini (config file)
 - Shell/env improvements
@@ -27,7 +27,7 @@
   - Dodać wykryte eventy do grafany jako alerty?
     - Może dodać jako heatmap/timemap?
   - Wrzucać do "kolejki" / pliku co do wysłania jest do influxdb i okresowo wysyłać batchami 
-  - scale publication to grafana
+  - [V] scale publication to grafana
   - move cpu freq reporting to cpu measurements & cpu temp reporting script
   - remove location & other tags from influxdb
   - report shutdowns & restarts

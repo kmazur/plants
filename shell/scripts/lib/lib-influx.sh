@@ -9,10 +9,14 @@ declare INFLUX_URL="$(get_required_config "influx.url")"
 function update_measurement_raw() {
   local DATA="$1"
 
+  local TMP_FILE=$(mktemp "/$TMP_DIR/influx_batch.XXX")
+
   curl -XPOST "$INFLUX_URL/api/v2/write?org=$INFLUX_ORG&bucket=$INFLUX_BUCKET&precision=s" \
     --header "Authorization: Token $INFLUX_TOKEN" \
     --header "Content-Type: text/plain" \
-    --data-raw "$DATA"
+    -d "@$TMP_FILE"
+
+  rm "$TMP_FILE"
 }
 
 function update_measurement_single() {
