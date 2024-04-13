@@ -157,14 +157,14 @@ $DATAPOINT"
 
         BATCH_COUNT="$((BATCH_COUNT + 1))"
         if [[ "$BATCH_COUNT" -ge "5000" ]]; then
-          publish_measurement_raw "$PUBLISHER" "$BATCH"
+          publish_measurement_batch "$PUBLISHER" "$BATCH"
           BATCH_COUNT="0"
           BATCH=""
         fi
       done < "$DIR/$INFLUX_FILE"
 
       if [[ "$BATCH_COUNT" -gt "0" ]]; then
-        publish_measurement_raw "$PUBLISHER" "$BATCH"
+        publish_measurement_batch "$PUBLISHER" "$BATCH"
         BATCH_COUNT="0"
         BATCH=""
       fi

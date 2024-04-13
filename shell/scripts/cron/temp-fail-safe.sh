@@ -75,7 +75,7 @@ $DATAPOINT"
     fi
 
   done
-  publish_measurement_raw "$PUBLISHER" "$BATCH"
+  publish_measurement_batch "$PUBLISHER" "$BATCH"
 
   update_period
   log "Period is: $PERIOD s"
