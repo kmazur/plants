@@ -5,7 +5,8 @@ function set_terminal_title() {
   echo -ne "\033]0;$PROMPT\007"
 }
 
-function restart_cron_process() {
+
+function stop_cron_process() {
   local PROCESS_SUBSTRING="$1"
   if [ -z "$PROCESS_SUBSTRING" ]; then
     return 1
@@ -24,5 +25,9 @@ function restart_cron_process() {
   if [[ "$PLINES" -ne "1" ]]; then
     return 3
   fi
-  kill "$PID" && "$ENTRY_CMD"
+  kill "$PID"
+}
+
+function restart_cron_process() {
+  stop_cron_process "$1" && "$ENTRY_CMD"
 }
