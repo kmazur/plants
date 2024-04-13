@@ -32,10 +32,15 @@ function detect_video_events() {
     BEFORE_TIME=$(get_current_epoch_seconds)
     log "Processing: $FILE"
     "$BIN_DIR/motion_detector" "$DIR/$FILE" "$OUTPUT_DIR"
+    EXIT_STATUS="$?"
     AFTER_TIME=$(get_current_epoch_seconds)
     log "Processing $FILE took: $(( AFTER_TIME - BEFORE_TIME )) s"
 
-    touch "$DIR/$STUB.motion_detected"
+    if [[ "$EXIT_STATUS" == "0" ]]; then
+      touch "$DIR/$STUB.motion_detected"
+    else
+      log_error "Processing failed with exit status: $EXIT_STATUS"
+    fi
 
     update_period
     log "Period is: $PERIOD s"
