@@ -125,7 +125,7 @@ function publish_main_queue() {
       local LINE_COUNT="$(echo -n "$QUEUE_DATA" | grep -c '^')"
       if [ "$LINE_COUNT" != "0" ]; then
         update_measurement_raw "$QUEUE_DATA"
-        sed -i -e "1,${LINE_COUNT}d" "$QUEUE_FILE"
+        sed -i -e "1,${LINE_COUNT}d" "$FILE"
       fi
 
     } 200>"$FILE.flock"
