@@ -127,7 +127,7 @@ function set_config() {
     fi
 
   ) 200>"$FILE.flock"
-    rm "$FILE.flock"
+  rm "$FILE.flock"
 }
 
 function get_config() {
