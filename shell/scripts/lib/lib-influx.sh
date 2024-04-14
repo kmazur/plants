@@ -130,7 +130,7 @@ function publish_main_queue() {
 
     } 200>"$FILE.flock"
 
-    local PENDING_COUNT="$(local cat "$FILE" | grep -v "^$")"
+    local PENDING_COUNT="$(cat "$FILE" | grep -v "^$")"
     if [[ "$PENDING_COUNT" -eq "0" ]]; then
       break
     fi
