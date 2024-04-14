@@ -16,12 +16,18 @@ function update_period() {
 }
 
 while true; do
-  if ! is_scale_suspended; then
-    PUBLISHED_COUNT="$(publish_main_queue)"
-    log "Published $PUBLISHED_COUNT data points"
-  else
-    log_warn "Influx publishing suspended"
-  fi
+  while true; do
+    if ! is_scale_suspended; then
+      PUBLISHED_COUNT="$(publish_main_queue)"
+      log "Published $PUBLISHED_COUNT data points"
+      if [[ "$PUBLISHED_COUNT" == "0" ]]; then
+        break
+      fi
+    else
+      log_warn "Influx publishing suspended"
+      break
+    fi
+  done
 
   update_period
   log "Period is: $PERIOD s"
