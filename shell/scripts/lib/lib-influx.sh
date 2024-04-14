@@ -112,21 +112,31 @@ function publish_measurement_batch() {
 
 function publish_main_queue() {
   local FILE="$MAIN_INFLUX_QUEUE_FILE"
-  local BATCH_SIZE="5000"
-  {
-    flock -x 200
+  local -i PUBLISHED_COUNT="0"
+  while true; do
+    local BATCH_SIZE="5000"
+    {
+      flock -x 200
 
-    if [ ! -f "$FILE" ]; then
-      touch "$FILE"
-    fi
-    local QUEUE_DATA="$(head -n "$BATCH_SIZE" "$FILE")"
-    local LINE_COUNT="$(echo -n "$QUEUE_DATA" | grep -c '^')"
-    if [ "$LINE_COUNT" != "0" ]; then
-      update_measurement_raw "$QUEUE_DATA"
-      sed -i -e "1,${LINE_COUNT}d" "$QUEUE_FILE"
-    fi
+      if [ ! -f "$FILE" ]; then
+        touch "$FILE"
+      fi
+      local QUEUE_DATA="$(head -n "$BATCH_SIZE" "$FILE")"
+      local LINE_COUNT="$(echo -n "$QUEUE_DATA" | grep -c '^')"
+      if [ "$LINE_COUNT" != "0" ]; then
+        update_measurement_raw "$QUEUE_DATA"
+        sed -i -e "1,${LINE_COUNT}d" "$QUEUE_FILE"
+      fi
 
     } 200>"$FILE.flock"
 
-    echo "$LINE_COUNT"
+    local PENDING_COUNT="$(local cat "$FILE" | grep -v "^$")"
+    if [[ "$PENDING_COUNT" -eq "0" ]]; then
+      break
+    fi
+
+    PUBLISHED_COUNT="$((PUBLISHED_COUNT + LINE_COUNT))"
+  done
+
+  echo "$PUBLISHED_COUNT"
 }

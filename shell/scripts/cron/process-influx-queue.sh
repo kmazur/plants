@@ -17,7 +17,6 @@ function update_period() {
 
 while true; do
   if ! is_scale_suspended; then
-    collect_publisher_data
     PUBLISHED_COUNT="$(publish_main_queue)"
     log "Published $PUBLISHED_COUNT data points"
   else
