@@ -184,27 +184,30 @@ function add_crontab_entry() {
 
 function get_output_dir() {
   local ROOT_DIR="$1"
-  local DATE
-  DATE="$(get_current_date_compact)"
+  local DATE="${2:-$(get_current_date_compact)}"
   local OUTPUT_DIR="$ROOT_DIR/$DATE"
   mkdir -p "$OUTPUT_DIR" &> /dev/null
   echo "$OUTPUT_DIR"
 }
 
 function get_video_dir() {
-  get_output_dir "$VIDEO_DIR"
+  local DATE="$1"
+  get_output_dir "$VIDEO_DIR" "$DATE"
 }
 
 function get_audio_dir() {
-  get_output_dir "$AUDIO_DIR"
+  local DATE="$1"
+  get_output_dir "$AUDIO_DIR" "$DATE"
 }
 
 function get_audio_segment_dir() {
-  get_output_dir "$AUDIO_SEGMENT_DIR"
+  local DATE="$1"
+  get_output_dir "$AUDIO_SEGMENT_DIR" "$DATE"
 }
 
 function get_video_segment_dir() {
-  get_output_dir "$VIDEO_SEGMENT_DIR"
+  local DATE="$1"
+  get_output_dir "$VIDEO_SEGMENT_DIR" "$DATE"
 }
 
 function get_used_space_percent() {

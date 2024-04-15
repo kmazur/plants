@@ -53,8 +53,11 @@ function get_zoned_date_time_format_dashed() {
   echo "%Y-%m-%dT%H:%M:%S %Z"
 }
 
+function get_yesterday_date_compact() {
+  date -d @$(( $(date +"%s") - 86400)) +"$(get_date_format_compact)"
+}
 function get_current_date_compact() {
-    date +"$(get_date_format_compact)"
+  date +"$(get_date_format_compact)"
 }
 function get_current_date_time_compact() {
   date +"$(get_date_time_format_compact)"
@@ -92,3 +95,5 @@ function epoch_to_date_underscore() {
 }
 
 
+
+}
