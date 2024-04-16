@@ -41,6 +41,7 @@ while true; do
   if ! is_scale_suspended; then
     log "Processing: MP3"
     detect_audio_events "$(get_audio_dir)" "$(get_audio_segment_dir)"
+    detect_audio_events "$(get_audio_dir "$(get_yesterday_date_compact)")" "$(get_audio_segment_dir "$(get_yesterday_date_compact)")"
   else
     log_warn "Audio detection suspended"
   fi
