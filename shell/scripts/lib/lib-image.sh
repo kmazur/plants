@@ -38,9 +38,14 @@ function embed_image() {
 
 declare TIMELAPSE_IMAGE_WIDTH="1280"
 declare TIMELAPSE_IMAGE_HEIGHT="720"
-function create_hour_base_image() {
+
+function get_timelapse_image() {
   local DATE="$(get_current_date_compact)"
-  create_blank_image "$TMP_DIR/$DATE.jpg" "$((TIMELAPSE_IMAGE_WIDTH * 5))" "$((TIMELAPSE_IMAGE_HEIGHT * 5))"
+  echo "$TMP_DIR/$DATE"
+}
+
+function create_hour_base_image() {
+  create_blank_image "$(get_timelapse_image)" "$((TIMELAPSE_IMAGE_WIDTH * 5))" "$((TIMELAPSE_IMAGE_HEIGHT * 5))"
 }
 
 function embed_hour_image() {
@@ -50,7 +55,8 @@ function embed_hour_image() {
   local Y="$(( (HOUR / 5) * TIMELAPSE_IMAGE_HEIGHT ))"
   local CONFIG_FILE="$(get_required_config "video-config-file")"
 
-  libcamera-still -c "$CONFIG_FILE" -o "$TMP_DIR/${DATE}_${HOUR}.jpg" -n -t 1 --mode "$TIMELAPSE_IMAGE_WIDTH:$TIMELAPSE_IMAGE_HEIGHT" &> /dev/null
+  local HOUR_IMAGE="$TMP_DIR/${DATE}_${HOUR}.jpg"
+  libcamera-still -c "$CONFIG_FILE" -o "$HOUR_IMAGE" -n -t 1 --mode "$TIMELAPSE_IMAGE_WIDTH:$TIMELAPSE_IMAGE_HEIGHT" &> /dev/null
 
-  embed_image "$TMP_DIR/$DATE.jpg" "$TMP_DIR/${DATE}_${HOUR}.jpg" "$X" "$Y" "$TIMELAPSE_IMAGE_WIDTH" "$TIMELAPSE_IMAGE_HEIGHT"
+  embed_image "$(get_timelapse_image)" "$HOUR_IMAGE" "$X" "$Y" "$TIMELAPSE_IMAGE_WIDTH" "$TIMELAPSE_IMAGE_HEIGHT"
 }
