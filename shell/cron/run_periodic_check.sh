@@ -33,7 +33,7 @@ echo "Pid file does not exist or there is no process with pid! Running process: 
 
 cd "$LOGS_DIR" || exit 1
 
-LOG_FILE="$LOGS_DIR/$PROCESS_NAME.log"
+LOG_FILE="$(get_logs_dir)/$PROCESS_NAME.log"
 
 {
   echo "# ========="

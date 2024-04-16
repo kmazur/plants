@@ -5,7 +5,7 @@ LOG_DATETIME_FORMAT="+%Y-%m-%dT%H:%M:%S%Z"
 function log() {
   local MESSAGE="$1"
   local LOG_DATETIME="$(date "$LOG_DATETIME_FORMAT")"
-  local LOG_LEVEL="${2-INFO}"
+  local LOG_LEVEL="${2:-INFO}"
   echo "[$LOG_DATETIME][$LOG_LEVEL] $MESSAGE"
 }
 

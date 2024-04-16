@@ -200,6 +200,11 @@ function get_audio_dir() {
   get_output_dir "$AUDIO_DIR" "$DATE"
 }
 
+function get_logs_dir() {
+  local DATE="$1"
+  get_output_dir "$LOGS_DIR" "$DATE"
+}
+
 function get_audio_segment_dir() {
   local DATE="$1"
   get_output_dir "$AUDIO_SEGMENT_DIR" "$DATE"
