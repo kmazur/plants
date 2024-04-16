@@ -41,7 +41,7 @@ declare TIMELAPSE_IMAGE_HEIGHT="720"
 
 function get_timelapse_image() {
   local DATE="$(get_current_date_compact)"
-  echo "$TMP_DIR/$DATE"
+  echo "$TMP_DIR/$DATE.jpg"
 }
 
 function create_hour_base_image() {
