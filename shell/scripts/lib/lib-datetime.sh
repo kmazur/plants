@@ -93,7 +93,3 @@ function epoch_to_date_underscore() {
   local -i EPOCH_SECONDS="$1"
   date -d@"$EPOCH_SECONDS" "+%Y_%m_%d"
 }
-
-
-
-}
