@@ -63,3 +63,16 @@ function update_daylight_info() {
     set_config "daylight.day_length" "$DAY_LENGTH"
   fi
 }
+
+function is_night() {
+  local HOUR="$(get_current_hour)"
+  local SUNRISE="$(get_config "daylight.sunrise" "6")"
+  local SUNSET="$(get_config "daylight.sunset" "21")"
+  local SUNRISE_HOUR="${SUNRISE:9:2}"
+  local SUNSET_HOUR="${SUNSET:9:2}"
+  [[ "$HOUR" -le "$SUNRISE_HOUR" || "$HOUR" -ge "$SUNSET_HOUR" ]]
+}
+
+function is_day() {
+  ! is_night
+}

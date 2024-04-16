@@ -5,4 +5,6 @@ source "/home/user/WORK/workspace/plants/shell/.profile"
 source "$LIB_INIT_FILE"
 ensure_env
 
-update_daylight_info
+log "Initializing '$MACHINE_NAME'"
+
+set_config "video-config-file" "$REPO_DIR/shell/scripts/video/video-config-pi4b.txt"

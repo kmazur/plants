@@ -14,16 +14,11 @@ function update_period() {
 
 SEGMENT_DURATION_SECONDS="600"
 MACHINE_NAME="$(get_required_config "name")"
-if [[ "$MACHINE_NAME" == "birdbox-ctrl" ]]; then
-  VID_CONFIG_FILE="$REPO_DIR/shell/scripts/video/video-config-ctrl.txt"
-elif [[ "$MACHINE_NAME" == "pi4b" ]]; then
-  VID_CONFIG_FILE="$REPO_DIR/shell/scripts/video/video-config-pi4b.txt"
-else
-  VID_CONFIG_FILE="$REPO_DIR/shell/scripts/video/video-config-ir.txt"
-fi
+VID_CONFIG_FILE="$(get_required_config "video-config-file")"
 
 PUBLISHER="LIGHT_LEVEL"
 register_publisher "$PUBLISHER"
+
 
 while true; do
   if ! is_scale_suspended; then
@@ -43,12 +38,7 @@ while true; do
     if [[ "$LIGHT_LEVEL_INT" -le "5" ]]; then
       log "Light level too low to record video: $LIGHT_LEVEL"
 
-      HOUR="$(get_current_hour)"
-      SUNRISE="$(get_config "daylight.sunrise" "6")"
-      SUNSET="$(get_config "daylight.sunset" "21")"
-      SUNRISE_HOUR="${SUNRISE:9:2}"
-      SUNSET_HOUR="${SUNSET:9:2}"
-      if [[ "$HOUR" -le "$SUNRISE_HOUR" || "$HOUR" -ge "$SUNSET_HOUR" ]]; then
+      if is_night; then
         update_period
         MIN_LOW_LIGHT_PERIOD="$(( 20 * 60 ))"
         SLEEP_LOW_LIGHT="$(( PERIOD > MIN_LOW_LIGHT_PERIOD ? PERIOD : MIN_LOW_LIGHT_PERIOD ))"
