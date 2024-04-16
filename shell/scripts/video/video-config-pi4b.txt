@@ -1,4 +1,4 @@
-verbose=1
+verbose=0
 width=1332
 height=990
 nopreview=1
