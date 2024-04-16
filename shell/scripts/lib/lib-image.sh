@@ -36,8 +36,8 @@ function embed_image() {
   rm "$TMP_OUTPUT"
 }
 
-declare TIMELAPSE_IMAGE_WIDTH="2304"
-declare TIMELAPSE_IMAGE_HEIGHT="1296"
+declare TIMELAPSE_IMAGE_WIDTH="1280"
+declare TIMELAPSE_IMAGE_HEIGHT="720"
 function create_hour_base_image() {
   local DATE="$(get_current_date_compact)"
   create_blank_image "$TMP_DIR/$DATE.jpg" "$((TIMELAPSE_IMAGE_WIDTH * 5))" "$((TIMELAPSE_IMAGE_HEIGHT * 5))"
