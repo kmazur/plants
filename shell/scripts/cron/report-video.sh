@@ -18,7 +18,7 @@ VID_CONFIG_FILE="$(get_required_config "video-config-file")"
 
 PUBLISHER="LIGHT_LEVEL"
 register_publisher "$PUBLISHER"
-
+create_hour_base_image
 
 while true; do
   if ! is_scale_suspended; then
@@ -27,11 +27,14 @@ while true; do
     log "Capturing image for light level"
     LIGHT_LEVEL="$("$REPO_DIR/shell/scripts/video/capture-light-level.sh")"
     log "Light level is: $LIGHT_LEVEL"
-    cp -f "$TMP_DIR/light_level.jpg" "$TMP_DIR/$MACHINE_NAME.jpg"
-    draw_text_bl "$TMP_DIR/light_level.jpg" "$TMP_DIR/$MACHINE_NAME.jpg" "$(get_current_date_time_dashed)"
-    upload_file "$TMP_DIR" "$MACHINE_NAME.jpg" "image/jpg"
-
+    LIGHT_LEVEL_FILE="$TMP_DIR/$MACHINE_NAME.jpg"
+    draw_text_bl "$TMP_DIR/light_level.jpg" "$LIGHT_LEVEL_FILE" "$(get_current_date_time_dashed)"
+    upload_file "$LIGHT_LEVEL_FILE" "image/jpg"
     publish_measurement_single "$PUBLISHER" "image_analysis" "light_level=$LIGHT_LEVEL"
+
+    log "Capturing image for timelapse image"
+    embed_hour_image
+    upload_file "$(get_timelapse_image)" "image/jpg"
 
     declare LIGHT_LEVEL_INT="${LIGHT_LEVEL%%.*}"
 

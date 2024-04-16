@@ -45,20 +45,31 @@ function get_timelapse_image() {
 }
 
 function create_hour_base_image() {
-  create_blank_image "$(get_timelapse_image)" "$((TIMELAPSE_IMAGE_WIDTH * 5))" "$((TIMELAPSE_IMAGE_HEIGHT * 5))"
+  local TIMELAPSE_IMAGE_FILE="$(get_timelapse_image)"
+  if [ ! -f "$TIMELAPSE_IMAGE_FILE" ]; then
+    create_blank_image "$(get_timelapse_image)" "$((TIMELAPSE_IMAGE_WIDTH * 5))" "$((TIMELAPSE_IMAGE_HEIGHT * 5))"
+  fi
 }
 
 function embed_hour_image() {
+  create_hour_base_image
+
   local DATE="$(get_current_date_compact)"
   local HOUR="$(get_current_hour)"
+
+  local HOUR_IMAGE="$TMP_DIR/${DATE}_${HOUR}.jpg"
+  local HOUR_IMAGE_ANNOTATED="$TMP_DIR/${DATE}_${HOUR}_annotated.jpg"
+
+  if [ -f "$HOUR_IMAGE_ANNOTATED" ]; then
+    return 0
+  fi
+
   local X="$(( (HOUR % 5) * TIMELAPSE_IMAGE_WIDTH ))"
   local Y="$(( (HOUR / 5) * TIMELAPSE_IMAGE_HEIGHT ))"
   local CONFIG_FILE="$(get_required_config "video-config-file")"
 
-  local HOUR_IMAGE="$TMP_DIR/${DATE}_${HOUR}.jpg"
-  local HOUR_IMAGE_ANNOTATED="$TMP_DIR/${DATE}_${HOUR}_annotated.jpg"
   libcamera-still -c "$CONFIG_FILE" -o "$HOUR_IMAGE" -n -t 1 --mode "$TIMELAPSE_IMAGE_WIDTH:$TIMELAPSE_IMAGE_HEIGHT" &> /dev/null
-  draw_text_bl "$HOUR_IMAGE" "$HOUR_IMAGE_ANNOTATED" "$HOUR"
+  draw_text_bl "$HOUR_IMAGE" "$HOUR_IMAGE_ANNOTATED" "$HOUR" "200"
 
   embed_image "$(get_timelapse_image)" "$HOUR_IMAGE_ANNOTATED" "$X" "$Y" "$TIMELAPSE_IMAGE_WIDTH" "$TIMELAPSE_IMAGE_HEIGHT"
 }
