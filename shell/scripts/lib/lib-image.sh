@@ -67,7 +67,8 @@ function embed_hour_image() {
 
   local X="$(( (HOUR % 5) * TIMELAPSE_IMAGE_WIDTH ))"
   local Y="$(( (HOUR / 5) * TIMELAPSE_IMAGE_HEIGHT ))"
-  local CONFIG_FILE="$(get_required_config "video-config-file")"
+  # TODO: fixme
+  local CONFIG_FILE="/home/user/WORK/workspace/plants/shell/scripts/video/image-config-ctrl.txt"
 
   libcamera-still -c "$CONFIG_FILE" -o "$HOUR_IMAGE" -n -t 1 --mode "$TIMELAPSE_IMAGE_WIDTH:$TIMELAPSE_IMAGE_HEIGHT" &> /dev/null
   draw_text_bl "$HOUR_IMAGE" "$HOUR_IMAGE_ANNOTATED" "$HOUR" "200"
