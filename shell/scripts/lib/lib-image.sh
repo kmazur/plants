@@ -56,7 +56,9 @@ function embed_hour_image() {
   local CONFIG_FILE="$(get_required_config "video-config-file")"
 
   local HOUR_IMAGE="$TMP_DIR/${DATE}_${HOUR}.jpg"
+  local HOUR_IMAGE_ANNOTATED="$TMP_DIR/${DATE}_${HOUR}_annotated.jpg"
   libcamera-still -c "$CONFIG_FILE" -o "$HOUR_IMAGE" -n -t 1 --mode "$TIMELAPSE_IMAGE_WIDTH:$TIMELAPSE_IMAGE_HEIGHT" &> /dev/null
+  draw_text_bl "$HOUR_IMAGE" "$HOUR_IMAGE_ANNOTATED" "$HOUR"
 
-  embed_image "$(get_timelapse_image)" "$HOUR_IMAGE" "$X" "$Y" "$TIMELAPSE_IMAGE_WIDTH" "$TIMELAPSE_IMAGE_HEIGHT"
+  embed_image "$(get_timelapse_image)" "$HOUR_IMAGE_ANNOTATED" "$X" "$Y" "$TIMELAPSE_IMAGE_WIDTH" "$TIMELAPSE_IMAGE_HEIGHT"
 }
