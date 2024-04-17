@@ -28,7 +28,7 @@ while true; do
     LIGHT_LEVEL="$("$REPO_DIR/shell/scripts/video/capture-light-level.sh")"
     log "Light level is: $LIGHT_LEVEL"
     LIGHT_LEVEL_FILE="$TMP_DIR/$MACHINE_NAME.jpg"
-    draw_text_bl "$TMP_DIR/light_level.jpg" "$LIGHT_LEVEL_FILE" "$(get_current_date_time_dashed)" "90"
+    draw_text_bl "$TMP_DIR/light_level.jpg" "$LIGHT_LEVEL_FILE" "$(get_current_date_time_dashed)" "30"
     upload_file "$LIGHT_LEVEL_FILE" "image/jpg"
     publish_measurement_single "$PUBLISHER" "image_analysis" "light_level=$LIGHT_LEVEL"
 
