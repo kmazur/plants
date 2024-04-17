@@ -74,7 +74,7 @@ function embed_hour_image() {
   local CONFIG_FILE="/home/user/WORK/workspace/plants/shell/scripts/video/image-config-ctrl.txt"
 
   libcamera-still -c "$CONFIG_FILE" -o "$HOUR_IMAGE" -n -t 1 --mode "$TIMELAPSE_IMAGE_WIDTH:$TIMELAPSE_IMAGE_HEIGHT" &> /dev/null
-  draw_text_bl "$HOUR_IMAGE" "$HOUR_IMAGE_ANNOTATED" "$HOUR" "200"
+  draw_text_bl "$HOUR_IMAGE" "$HOUR_IMAGE_ANNOTATED" "$HOUR" "100"
 
   embed_image "$(get_timelapse_image)" "$HOUR_IMAGE_ANNOTATED" "$X" "$Y" "$TIMELAPSE_IMAGE_WIDTH" "$TIMELAPSE_IMAGE_HEIGHT"
 }
