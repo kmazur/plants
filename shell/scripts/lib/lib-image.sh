@@ -57,6 +57,9 @@ function embed_hour_image() {
 
   local DATE="$(get_current_date_compact)"
   local HOUR="$(get_current_hour)"
+  if [[ "$HOUR" == "0"* ]]; then
+    HOUR="${HOUR:1}"
+  fi
 
   local HOUR_IMAGE="$TMP_DIR/${DATE}_${HOUR}.jpg"
   local HOUR_IMAGE_ANNOTATED="$TMP_DIR/${DATE}_${HOUR}_annotated.jpg"
