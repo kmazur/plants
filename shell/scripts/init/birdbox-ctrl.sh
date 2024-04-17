@@ -7,4 +7,3 @@ ensure_env
 
 log "Initializing '$MACHINE_NAME'"
 
-set_config "video-config-file" "$REPO_DIR/shell/scripts/video/video-config-ctrl.txt"
