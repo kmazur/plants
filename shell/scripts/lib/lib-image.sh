@@ -40,9 +40,8 @@ declare TIMELAPSE_IMAGE_WIDTH="1280"
 declare TIMELAPSE_IMAGE_HEIGHT="720"
 
 function get_timelapse_image() {
-  local DATE="$(get_current_date_compact)"
   local MACHINE_NAME="$(get_required_config "name")"
-  echo "$TMP_DIR/${MACHINE_NAME}_${DATE}.jpg"
+  echo "$TMP_DIR/${MACHINE_NAME}_timelapse.jpg"
 }
 
 function create_hour_base_image() {
@@ -76,4 +75,7 @@ function embed_hour_image() {
   draw_text_bl "$HOUR_IMAGE" "$HOUR_IMAGE_ANNOTATED" "$HOUR" "60"
 
   embed_image "$(get_timelapse_image)" "$HOUR_IMAGE_ANNOTATED" "$X" "$Y" "$TIMELAPSE_IMAGE_WIDTH" "$TIMELAPSE_IMAGE_HEIGHT"
+
+  rm "$HOUR_IMAGE"
+  rm "$HOUR_IMAGE_ANNOTATED"
 }
