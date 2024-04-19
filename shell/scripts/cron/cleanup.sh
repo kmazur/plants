@@ -34,7 +34,7 @@ function cleanup() {
     log "Disk space is ok: $USED_SPACE %"
   elif [[ "$USED_SPACE" -le "80" ]]; then
     log_warn "Disk space is ok still: $USED_SPACE %"
-  elif [[ "$USED_SPACE" -gt "90" ]]; then
+  elif [[ "$USED_SPACE" -gt "85" ]]; then
     log_warn "Low disk space, performing cleanup"
 
     remove_dirs "$VIDEO_DIR"
