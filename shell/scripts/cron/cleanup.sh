@@ -14,7 +14,7 @@ function update_period() {
 
 function remove_dirs() {
   local ROOT_DIR="$1"
-  DIRS="$(ls -1thrd "$ROOT_DIR"*/)"
+  DIRS="$(ls -1thd "$ROOT_DIR"/*/)"
   DIR_COUNT="$(echo "$DIRS" | wc -l)"
   if [[ "$DIR_COUNT" -le "1" ]]; then
     log_warn "Can't cleanup dirs on $ROOT_DIR - only $DIR_COUNT dirs present"
