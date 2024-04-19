@@ -21,9 +21,8 @@ function remove_dirs() {
   else
     DIRS_TO_CLEANUP="$(echo "$DIRS" | head -n 1)"
     for DIR in $DIRS_TO_CLEANUP; do
-      FULL_DIR="$VIDEO_DIR/$DIR"
-      log_warn "Removing $FULL_DIR"
-      rm -rf "$FULL_DIR"
+      log_warn "Removing $DIR"
+      rm -rf "$DIR"
     done
   fi
 }
