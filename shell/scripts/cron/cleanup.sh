@@ -17,7 +17,7 @@ function remove_dirs() {
   DIRS="$(ls -1thrd "$ROOT_DIR"*/)"
   DIR_COUNT="$(echo "$DIRS" | wc -l)"
   if [[ "$DIR_COUNT" -le "1" ]]; then
-    log_warn "Can't cleanup dirs - only $DIR_COUNT dirs present"
+    log_warn "Can't cleanup dirs on $ROOT_DIR - only $DIR_COUNT dirs present"
   else
     DIRS_TO_CLEANUP="$(echo "$DIRS" | head -n 1)"
     for DIR in $DIRS_TO_CLEANUP; do
