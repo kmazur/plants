@@ -34,7 +34,8 @@ while true; do
 
     log "Capturing image for timelapse image"
     embed_hour_image
-    upload_file "$(get_timelapse_image)" "image/jpg"
+    cp -f "$(get_timelapse_image)" "$(get_timelapse_upload_image)"
+    upload_file "$(get_timelapse_upload_image)" "image/jpg"
 
     declare LIGHT_LEVEL_INT="${LIGHT_LEVEL%%.*}"
 

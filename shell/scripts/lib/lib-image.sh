@@ -39,9 +39,15 @@ function embed_image() {
 declare TIMELAPSE_IMAGE_WIDTH="1280"
 declare TIMELAPSE_IMAGE_HEIGHT="720"
 
-function get_timelapse_image() {
+function get_timelapse_upload_image() {
   local MACHINE_NAME="$(get_required_config "name")"
   echo "$TMP_DIR/${MACHINE_NAME}_timelapse.jpg"
+}
+
+function get_timelapse_image() {
+  local MACHINE_NAME="$(get_required_config "name")"
+  local DATE="$(get_current_date_compact)"
+  echo "$TMP_DIR/${MACHINE_NAME}_${DATE}_timelapse.jpg"
 }
 
 function create_hour_base_image() {
