@@ -48,6 +48,8 @@ export INFLUX_DIR="$TMP_DIR/influx"
 export CONFIG_INI="$CONFIG_DIR/config.ini"
 export LIB_INIT_FILE="$REPO_DIR/shell/scripts/lib/lib.sh"
 
+
+
 function _create_env_dirs() {
     local DIRS="$(env | grep "_DIR" | grep "/home/user/" | cut -d '=' -f 2)"
     for DIR in $DIRS; do
@@ -83,4 +85,17 @@ shopt -s direxpand
 
 function update_repo() {
     "$REPO_DIR/meta/git-update.sh"
+}
+
+source "$LIB_INIT_FILE"
+
+function goto() {
+    local WHAT="$1"
+    if [[ "$WHAT" == "192.168.0.80" || "$WHAT" == "pi4b" ]]; then
+        ssh "192.168.0.80"
+    elif [[ "$WHAT" == "192.168.0.199" || "$WHAT" == "ctrl" ]]; then
+        ssh "192.168.0.199"
+    elif [[ "$WHAT" == "192.168.0.18" || "$WHAT" == "ir" ]]; then
+            ssh "192.168.0.18"
+    fi
 }
