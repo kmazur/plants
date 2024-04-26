@@ -70,6 +70,11 @@ function is_night() {
   local SUNSET="$(get_config "daylight.sunset" "21")"
   local SUNRISE_HOUR="${SUNRISE:9:2}"
   local SUNSET_HOUR="${SUNSET:9:2}"
+
+  if [[ "$HOUR" == "0"* ]]; then
+    HOUR="${HOUR:1}"
+  fi
+
   [[ "$HOUR" -le "$SUNRISE_HOUR" || "$HOUR" -ge "$SUNSET_HOUR" ]]
 }
 

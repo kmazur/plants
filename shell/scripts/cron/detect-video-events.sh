@@ -56,14 +56,13 @@ while true; do
   SUNRISE_HOUR="${SUNRISE:9:2}"
   SUNSET_HOUR="${SUNSET:9:2}"
 
-  if [[ "$HOUR" -ge "$SUNRISE_HOUR" && "$HOUR" -le "$SUNSET_HOUR" ]]; then
+  if is_day; then
     log "It's not night: $SUNRISE_HOUR <= $HOUR <= $SUNSET_HOUR"
     update_period
     log "Period is: $PERIOD s"
     sleep "$PERIOD"
     continue
   fi
-
 
   if ! is_scale_suspended; then
     log "Processing: h264 files"

@@ -54,6 +54,11 @@ function create_hour_base_image() {
   local TIMELAPSE_IMAGE_FILE="$(get_timelapse_image)"
   if [ ! -f "$TIMELAPSE_IMAGE_FILE" ]; then
     create_blank_image "$(get_timelapse_image)" "$((TIMELAPSE_IMAGE_WIDTH * 5))" "$((TIMELAPSE_IMAGE_HEIGHT * 5))"
+  else
+    local FILE_SIZE="$(stat --printf="%s" "$TIMELAPSE_IMAGE_FILE")"
+    if [[ "$FILE_SIZE" == "0" ]]; then
+      create_blank_image "$(get_timelapse_image)" "$((TIMELAPSE_IMAGE_WIDTH * 5))" "$((TIMELAPSE_IMAGE_HEIGHT * 5))"
+    fi
   fi
 }
 
