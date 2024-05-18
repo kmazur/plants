@@ -38,6 +38,7 @@ if [ ! -f "$CONFIG_INI" ]; then
   echo "location.lng=21.056411" >> "$CONFIG_INI"
 fi
 
+sudo apt-get -y install libcamera-apps
 
 # sudo apt-get -y install software-properties-common
 # sudo apt-get -y install autoconf
