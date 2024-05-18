@@ -120,7 +120,7 @@ cp -f "$REPO_DIR/meta/files/vim/.vimrc" "$HOME"
 
 
 echo "INSTALLING mediamtx"
-sudo apt-get install libfreetype6 libcamera0
+sudo apt-get -y install libfreetype6 libcamera0
 ARCH=$(uname -a)
 
 MEDIAMTX_DIR="$BIN_DIR/apps/mediamtx"
@@ -180,7 +180,7 @@ sudo pip3 install influxdb-client
 #   pip3 install -e .
 # fi
 
-# sudo apt-get install postfix
+# sudo apt-get -y install postfix
 
 "$REPO_DIR/meta/compile.sh"
 
