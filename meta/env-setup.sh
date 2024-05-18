@@ -153,7 +153,7 @@ cp -f "$REPO_DIR/meta/files/mediamtx/mediamtx.yml" "$HOME"
 # sudo pip3 install w1thermsensor
 
 echo "- python lib: influxdb-client"
-sudo pip3 install influxdb-client
+sudo pip3 install --break-system-packages influxdb-client
 
 # echo "- python lib: python-tsl2591"
 # sudo pip3 install python-tsl2591
