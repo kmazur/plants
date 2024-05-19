@@ -71,7 +71,7 @@ echo "- openjdk-17-jdk"
 echo "- bc"
 sudo apt-get -y install git vim htop pigpio screen imagemagick libcamera-tools python3-opencv jq
 sudo apt-get -y install motion
-sudo apt-get -y install openjdk-17-jdk
+#sudo apt-get -y install openjdk-17-jdk
 sudo apt-get -y install python3-pip
 sudo apt-get -y install bc
 sudo apt-get -y install vorbis-tools
