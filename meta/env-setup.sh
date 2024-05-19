@@ -188,4 +188,10 @@ sudo pip3 install --break-system-packages influxdb-client
 sudo cp -f "$REPO_DIR/meta/files/root/rc.local" "/etc/rc.local"
 
 
+mkdir -p "$HOME/.ssh"
+if [ ! -f "$HOME/.ssh/authorized_keys" ]; then
+  cp "$REPO_DIR/meta/files/root/authorized_keys" "$HOME/.ssh/authorized_keys"
+fi
+
+
 source "$LIB_INIT_FILE"
