@@ -66,7 +66,7 @@ private:
                         motionStartTime = std::max(prevTime - 1.0, 0.0);
                         std::cout << motionScore << " > " << motionThreshold << " -> starting recording at: " << motionStartTime << " / nativeTime: " << nativeTime << "\n";
                     }
-                } else if (motionStartTime >= 0) {
+                } else if (motionStartTime >= 0 && (prevTime - motionStartTime) > 3.0) {
                     double videoLength = frameIndex / fps; // Calculate video length in seconds
                     double motionEndTime = std::min(prevTime + 1.0, videoLength);
                     std::cout << motionScore << " > " << motionThreshold << " -> stop recording at: " << motionEndTime << " / nativeTime: " << nativeTime << "\n";
@@ -77,6 +77,14 @@ private:
 
             prevFrame = currFrame.clone();
             frameIndex += frameStep; // Jump to the next frame
+        }
+
+        if (motionStartTime >= 0 && (prevTime - motionStartTime) > 3.0) {
+            double videoLength = frameIndex / fps; // Calculate video length in seconds
+            double motionEndTime = std::min(prevTime + 1.0, videoLength);
+            std::cout << motionScore << " > " << motionThreshold << " -> stop recording at: " << motionEndTime << " / nativeTime: " << nativeTime << "\n";
+            motionSegments.emplace_back(motionStartTime, motionEndTime); // End of motion segment
+            motionStartTime = -1; // Reset for next motion segment
         }
     }
 
