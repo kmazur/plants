@@ -48,7 +48,7 @@ private:
     cv::VideoCapture cap;
     std::vector<std::pair<double, double>> motionSegments; // Stores start and end times of motion segments
 
-    static constexpr double motionThreshold = 1.6; // Example threshold, adjust based on your needs
+    static constexpr double motionThreshold = 2.5; // Example threshold, adjust based on your needs
     static constexpr int frameStep = 20; // Analyze every 20th frame for motion
     static constexpr double secondsBefore = 1.0;
     static constexpr double secondsAfter = 5.0;
