@@ -50,8 +50,8 @@ private:
 
     static constexpr double motionThreshold = 1.6; // Example threshold, adjust based on your needs
     static constexpr int frameStep = 20; // Analyze every 20th frame for motion
-    static constexpr int secondsBefore = 2;
-    static constexpr int secondsAfter = 4;
+    static constexpr double secondsBefore = 1.0;
+    static constexpr double secondsAfter = 5.0;
 
     std::string convertToMP4(const std::string& inputFilePath) {
         fs::path inputPath(inputFilePath);
