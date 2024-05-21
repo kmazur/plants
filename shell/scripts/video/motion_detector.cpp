@@ -49,7 +49,7 @@ private:
         fs::path inputPath(inputFilePath);
         std::string outputFilePath = inputPath.stem().string() + "_converted.mp4";
 
-        std::string command = "ffmpeg -y -loglevel error -i \"" + inputFilePath + "\" -c:v libx264 -crf 23 -preset fast \"" + outputFilePath + "\"";
+        std::string command = "ffmpeg -y -loglevel error -i \"" + inputFilePath + "\" -c:v copy \"" + outputFilePath + "\"";
         std::cout << "Converting video to MP4 format:\n" << command << std::endl;
         int ret = std::system(command.c_str());
 
