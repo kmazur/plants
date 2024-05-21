@@ -47,12 +47,14 @@ private:
             return;
         }
 
+        double nativeTime = 0.0;
+        double prevTime = 0.0;
         while (true) {
             cap.set(cv::CAP_PROP_POS_FRAMES, frameIndex);
             if (!cap.read(currFrame)) break;
 
-            double nativeTime = (frameIndex / fps) * 1000.0; // Computed native time in milliseconds
-            double prevTime = nativeTime / 1000.0; // Time in seconds
+            nativeTime = (frameIndex / fps) * 1000.0; // Computed native time in milliseconds
+            prevTime = nativeTime / 1000.0; // Time in seconds
 
             std::cout << "Frame index: " << frameIndex << ", Computed native time: " << nativeTime << std::endl;
 
