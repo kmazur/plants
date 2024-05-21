@@ -101,9 +101,10 @@ private:
     }
 
     static void extractSegmentWithFFmpeg(const std::string& inputFile, double start, double end, const std::string& outputFile) {
+        double duration = end - start;
         std::string command = "ffmpeg -y -loglevel error -ss " + std::to_string(start) + " -i \"" + inputFile +
-                              "\" -to " + std::to_string(end - start) + " -c copy \"" + outputFile + "\"";
-        std::cout << "Executing ffmpeg for segment: [" << start << " -> " << end << "\n" << command << "\n";
+                              "\" -t " + std::to_string(duration) + " -c copy \"" + outputFile + "\"";
+        std::cout << "Executing ffmpeg for segment: [" << start << " -> " << end << "]\n" << command << std::endl;
         std::system(command.c_str());
     }
 };
