@@ -94,9 +94,9 @@ private:
                 motionScore = cv::sum(frameDiff)[0] / (frameDiff.rows * frameDiff.cols); // Normalize motion score
 
                 if (prevTime > 1.0 && motionScore > motionThreshold) {
+                    std::cout << motionScore << " > " << motionThreshold << " -> starting recording at: " << motionStartTime << " / nativeTime: " << nativeTime << "\n";
                     if (motionStartTime < 0) {
                         motionStartTime = std::max(prevTime - 1.0, 0.0);
-                        std::cout << motionScore << " > " << motionThreshold << " -> starting recording at: " << motionStartTime << " / nativeTime: " << nativeTime << "\n";
                     }
                 } else if (motionStartTime >= 0 && (prevTime - motionStartTime) > 3.0) {
                     double videoLength = frameIndex / fps; // Calculate video length in seconds
