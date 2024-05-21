@@ -98,9 +98,11 @@ private:
 
                 if (prevTime > 1.0 && motionScore > motionThreshold) {
                     lastMotionTime = prevTime;
-                    std::cout << motionScore << " > " << motionThreshold << " -> starting recording at: " << motionStartTime << " / nativeTime: " << nativeTime << " last motion time: " << lastMotionTime << "\n";
                     if (motionStartTime < 0) {
+                        std::cout << motionScore << " > " << motionThreshold << " -> starting recording at: " << motionStartTime << " / nativeTime: " << nativeTime << " last motion time: " << lastMotionTime << "\n";
                         motionStartTime = std::max(prevTime - secondsBefore, 0.0);
+                    } else {
+                        std::cout << motionScore << " > " << motionThreshold << " -> bump recording at: " << motionStartTime << " / nativeTime: " << nativeTime << " last motion time: " << lastMotionTime << "\n";
                     }
                 } else if (motionStartTime >= 0 && (prevTime - lastMotionTime) > secondsAfter) {
                     double videoLength = frameIndex / fps; // Calculate video length in seconds
