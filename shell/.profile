@@ -87,6 +87,10 @@ function update_repo() {
     "$REPO_DIR/meta/git-update.sh"
 }
 
+function compile_native() {
+    "$REPO_DIR/meta/compile.sh"
+}
+
 source "$LIB_INIT_FILE"
 
 function goto() {
