@@ -85,6 +85,7 @@ shopt -s direxpand
 
 function update_repo() {
     "$REPO_DIR/meta/git-update.sh"
+    cp -f "$WORK_DIR/workspace/plants/shell/.profile" "$HOME"
 }
 
 function compile_native() {
