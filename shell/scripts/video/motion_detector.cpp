@@ -42,7 +42,8 @@ private:
         int frameIndex = 0;
 
         while (cap.read(currFrame)) {
-            double prevTime = cap.get(cv::CAP_PROP_POS_MSEC) / 1000.0; // Time in seconds
+            double nativeTime = cap.get(cv::CAP_PROP_POS_MSEC);
+            double prevTime = nativeTime / 1000.0; // Time in seconds
 
             cv::cvtColor(currFrame, currFrame, cv::COLOR_BGR2GRAY);
             if (!prevFrame.empty()) {
@@ -52,12 +53,12 @@ private:
                 if (motionScore > motionThreshold) {
                     if (motionStartTime < 0) {
                         motionStartTime = std::max(prevTime - 1.0, 0.0);
-                        std::cout << motionScore << " > " << motionThreshold << " -> starting recording at: " << motionStartTime << "\n";
+                        std::cout << motionScore << " > " << motionThreshold << " -> starting recording at: " << motionStartTime << " / nativeTime: " << nativeTime << "\n";
                     }
                 } else if (motionStartTime >= 0) {
                     double videoLength = cap.get(cv::CAP_PROP_POS_MSEC) / 1000.0;
                     double motionEndTime = std::min(prevTime + 1.0, videoLength);
-                    std::cout << motionScore << " > " << motionThreshold << " -> stop recording at: " << motionEndTime << "\n";
+                    std::cout << motionScore << " > " << motionThreshold << " -> stop recording at: " << motionEndTime << " / nativeTime: " << nativeTime << "\n";
                     motionSegments.emplace_back(motionStartTime, motionEndTime); // End of motion segment
                     motionStartTime = -1; // Reset for next motion segment
                 }
