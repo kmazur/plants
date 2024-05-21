@@ -16,14 +16,23 @@ public:
     VideoProcessor(const std::string& videoPath, const std::string& outputPath) : videoPath(videoPath), outputPath(outputPath) {}
 
     void process() {
-        if (!cap.open(videoPath)) {
-            std::cerr << "Error opening video file: " << videoPath << std::endl;
+        std::string convertedVideoPath = convertToMP4(videoPath);
+
+        if (convertedVideoPath.empty()) {
+            std::cerr << "Error converting video file: " << videoPath << std::endl;
             return;
         }
 
+        if (!cap.open(convertedVideoPath)) {
+            std::cerr << "Error opening converted video file: " << convertedVideoPath << std::endl;
+            return;
+        }
+
+        std::cout << "Video opened successfully." << std::endl;
+
         detectMotion();
         if (!motionSegments.empty()) {
-            extractSegments();
+            extractSegments(convertedVideoPath);
         }
     }
 
@@ -35,6 +44,22 @@ private:
 
     static constexpr double motionThreshold = 1.6; // Example threshold, adjust based on your needs
     static constexpr int frameStep = 20; // Analyze every 20th frame for motion
+
+    std::string convertToMP4(const std::string& inputFilePath) {
+        fs::path inputPath(inputFilePath);
+        std::string outputFilePath = inputPath.stem().string() + "_converted.mp4";
+
+        std::string command = "ffmpeg -y -loglevel error -i \"" + inputFilePath + "\" -c:v libx264 -crf 23 -preset fast \"" + outputFilePath + "\"";
+        std::cout << "Converting video to MP4 format:\n" << command << std::endl;
+        int ret = std::system(command.c_str());
+
+        if (ret != 0) {
+            std::cerr << "Error converting video file: " << inputFilePath << std::endl;
+            return "";
+        }
+
+        return outputFilePath;
+    }
 
     void detectMotion() {
         cv::Mat prevFrame, currFrame, frameDiff;
