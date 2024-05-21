@@ -40,25 +40,21 @@ private:
         cv::Mat prevFrame, currFrame, frameDiff;
         double motionStartTime = -1;
         int frameIndex = 0;
+        double fps = cap.get(cv::CAP_PROP_FPS);
 
-        if (!cap.isOpened()) {
-            std::cerr << "Error opening video file: " << videoPath << std::endl;
+        if (fps <= 0) {
+            std::cerr << "Error retrieving FPS from video." << std::endl;
             return;
         }
-        std::cout << "Video opened successfully.\n";
 
-        int frameCount = static_cast<int>(cap.get(cv::CAP_PROP_FRAME_COUNT));
-        double fps = cap.get(cv::CAP_PROP_FPS);
-        std::cout << "Frame count: " << frameCount << ", FPS: " << fps << std::endl;
-
-        while (cap.read(currFrame)) {
+        while (true) {
             cap.set(cv::CAP_PROP_POS_FRAMES, frameIndex);
+            if (!cap.read(currFrame)) break;
 
-            double nativeTime = cap.get(cv::CAP_PROP_POS_MSEC);
-            int currentFrame = static_cast<int>(cap.get(cv::CAP_PROP_POS_FRAMES));
-            std::cout << "Current frame: " << currentFrame << ", Native time: " << nativeTime << std::endl;
-
+            double nativeTime = (frameIndex / fps) * 1000.0; // Computed native time in milliseconds
             double prevTime = nativeTime / 1000.0; // Time in seconds
+
+            std::cout << "Frame index: " << frameIndex << ", Computed native time: " << nativeTime << std::endl;
 
             cv::cvtColor(currFrame, currFrame, cv::COLOR_BGR2GRAY);
             if (!prevFrame.empty()) {
@@ -71,7 +67,7 @@ private:
                         std::cout << motionScore << " > " << motionThreshold << " -> starting recording at: " << motionStartTime << " / nativeTime: " << nativeTime << "\n";
                     }
                 } else if (motionStartTime >= 0) {
-                    double videoLength = cap.get(cv::CAP_PROP_POS_MSEC) / 1000.0;
+                    double videoLength = frameIndex / fps; // Calculate video length in seconds
                     double motionEndTime = std::min(prevTime + 1.0, videoLength);
                     std::cout << motionScore << " > " << motionThreshold << " -> stop recording at: " << motionEndTime << " / nativeTime: " << nativeTime << "\n";
                     motionSegments.emplace_back(motionStartTime, motionEndTime); // End of motion segment
@@ -81,7 +77,6 @@ private:
 
             prevFrame = currFrame.clone();
             frameIndex += frameStep; // Jump to the next frame
-            cap.set(cv::CAP_PROP_POS_FRAMES, frameIndex);
         }
     }
 
