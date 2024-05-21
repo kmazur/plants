@@ -50,7 +50,7 @@ private:
                 double motionScore = cv::sum(frameDiff)[0] / (frameDiff.rows * frameDiff.cols); // Normalize motion score
 
                 if (motionScore > motionThreshold) {
-                    std::cout << motionThreshold << "\n";
+                    std::cout << motionScore << ":" << motionThreshold << "\n";
                     if (motionStartTime < 0) motionStartTime = std::max(prevTime - 1.0, 0.0); // Mark start of motion
                 } else if (motionStartTime >= 0) {
                     double videoLength = cap.get(cv::CAP_PROP_POS_MSEC) / 1000.0;
