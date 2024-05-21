@@ -59,7 +59,7 @@ private:
         std::string outputFileName = inputPath.stem().string() + "_converted.mp4";
         fs::path outputFilePath = outputDir / outputFileName; // Combine the directory and the new file name
 
-        if (fs::exists(outputFilePath.string()) {
+        if (fs::exists(outputFilePath.string())) {
             return outputFilePath.string();
         }
 
