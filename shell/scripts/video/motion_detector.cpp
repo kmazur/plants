@@ -116,9 +116,9 @@ private:
         }
     }
 
-    void extractSegments() {
+    void extractSegments(const std::string& convertedVideoPath) {
         for (const auto& segment : motionSegments) {
-            extractSegmentWithFFmpeg(videoPath, segment.first, segment.second, generateOutputFilename(segment.first, segment.second));
+            extractSegmentWithFFmpeg(convertedVideoPath, segment.first, segment.second, generateOutputFilename(segment.first, segment.second));
         }
     }
 
