@@ -34,6 +34,12 @@ public:
         if (!motionSegments.empty()) {
             extractSegments(convertedVideoPath);
         }
+
+        // Clean up the converted video file
+        if (!convertedVideoPath.empty() && fs::exists(convertedVideoPath)) {
+            fs::remove(convertedVideoPath);
+            std::cout << "Converted video file deleted: " << convertedVideoPath << std::endl;
+        }
     }
 
 private:
@@ -82,14 +88,12 @@ private:
             nativeTime = (frameIndex / fps) * 1000.0; // Computed native time in milliseconds
             prevTime = nativeTime / 1000.0; // Time in seconds
 
-            std::cout << "Frame index: " << frameIndex << ", Computed native time: " << nativeTime << std::endl;
-
             cv::cvtColor(currFrame, currFrame, cv::COLOR_BGR2GRAY);
             if (!prevFrame.empty()) {
                 cv::absdiff(prevFrame, currFrame, frameDiff);
                 motionScore = cv::sum(frameDiff)[0] / (frameDiff.rows * frameDiff.cols); // Normalize motion score
 
-                if (motionScore > motionThreshold) {
+                if (prevTime > 1.0 && motionScore > motionThreshold) {
                     if (motionStartTime < 0) {
                         motionStartTime = std::max(prevTime - 1.0, 0.0);
                         std::cout << motionScore << " > " << motionThreshold << " -> starting recording at: " << motionStartTime << " / nativeTime: " << nativeTime << "\n";
