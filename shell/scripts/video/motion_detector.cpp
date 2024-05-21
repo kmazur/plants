@@ -55,9 +55,11 @@ private:
 
     std::string convertToMP4(const std::string& inputFilePath) {
         fs::path inputPath(inputFilePath);
-        std::string outputFilePath = inputPath.stem().string() + "_converted.mp4";
+        fs::path outputDir = inputPath.parent_path(); // Get the parent directory of the input file
+        std::string outputFileName = inputPath.stem().string() + "_converted.mp4";
+        fs::path outputFilePath = outputDir / outputFileName; // Combine the directory and the new file name
 
-        std::string command = "ffmpeg -y -loglevel error -i \"" + inputFilePath + "\" -c:v copy \"" + outputFilePath + "\"";
+        std::string command = "ffmpeg -y -loglevel error -i \"" + inputFilePath + "\" -c:v copy \"" + outputFilePath.string() + "\"";
         std::cout << "Converting video to MP4 format:\n" << command << std::endl;
         int ret = std::system(command.c_str());
 
@@ -66,7 +68,7 @@ private:
             return "";
         }
 
-        return outputFilePath;
+        return outputFilePath.string();
     }
 
     void detectMotion() {
