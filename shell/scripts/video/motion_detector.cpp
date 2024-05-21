@@ -50,6 +50,8 @@ private:
 
     static constexpr double motionThreshold = 1.6; // Example threshold, adjust based on your needs
     static constexpr int frameStep = 20; // Analyze every 20th frame for motion
+    static constexpr int secondsBefore = 2;
+    static constexpr int secondsAfter = 4;
 
     std::string convertToMP4(const std::string& inputFilePath) {
         fs::path inputPath(inputFilePath);
@@ -96,11 +98,11 @@ private:
 
                 if (prevTime > 1.0 && motionScore > motionThreshold) {
                     lastMotionTime = prevTime;
-                    std::cout << motionScore << " > " << motionThreshold << " -> starting recording at: " << motionStartTime << " / nativeTime: " << nativeTime << "last motion time: " << lastMotionTime << "\n";
+                    std::cout << motionScore << " > " << motionThreshold << " -> starting recording at: " << motionStartTime << " / nativeTime: " << nativeTime << " last motion time: " << lastMotionTime << "\n";
                     if (motionStartTime < 0) {
-                        motionStartTime = std::max(prevTime - 1.0, 0.0);
+                        motionStartTime = std::max(prevTime - secondsBefore, 0.0);
                     }
-                } else if (motionStartTime >= 0 && (prevTime - lastMotionTime) > 3.0) {
+                } else if (motionStartTime >= 0 && (prevTime - lastMotionTime) > secondsAfter) {
                     double videoLength = frameIndex / fps; // Calculate video length in seconds
                     double motionEndTime = std::min(prevTime + 1.0, videoLength);
                     std::cout << motionScore << " > " << motionThreshold << " -> stop recording at: " << motionEndTime << " / nativeTime: " << nativeTime << "\n";
