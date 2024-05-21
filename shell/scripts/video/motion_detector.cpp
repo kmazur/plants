@@ -50,11 +50,15 @@ private:
                 double motionScore = cv::sum(frameDiff)[0] / (frameDiff.rows * frameDiff.cols); // Normalize motion score
 
                 if (motionScore > motionThreshold) {
-                    std::cout << motionScore << ":" << motionThreshold << "\n";
-                    if (motionStartTime < 0) motionStartTime = std::max(prevTime - 1.0, 0.0); // Mark start of motion
+                    if (motionStartTime < 0) {
+                        motionStartTime = std::max(prevTime - 1.0, 0.0);
+                        std::cout << motionScore << " > " << motionThreshold << " -> starting recording at: " << motionStartTime << "\n";
+                    }
                 } else if (motionStartTime >= 0) {
                     double videoLength = cap.get(cv::CAP_PROP_POS_MSEC) / 1000.0;
-                    motionSegments.emplace_back(motionStartTime, std::min(prevTime + 1.0, videoLength)); // End of motion segment
+                    double motionEndTime = std::min(prevTime + 1.0, videoLength);
+                    std::cout << motionScore << " > " << motionThreshold << " -> stop recording at: " << motionEndTime << "\n";
+                    motionSegments.emplace_back(motionStartTime, motionEndTime); // End of motion segment
                     motionStartTime = -1; // Reset for next motion segment
                 }
             }
