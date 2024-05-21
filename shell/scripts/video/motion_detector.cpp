@@ -82,6 +82,8 @@ private:
             return;
         }
 
+        std::cout << "Starting to detect motion" << std::endl;
+
         double nativeTime = 0.0;
         double prevTime = 0.0;
         double motionScore = 0.0;
@@ -101,15 +103,15 @@ private:
                 if (prevTime > 1.0 && motionScore > motionThreshold) {
                     lastMotionTime = prevTime;
                     if (motionStartTime < 0) {
-                        std::cout << motionScore << " > " << motionThreshold << " -> starting recording at: " << motionStartTime << " / nativeTime: " << nativeTime << " last motion time: " << lastMotionTime << "\n";
+                        std::cout << motionScore << " > " << motionThreshold << " -> starting recording at: " << motionStartTime << " / nativeTime: " << nativeTime << " last motion time: " << lastMotionTime << std::endl;
                         motionStartTime = std::max(prevTime - secondsBefore, 0.0);
                     } else {
-                        std::cout << motionScore << " > " << motionThreshold << " -> bump recording at: " << motionStartTime << " / nativeTime: " << nativeTime << " last motion time: " << lastMotionTime << "\n";
+                        std::cout << motionScore << " > " << motionThreshold << " -> bump recording at: " << motionStartTime << " / nativeTime: " << nativeTime << " last motion time: " << lastMotionTime << std::endl;
                     }
                 } else if (motionStartTime >= 0 && (prevTime - lastMotionTime) > secondsAfter) {
                     double videoLength = frameIndex / fps; // Calculate video length in seconds
                     double motionEndTime = std::min(prevTime + 1.0, videoLength);
-                    std::cout << motionScore << " > " << motionThreshold << " -> stop recording at: " << motionEndTime << " / nativeTime: " << nativeTime << "\n";
+                    std::cout << motionScore << " > " << motionThreshold << " -> stop recording at: " << motionEndTime << " / nativeTime: " << nativeTime << std::endl;
                     motionSegments.emplace_back(motionStartTime, motionEndTime); // End of motion segment
                     motionStartTime = -1; // Reset for next motion segment
                 }
@@ -122,7 +124,7 @@ private:
         if (motionStartTime >= 0) {
             double videoLength = frameIndex / fps; // Calculate video length in seconds
             double motionEndTime = std::min(prevTime + 1.0, videoLength);
-            std::cout << motionScore << " > " << motionThreshold << " -> stop recording at: " << motionEndTime << " / nativeTime: " << nativeTime << "\n";
+            std::cout << motionScore << " > " << motionThreshold << " -> stop recording at: " << motionEndTime << " / nativeTime: " << nativeTime << std::endl;
             motionSegments.emplace_back(motionStartTime, motionEndTime); // End of motion segment
             motionStartTime = -1; // Reset for next motion segment
         }
