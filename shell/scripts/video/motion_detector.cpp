@@ -59,6 +59,10 @@ private:
         std::string outputFileName = inputPath.stem().string() + "_converted.mp4";
         fs::path outputFilePath = outputDir / outputFileName; // Combine the directory and the new file name
 
+        if (fs::exists(outputFilePath.string()) {
+            return outputFilePath.string();
+        }
+
         std::string command = "ffmpeg -y -loglevel error -i \"" + inputFilePath + "\" -c:v copy \"" + outputFilePath.string() + "\"";
         std::cout << "Converting video to MP4 format:\n" << command << std::endl;
         int ret = std::system(command.c_str());
