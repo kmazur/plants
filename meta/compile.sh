@@ -5,7 +5,7 @@ echo "Compiling executables"
 function has_changed() {
   local FILE="$1"
   local SHA_FILE="${FILE}.sha256"
-  if [ ! -f "$TMP_DIR/$SHA_FILE" ] || [[ "$(cat "$TMP_DIR/$SHA_FILE")" == "$(sha256sum "$FILE" | cut -d ' ' -f 1)" ]]; then
+  if [ ! -f "$TMP_DIR/$SHA_FILE" ] || [[ "$(cat "$TMP_DIR/$SHA_FILE")" != "$(sha256sum "$FILE" | cut -d ' ' -f 1)" ]]; then
     return 0
   else
     return 1
