@@ -41,8 +41,23 @@ private:
         double motionStartTime = -1;
         int frameIndex = 0;
 
+        if (!cap.isOpened()) {
+            std::cerr << "Error opening video file: " << videoPath << std::endl;
+            return;
+        }
+        std::cout << "Video opened successfully.\n";
+
+        int frameCount = static_cast<int>(cap.get(cv::CAP_PROP_FRAME_COUNT));
+        double fps = cap.get(cv::CAP_PROP_FPS);
+        std::cout << "Frame count: " << frameCount << ", FPS: " << fps << std::endl;
+
         while (cap.read(currFrame)) {
+            cap.set(cv::CAP_PROP_POS_FRAMES, frameIndex);
+
             double nativeTime = cap.get(cv::CAP_PROP_POS_MSEC);
+            int currentFrame = static_cast<int>(cap.get(cv::CAP_PROP_POS_FRAMES));
+            std::cout << "Current frame: " << currentFrame << ", Native time: " << nativeTime << std::endl;
+
             double prevTime = nativeTime / 1000.0; // Time in seconds
 
             cv::cvtColor(currFrame, currFrame, cv::COLOR_BGR2GRAY);
