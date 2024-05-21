@@ -81,6 +81,7 @@ private:
         double nativeTime = 0.0;
         double prevTime = 0.0;
         double motionScore = 0.0;
+        double lastMotionTime = 0.0;
         while (true) {
             cap.set(cv::CAP_PROP_POS_FRAMES, frameIndex);
             if (!cap.read(currFrame)) break;
@@ -94,11 +95,12 @@ private:
                 motionScore = cv::sum(frameDiff)[0] / (frameDiff.rows * frameDiff.cols); // Normalize motion score
 
                 if (prevTime > 1.0 && motionScore > motionThreshold) {
-                    std::cout << motionScore << " > " << motionThreshold << " -> starting recording at: " << motionStartTime << " / nativeTime: " << nativeTime << "\n";
+                    lastMotionTime = prevTime;
+                    std::cout << motionScore << " > " << motionThreshold << " -> starting recording at: " << motionStartTime << " / nativeTime: " << nativeTime << "last motion time: " << lastMotionTime << "\n";
                     if (motionStartTime < 0) {
                         motionStartTime = std::max(prevTime - 1.0, 0.0);
                     }
-                } else if (motionStartTime >= 0 && (prevTime - motionStartTime) > 3.0) {
+                } else if (motionStartTime >= 0 && (prevTime - lastMotionTime) > 3.0) {
                     double videoLength = frameIndex / fps; // Calculate video length in seconds
                     double motionEndTime = std::min(prevTime + 1.0, videoLength);
                     std::cout << motionScore << " > " << motionThreshold << " -> stop recording at: " << motionEndTime << " / nativeTime: " << nativeTime << "\n";
