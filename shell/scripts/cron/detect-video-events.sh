@@ -67,6 +67,11 @@ while true; do
   if ! is_scale_suspended; then
     log "Processing: h264 files"
     detect_video_events "$(get_video_dir)" "$(get_video_segment_dir)"
+  else
+    log_warn "Video detection suspended"
+  fi
+  if ! is_scale_suspended; then
+    log "Processing: h264 files"
     detect_video_events "$(get_video_dir "$(get_yesterday_date_compact)")" "$(get_video_segment_dir "$(get_yesterday_date_compact)")"
   else
     log_warn "Video detection suspended"
