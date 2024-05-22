@@ -8,13 +8,15 @@
 #include <numeric>
 #include <algorithm>
 #include <cstdlib>
+#include <map>
+#include <sstream>
 
 namespace fs = std::filesystem;
 
 class VideoProcessor {
 public:
-    VideoProcessor(const std::string& videoPath, const std::string& outputPath, double motionThreshold, int boundingBox[4])
-        : videoPath(videoPath), outputPath(outputPath), motionThreshold(motionThreshold) {
+    VideoProcessor(const std::string& videoPath, const std::string& outputPath, double motionThreshold, int boundingBox[4], int frameStep, double secondsBefore, double secondsAfter)
+        : videoPath(videoPath), outputPath(outputPath), motionThreshold(motionThreshold), frameStep(frameStep), secondsBefore(secondsBefore), secondsAfter(secondsAfter) {
         std::copy(boundingBox, boundingBox + 4, this->boundingBox);
     }
     void process() {
@@ -50,10 +52,9 @@ private:
     cv::VideoCapture cap;
     std::vector<std::pair<double, double>> motionSegments; // Stores start and end times of motion segments
 
-    static constexpr int frameStep = 20; // Analyze every 20th frame for motion
-    static constexpr double secondsBefore = 1.0;
-    static constexpr double secondsAfter = 5.0;
-
+    int frameStep;
+    double secondsBefore;
+    double secondsAfter;
     double motionThreshold;
     int boundingBox[4]; // [x, y, width, height]
 
@@ -91,6 +92,13 @@ private:
         }
 
         std::cout << "Starting to detect motion" << std::endl;
+
+        int frameWidth = currFrame.cols;
+        int frameHeight = currFrame.rows;
+
+        // Adjust bounding box to be within frame boundaries
+        boundingBox[2] = std::min(boundingBox[2], frameWidth - boundingBox[0]);
+        boundingBox[3] = std::min(boundingBox[3], frameHeight - boundingBox[1]);
 
         double nativeTime = 0.0;
         double prevTime = 0.0;
@@ -173,22 +181,67 @@ private:
     }
 };
 
+std::map<std::string, std::string> readConfigFile(const std::string& configFilePath) {
+    std::map<std::string, std::string> config;
+    std::ifstream configFile(configFilePath);
+    std::string line;
+
+    while (std::getline(configFile, line)) {
+        std::istringstream lineStream(line);
+        std::string key, value;
+        if (std::getline(lineStream, key, '=') && std::getline(lineStream, value)) {
+            config[key] = value;
+        }
+    }
+
+    return config;
+}
+
+template <typename T>
+T getConfigValue(const std::map<std::string, std::string>& config, const std::string& key, const T& defaultValue) {
+    auto it = config.find(key);
+    if (it != config.end()) {
+        std::istringstream ss(it->second);
+        T value;
+        ss >> value;
+        if (ss.fail()) {
+            throw std::runtime_error("Invalid value for key: " + key);
+        }
+        return value;
+    }
+    return defaultValue;
+}
+
 int main(int argc, char** argv) {
-    if (argc != 8) {
-        std::cerr << "Usage: " << argv[0] << " <video_path> <segment_output_path> <motion_threshold> <bounding_box_x> <bounding_box_y> <bounding_box_width> <bounding_box_height>" << std::endl;
+    if (argc != 3) {
+        std::cerr << "Usage: " << argv[0] << " <video_path> <segment_output_path> <config_file_path>" << std::endl;
         return 1;
     }
     std::string videoPath = argv[1];
     std::string outputPath = argv[2];
-    double motionThreshold = std::stod(argv[3]);
-    int boundingBox[4] = { std::stoi(argv[4]), std::stoi(argv[5]), std::stoi(argv[6]), std::stoi(argv[7]) };
+    std::string configFilePath = argv[3];
+    std::map<std::string, std::string> config = readConfigFile(configFilePath);
 
-    std::cout << "Parameters:\n" <<
-        "threshold = " << motionThreshold << "\n" <<
-        "boundingBox = [x: " << boundingBox[0] << ", y: " << boundingBox[1] << ", w: " << boundingBox[2] << ", h: " << boundingBox[3] << "]\n" <<
+    try {
+        std::string outputPath = getConfigValue(config, "segment_output_path", std::string("/home/user/WORK/tmp/vid/"));
+        double motionThreshold = getConfigValue(config, "motion_threshold", 1.6);
+        int boundingBox[4] = {
+            getConfigValue(config, "bounding_box_x", 0),
+            getConfigValue(config, "bounding_box_y", 0),
+            getConfigValue(config, "bounding_box_width", 640),
+            getConfigValue(config, "bounding_box_height", 480)
+        };
 
-    VideoProcessor processor(videoPath, outputPath, motionThreshold, boundingBox);
-    processor.process();
+        std::cout << "Parameters:\n" <<
+            "threshold = " << motionThreshold << "\n" <<
+            "boundingBox = [x: " << boundingBox[0] << ", y: " << boundingBox[1] << ", w: " << boundingBox[2] << ", h: " << boundingBox[3] << "]\n" << std::endl;
+
+        VideoProcessor processor(videoPath, outputPath, motionThreshold, boundingBox);
+        processor.process();
+    } catch (const std::exception& e) {
+        std::cerr << "Error reading configuration: " << e.what() << std::endl;
+        return 1;
+    }
 
     return 0;
 }
