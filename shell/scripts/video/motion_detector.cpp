@@ -193,12 +193,13 @@ private:
         config.getBoundingBox(boundingBox);
 
         double lastMotionTime = 0.0;
+        double prevTime = 0.0;
         while (true) {
             cap.set(cv::CAP_PROP_POS_FRAMES, frameIndex);
             if (!cap.read(currFrame)) break;
 
             double nativeTime = (frameIndex / fps) * 1000.0;
-            double prevTime = nativeTime / 1000.0;
+            prevTime = nativeTime / 1000.0;
 
             cv::cvtColor(currFrame, currFrame, cv::COLOR_BGR2GRAY);
 
