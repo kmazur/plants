@@ -201,6 +201,18 @@ private:
             return;
         }
 
+        // Log frame size to standard output
+        std::cout << "Frame size: ";
+        std::cout << "width = " << currFrame.cols << ", ";
+        std::cout << "height = " << currFrame.rows << std::endl;
+
+        // Log bounding box to standard output
+        std::cout << "Bounding box coordinates: ";
+        std::cout << "x = " << boundingBox[0] << ", ";
+        std::cout << "y = " << boundingBox[1] << ", ";
+        std::cout << "width = " << boundingBox[2] << ", ";
+        std::cout << "height = " << boundingBox[3] << std::endl;
+
         double lastMotionTime = 0.0;
         double prevTime = 0.0;
         while (true) {
