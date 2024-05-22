@@ -192,32 +192,39 @@ private:
         int boundingBox[4];
         config.getBoundingBox(boundingBox);
 
-         // Adjust bounding box to be within frame boundaries
-        boundingBox[2] = std::min(boundingBox[2], currFrame.cols - boundingBox[0]);
-        boundingBox[3] = std::min(boundingBox[3], currFrame.rows - boundingBox[1]);
-
-        if (boundingBox[0] < 0 || boundingBox[1] < 0 || boundingBox[0] + boundingBox[2] > currFrame.cols || boundingBox[1] + boundingBox[3] > currFrame.rows) {
-            std::cerr << "Error: Bounding box is out of frame boundaries." << std::endl;
-            return;
-        }
-
-        // Log frame size to standard output
-        std::cout << "Frame size: ";
-        std::cout << "width = " << currFrame.cols << ", ";
-        std::cout << "height = " << currFrame.rows << std::endl;
-
-        // Log bounding box to standard output
-        std::cout << "Bounding box coordinates: ";
-        std::cout << "x = " << boundingBox[0] << ", ";
-        std::cout << "y = " << boundingBox[1] << ", ";
-        std::cout << "width = " << boundingBox[2] << ", ";
-        std::cout << "height = " << boundingBox[3] << std::endl;
-
         double lastMotionTime = 0.0;
         double prevTime = 0.0;
+
+        bool readDimensions = false;
+
         while (true) {
             cap.set(cv::CAP_PROP_POS_FRAMES, frameIndex);
             if (!cap.read(currFrame)) break;
+
+            if (!readDimensions) {
+                readDimensions = true;
+                // Adjust bounding box to be within frame boundaries
+                boundingBox[2] = std::min(boundingBox[2], currFrame.cols - boundingBox[0]);
+                boundingBox[3] = std::min(boundingBox[3], currFrame.rows - boundingBox[1]);
+
+                if (boundingBox[0] < 0 || boundingBox[1] < 0 || boundingBox[0] + boundingBox[2] > currFrame.cols || boundingBox[1] + boundingBox[3] > currFrame.rows) {
+                    std::cerr << "Error: Bounding box is out of frame boundaries." << std::endl;
+                    return;
+                }
+
+                // Log frame size to standard output
+                std::cout << "Frame size: ";
+                std::cout << "width = " << currFrame.cols << ", ";
+                std::cout << "height = " << currFrame.rows << std::endl;
+
+                // Log bounding box to standard output
+                std::cout << "Bounding box coordinates: ";
+                std::cout << "x = " << boundingBox[0] << ", ";
+                std::cout << "y = " << boundingBox[1] << ", ";
+                std::cout << "width = " << boundingBox[2] << ", ";
+                std::cout << "height = " << boundingBox[3] << std::endl;
+
+            }
 
             double nativeTime = (frameIndex / fps) * 1000.0;
             prevTime = nativeTime / 1000.0;
