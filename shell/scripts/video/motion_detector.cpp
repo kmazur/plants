@@ -192,6 +192,15 @@ private:
         int boundingBox[4];
         config.getBoundingBox(boundingBox);
 
+         // Adjust bounding box to be within frame boundaries
+        boundingBox[2] = std::min(boundingBox[2], currFrame.cols - boundingBox[0]);
+        boundingBox[3] = std::min(boundingBox[3], currFrame.rows - boundingBox[1]);
+
+        if (boundingBox[0] < 0 || boundingBox[1] < 0 || boundingBox[0] + boundingBox[2] > currFrame.cols || boundingBox[1] + boundingBox[3] > currFrame.rows) {
+            std::cerr << "Error: Bounding box is out of frame boundaries." << std::endl;
+            return;
+        }
+
         double lastMotionTime = 0.0;
         double prevTime = 0.0;
         while (true) {
