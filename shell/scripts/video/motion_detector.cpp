@@ -183,6 +183,10 @@ int main(int argc, char** argv) {
     double motionThreshold = std::stod(argv[3]);
     int boundingBox[4] = { std::stoi(argv[4]), std::stoi(argv[5]), std::stoi(argv[6]), std::stoi(argv[7]) };
 
+    std::cout << "Parameters:\n" <<
+        "threshold = " << motionThreshold << "\n" <<
+        "boundingBox = [x: " << boundingBox[0] << ", y: " << boundingBox[1] << ", w: " << boundingBox[2] << ", h: " << boundingBox[3] << "]\n" <<
+
     VideoProcessor processor(videoPath, outputPath, motionThreshold, boundingBox);
     processor.process();
 
