@@ -1,24 +1,127 @@
-#include <opencv2/opencv.hpp>
-#include <iostream>
 #include <fstream>
-#include <vector>
-#include <string>
-#include <filesystem>
-#include <deque>
-#include <numeric>
-#include <algorithm>
-#include <cstdlib>
 #include <map>
 #include <sstream>
+#include <string>
+#include <stdexcept>
+#include <iostream>
+#include <variant>
+#include <opencv2/opencv.hpp>
+#include <filesystem>
+#include <vector>
+#include <algorithm>
+#include <cstdlib>
 
 namespace fs = std::filesystem;
 
+
+
+class Config {
+public:
+    static constexpr double DEFAULT_MOTION_THRESHOLD = 2.5;
+    static constexpr int DEFAULT_FRAME_STEP = 20;
+    static constexpr double DEFAULT_SECONDS_BEFORE = 1.0;
+    static constexpr double DEFAULT_SECONDS_AFTER = 4.0;
+    static constexpr int DEFAULT_BOUNDING_BOX_X = 0;
+    static constexpr int DEFAULT_BOUNDING_BOX_Y = 0;
+    static constexpr int DEFAULT_BOUNDING_BOX_WIDTH = 1400;
+    static constexpr int DEFAULT_BOUNDING_BOX_HEIGHT = 900;
+    static constexpr const char* DEFAULT_OUTPUT_PATH = "/home/user/WORK/tmp/vid/";
+
+    Config(const std::string& configFilePath = "") {
+        if (!configFilePath.empty() && std::filesystem::exists(configFilePath)) {
+            loadConfig(configFilePath);
+        }
+        parseConfig();
+    }
+
+    double getMotionThreshold() const {
+        return std::get<double>(parsedValues.at("motion_threshold"));
+    }
+
+    int getFrameStep() const {
+        return std::get<int>(parsedValues.at("frame_step"));
+    }
+
+    double getSecondsBefore() const {
+        return std::get<double>(parsedValues.at("seconds_before"));
+    }
+
+    double getSecondsAfter() const {
+        return std::get<double>(parsedValues.at("seconds_after"));
+    }
+
+    void getBoundingBox(int (&boundingBox)[4]) const {
+        boundingBox[0] = std::get<int>(parsedValues.at("bounding_box_x"));
+        boundingBox[1] = std::get<int>(parsedValues.at("bounding_box_y"));
+        boundingBox[2] = std::get<int>(parsedValues.at("bounding_box_width"));
+        boundingBox[3] = std::get<int>(parsedValues.at("bounding_box_height"));
+    }
+
+    std::string getOutputPath() const {
+        return std::get<std::string>(parsedValues.at("segment_output_path"));
+    }
+
+    void logConfig() const {
+        std::cout << "Configuration Parameters:" << std::endl;
+        for (const auto& [key, value] : parsedValues) {
+            std::visit([&key](auto&& val) {
+                std::cout << key << " = " << val << std::endl;
+            }, value);
+        }
+    }
+
+private:
+    std::map<std::string, std::string> config;
+    std::map<std::string, std::variant<int, double, std::string>> parsedValues;
+
+    void loadConfig(const std::string& configFilePath) {
+        std::ifstream configFile(configFilePath);
+        std::string line;
+
+        while (std::getline(configFile, line)) {
+            std::istringstream lineStream(line);
+            std::string key, value;
+            if (std::getline(lineStream, key, '=') && std::getline(lineStream, value)) {
+                config[key] = value;
+            }
+        }
+    }
+
+    void parseConfig() {
+        parsedValues["motion_threshold"] = getValue("motion_threshold", DEFAULT_MOTION_THRESHOLD);
+        parsedValues["frame_step"] = getValue("frame_step", DEFAULT_FRAME_STEP);
+        parsedValues["seconds_before"] = getValue("seconds_before", DEFAULT_SECONDS_BEFORE);
+        parsedValues["seconds_after"] = getValue("seconds_after", DEFAULT_SECONDS_AFTER);
+        parsedValues["bounding_box_x"] = getValue("bounding_box_x", DEFAULT_BOUNDING_BOX_X);
+        parsedValues["bounding_box_y"] = getValue("bounding_box_y", DEFAULT_BOUNDING_BOX_Y);
+        parsedValues["bounding_box_width"] = getValue("bounding_box_width", DEFAULT_BOUNDING_BOX_WIDTH);
+        parsedValues["bounding_box_height"] = getValue("bounding_box_height", DEFAULT_BOUNDING_BOX_HEIGHT);
+        parsedValues["segment_output_path"] = getValue("segment_output_path", std::string(DEFAULT_OUTPUT_PATH));
+    }
+
+    template <typename T>
+    T getValue(const std::string& key, const T& defaultValue) const {
+        auto it = config.find(key);
+        if (it != config.end()) {
+            std::istringstream ss(it->second);
+            T value;
+            ss >> value;
+            if (ss.fail()) {
+                throw std::runtime_error("Invalid value for key: " + key);
+            }
+            return value;
+        }
+        return defaultValue;
+    }
+};
+
+
+
 class VideoProcessor {
 public:
-    VideoProcessor(const std::string& videoPath, const std::string& outputPath, double motionThreshold, int boundingBox[4], int frameStep, double secondsBefore, double secondsAfter)
-        : videoPath(videoPath), outputPath(outputPath), motionThreshold(motionThreshold), frameStep(frameStep), secondsBefore(secondsBefore), secondsAfter(secondsAfter) {
-        std::copy(boundingBox, boundingBox + 4, this->boundingBox);
-    }
+    VideoProcessor(const std::string& videoPath, const Config& config)
+        : videoPath(videoPath), config(config) {}
+
     void process() {
         std::string convertedVideoPath = convertToMP4(videoPath);
 
@@ -39,8 +142,7 @@ public:
             extractSegments(convertedVideoPath);
         }
 
-        // Clean up the converted video file
-        if (!convertedVideoPath.empty() && fs::exists(convertedVideoPath)) {
+        if (fs::exists(convertedVideoPath)) {
             fs::remove(convertedVideoPath);
             std::cout << "Converted video file deleted: " << convertedVideoPath << std::endl;
         }
@@ -48,23 +150,17 @@ public:
 
 private:
     std::string videoPath;
-    std::string outputPath;
+    const Config& config;
     cv::VideoCapture cap;
-    std::vector<std::pair<double, double>> motionSegments; // Stores start and end times of motion segments
-
-    int frameStep;
-    double secondsBefore;
-    double secondsAfter;
-    double motionThreshold;
-    int boundingBox[4]; // [x, y, width, height]
+    std::vector<std::pair<double, double>> motionSegments;
 
     std::string convertToMP4(const std::string& inputFilePath) {
         fs::path inputPath(inputFilePath);
-        fs::path outputDir = inputPath.parent_path(); // Get the parent directory of the input file
+        fs::path outputDir = inputPath.parent_path();
         std::string outputFileName = inputPath.stem().string() + "_converted.mp4";
-        fs::path outputFilePath = outputDir / outputFileName; // Combine the directory and the new file name
+        fs::path outputFilePath = outputDir / outputFileName;
 
-        if (fs::exists(outputFilePath.string())) {
+        if (fs::exists(outputFilePath)) {
             return outputFilePath.string();
         }
 
@@ -93,62 +189,52 @@ private:
 
         std::cout << "Starting to detect motion" << std::endl;
 
-        int frameWidth = currFrame.cols;
-        int frameHeight = currFrame.rows;
-
-        // Adjust bounding box to be within frame boundaries
-        boundingBox[2] = std::min(boundingBox[2], frameWidth - boundingBox[0]);
-        boundingBox[3] = std::min(boundingBox[3], frameHeight - boundingBox[1]);
-
-        double nativeTime = 0.0;
-        double prevTime = 0.0;
-        double motionScore = 0.0;
-        double lastMotionTime = 0.0;
+        int boundingBox[4];
+        config.getBoundingBox(boundingBox);
 
         while (true) {
             cap.set(cv::CAP_PROP_POS_FRAMES, frameIndex);
             if (!cap.read(currFrame)) break;
 
-            nativeTime = (frameIndex / fps) * 1000.0; // Computed native time in milliseconds
-            prevTime = nativeTime / 1000.0; // Time in seconds
+            double nativeTime = (frameIndex / fps) * 1000.0;
+            double prevTime = nativeTime / 1000.0;
 
             cv::cvtColor(currFrame, currFrame, cv::COLOR_BGR2GRAY);
 
-            // Apply bounding box
             cv::Mat roi(currFrame, cv::Rect(boundingBox[0], boundingBox[1], boundingBox[2], boundingBox[3]));
 
             if (!prevFrame.empty()) {
                 cv::Mat prevRoi(prevFrame, cv::Rect(boundingBox[0], boundingBox[1], boundingBox[2], boundingBox[3]));
                 cv::absdiff(prevRoi, roi, frameDiff);
-                motionScore = cv::sum(frameDiff)[0] / (frameDiff.rows * frameDiff.cols); // Normalize motion score
+                double motionScore = cv::sum(frameDiff)[0] / (frameDiff.rows * frameDiff.cols);
 
-                if (prevTime > 1.0 && motionScore > motionThreshold) {
-                    lastMotionTime = prevTime;
+                if (prevTime > 1.0 && motionScore > config.getMotionThreshold()) {
+                    double lastMotionTime = prevTime;
                     if (motionStartTime < 0) {
-                        std::cout << motionScore << " > " << motionThreshold << " -> starting recording at: " << motionStartTime << " / nativeTime: " << nativeTime << " last motion time: " << lastMotionTime << std::endl;
-                        motionStartTime = std::max(prevTime - secondsBefore, 0.0);
+                        std::cout << motionScore << " > " << config.getMotionThreshold() << " -> starting recording at: " << motionStartTime << " / nativeTime: " << nativeTime << " last motion time: " << lastMotionTime << std::endl;
+                        motionStartTime = std::max(prevTime - config.getSecondsBefore(), 0.0);
                     } else {
-                        std::cout << motionScore << " > " << motionThreshold << " -> bump recording at: " << motionStartTime << " / nativeTime: " << nativeTime << " last motion time: " << lastMotionTime << std::endl;
+                        std::cout << motionScore << " > " << config.getMotionThreshold() << " -> bump recording at: " << motionStartTime << " / nativeTime: " << nativeTime << " last motion time: " << lastMotionTime << std::endl;
                     }
-                } else if (motionStartTime >= 0 && (prevTime - lastMotionTime) > secondsAfter) {
-                    double videoLength = frameIndex / fps; // Calculate video length in seconds
+                } else if (motionStartTime >= 0 && (prevTime - lastMotionTime) > config.getSecondsAfter()) {
+                    double videoLength = frameIndex / fps;
                     double motionEndTime = std::min(prevTime + 1.0, videoLength);
-                    std::cout << motionScore << " > " << motionThreshold << " -> stop recording at: " << motionEndTime << " / nativeTime: " << nativeTime << std::endl;
-                    motionSegments.emplace_back(motionStartTime, motionEndTime); // End of motion segment
-                    motionStartTime = -1; // Reset for next motion segment
+                    std::cout << motionScore << " > " << config.getMotionThreshold() << " -> stop recording at: " << motionEndTime << " / nativeTime: " << nativeTime << std::endl;
+                    motionSegments.emplace_back(motionStartTime, motionEndTime);
+                    motionStartTime = -1;
                 }
             }
 
             prevFrame = currFrame.clone();
-            frameIndex += frameStep; // Jump to the next frame
+            frameIndex += config.getFrameStep();
         }
 
         if (motionStartTime >= 0) {
-            double videoLength = frameIndex / fps; // Calculate video length in seconds
+            double videoLength = frameIndex / fps;
             double motionEndTime = std::min(prevTime + 1.0, videoLength);
-            std::cout << motionScore << " > " << motionThreshold << " -> stop recording at: " << motionEndTime << " / nativeTime: " << nativeTime << std::endl;
-            motionSegments.emplace_back(motionStartTime, motionEndTime); // End of motion segment
-            motionStartTime = -1; // Reset for next motion segment
+            std::cout << motionScore << " > " << config.getMotionThreshold() << " -> stop recording at: " << motionEndTime << " / nativeTime: " << nativeTime << std::endl;
+            motionSegments.emplace_back(motionStartTime, motionEndTime);
+            motionStartTime = -1;
         }
     }
 
@@ -159,17 +245,17 @@ private:
     }
 
     std::string generateOutputFilename(double start, double end) {
-            fs::path videoFilePath(videoPath);
-            fs::path outputFilePath(outputPath);
+        fs::path videoFilePath(videoPath);
+        fs::path outputFilePath(config.getOutputPath());
 
-            fs::path dirPath = outputFilePath.parent_path();
-            std::string baseName = videoFilePath.stem().string();
-            std::string extension = videoFilePath.extension().string();
+        fs::path dirPath = outputFilePath;
+        std::string baseName = videoFilePath.stem().string();
+        std::string extension = videoFilePath.extension().string();
 
-            std::string newFilename = baseName + "_" + std::to_string(start) + "_" + std::to_string(end) + extension;
-            fs::path outputPath = dirPath / newFilename;
+        std::string newFilename = baseName + "_" + std::to_string(start) + "_" + std::to_string(end) + extension;
+        fs::path fullPath = dirPath / newFilename;
 
-            return outputPath.string();
+        return fullPath.string();
     }
 
     static void extractSegmentWithFFmpeg(const std::string& inputFile, double start, double end, const std::string& outputFile) {
@@ -181,62 +267,21 @@ private:
     }
 };
 
-std::map<std::string, std::string> readConfigFile(const std::string& configFilePath) {
-    std::map<std::string, std::string> config;
-    std::ifstream configFile(configFilePath);
-    std::string line;
-
-    while (std::getline(configFile, line)) {
-        std::istringstream lineStream(line);
-        std::string key, value;
-        if (std::getline(lineStream, key, '=') && std::getline(lineStream, value)) {
-            config[key] = value;
-        }
-    }
-
-    return config;
-}
-
-template <typename T>
-T getConfigValue(const std::map<std::string, std::string>& config, const std::string& key, const T& defaultValue) {
-    auto it = config.find(key);
-    if (it != config.end()) {
-        std::istringstream ss(it->second);
-        T value;
-        ss >> value;
-        if (ss.fail()) {
-            throw std::runtime_error("Invalid value for key: " + key);
-        }
-        return value;
-    }
-    return defaultValue;
-}
-
 int main(int argc, char** argv) {
-    if (argc != 3) {
-        std::cerr << "Usage: " << argv[0] << " <video_path> <segment_output_path> <config_file_path>" << std::endl;
+    if (argc < 3 || argc > 4) {
+        std::cerr << "Usage: " << argv[0] << " <video_path> <segment_output_path> [config_file_path]" << std::endl;
         return 1;
     }
+
     std::string videoPath = argv[1];
     std::string outputPath = argv[2];
-    std::string configFilePath = argv[3];
-    std::map<std::string, std::string> config = readConfigFile(configFilePath);
+    std::string configFilePath = (argc == 4) ? argv[3] : "";
 
     try {
-        std::string outputPath = getConfigValue(config, "segment_output_path", std::string("/home/user/WORK/tmp/vid/"));
-        double motionThreshold = getConfigValue(config, "motion_threshold", 1.6);
-        int boundingBox[4] = {
-            getConfigValue(config, "bounding_box_x", 0),
-            getConfigValue(config, "bounding_box_y", 0),
-            getConfigValue(config, "bounding_box_width", 640),
-            getConfigValue(config, "bounding_box_height", 480)
-        };
+        Config config(configFilePath);
+        config.logConfig();
 
-        std::cout << "Parameters:\n" <<
-            "threshold = " << motionThreshold << "\n" <<
-            "boundingBox = [x: " << boundingBox[0] << ", y: " << boundingBox[1] << ", w: " << boundingBox[2] << ", h: " << boundingBox[3] << "]\n" << std::endl;
-
-        VideoProcessor processor(videoPath, outputPath, motionThreshold, boundingBox);
+        VideoProcessor processor(videoPath, config);
         processor.process();
     } catch (const std::exception& e) {
         std::cerr << "Error reading configuration: " << e.what() << std::endl;
@@ -245,3 +290,5 @@ int main(int argc, char** argv) {
 
     return 0;
 }
+
+
