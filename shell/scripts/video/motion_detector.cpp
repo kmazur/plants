@@ -13,8 +13,10 @@ namespace fs = std::filesystem;
 
 class VideoProcessor {
 public:
-    VideoProcessor(const std::string& videoPath, const std::string& outputPath) : videoPath(videoPath), outputPath(outputPath) {}
-
+    VideoProcessor(const std::string& videoPath, const std::string& outputPath, double motionThreshold, int boundingBox[4])
+        : videoPath(videoPath), outputPath(outputPath), motionThreshold(motionThreshold) {
+        std::copy(boundingBox, boundingBox + 4, this->boundingBox);
+    }
     void process() {
         std::string convertedVideoPath = convertToMP4(videoPath);
 
@@ -48,10 +50,12 @@ private:
     cv::VideoCapture cap;
     std::vector<std::pair<double, double>> motionSegments; // Stores start and end times of motion segments
 
-    static constexpr double motionThreshold = 2.5; // Example threshold, adjust based on your needs
     static constexpr int frameStep = 20; // Analyze every 20th frame for motion
     static constexpr double secondsBefore = 1.0;
     static constexpr double secondsAfter = 5.0;
+
+    double motionThreshold;
+    int boundingBox[4]; // [x, y, width, height]
 
     std::string convertToMP4(const std::string& inputFilePath) {
         fs::path inputPath(inputFilePath);
@@ -92,6 +96,7 @@ private:
         double prevTime = 0.0;
         double motionScore = 0.0;
         double lastMotionTime = 0.0;
+
         while (true) {
             cap.set(cv::CAP_PROP_POS_FRAMES, frameIndex);
             if (!cap.read(currFrame)) break;
@@ -100,8 +105,13 @@ private:
             prevTime = nativeTime / 1000.0; // Time in seconds
 
             cv::cvtColor(currFrame, currFrame, cv::COLOR_BGR2GRAY);
+
+            // Apply bounding box
+            cv::Mat roi(currFrame, cv::Rect(boundingBox[0], boundingBox[1], boundingBox[2], boundingBox[3]));
+
             if (!prevFrame.empty()) {
-                cv::absdiff(prevFrame, currFrame, frameDiff);
+                cv::Mat prevRoi(prevFrame, cv::Rect(boundingBox[0], boundingBox[1], boundingBox[2], boundingBox[3]));
+                cv::absdiff(prevRoi, roi, frameDiff);
                 motionScore = cv::sum(frameDiff)[0] / (frameDiff.rows * frameDiff.cols); // Normalize motion score
 
                 if (prevTime > 1.0 && motionScore > motionThreshold) {
@@ -164,13 +174,16 @@ private:
 };
 
 int main(int argc, char** argv) {
-    if (argc < 3) {
-        std::cerr << "Usage: " << argv[0] << " <video_path> <segment_output_path>" << std::endl;
+    if (argc < 9) {
+        std::cerr << "Usage: " << argv[0] << " <video_path> <segment_output_path> <motion_threshold> <bounding_box_x> <bounding_box_y> <bounding_box_width> <bounding_box_height>" << std::endl;
         return 1;
     }
     std::string videoPath = argv[1];
     std::string outputPath = argv[2];
-    VideoProcessor processor(videoPath, outputPath);
+    double motionThreshold = std::stod(argv[3]);
+    int boundingBox[4] = { std::stoi(argv[4]), std::stoi(argv[5]), std::stoi(argv[6]), std::stoi(argv[7]) };
+
+    VideoProcessor processor(videoPath, outputPath, motionThreshold, boundingBox);
     processor.process();
 
     return 0;
