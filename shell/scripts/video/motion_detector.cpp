@@ -192,6 +192,7 @@ private:
         int boundingBox[4];
         config.getBoundingBox(boundingBox);
 
+        double lastMotionTime = 0.0;
         while (true) {
             cap.set(cv::CAP_PROP_POS_FRAMES, frameIndex);
             if (!cap.read(currFrame)) break;
@@ -209,7 +210,7 @@ private:
                 double motionScore = cv::sum(frameDiff)[0] / (frameDiff.rows * frameDiff.cols);
 
                 if (prevTime > 1.0 && motionScore > config.getMotionThreshold()) {
-                    double lastMotionTime = prevTime;
+                    lastMotionTime = prevTime;
                     if (motionStartTime < 0) {
                         std::cout << motionScore << " > " << config.getMotionThreshold() << " -> starting recording at: " << motionStartTime << " / nativeTime: " << nativeTime << " last motion time: " << lastMotionTime << std::endl;
                         motionStartTime = std::max(prevTime - config.getSecondsBefore(), 0.0);
@@ -232,7 +233,7 @@ private:
         if (motionStartTime >= 0) {
             double videoLength = frameIndex / fps;
             double motionEndTime = std::min(prevTime + 1.0, videoLength);
-            std::cout << motionScore << " > " << config.getMotionThreshold() << " -> stop recording at: " << motionEndTime << " / nativeTime: " << nativeTime << std::endl;
+            std::cout << "?" << " > " << config.getMotionThreshold() << " -> stop recording at: " << motionEndTime << std::endl;
             motionSegments.emplace_back(motionStartTime, motionEndTime);
             motionStartTime = -1;
         }
