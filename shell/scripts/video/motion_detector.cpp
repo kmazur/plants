@@ -174,7 +174,7 @@ private:
 };
 
 int main(int argc, char** argv) {
-    if (argc < 9) {
+    if (argc != 8) {
         std::cerr << "Usage: " << argv[0] << " <video_path> <segment_output_path> <motion_threshold> <bounding_box_x> <bounding_box_y> <bounding_box_width> <bounding_box_height>" << std::endl;
         return 1;
     }
