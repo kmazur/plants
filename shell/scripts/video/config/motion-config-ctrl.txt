@@ -1,0 +1,8 @@
+motion_threshold=2.5
+bounding_box_x=0
+bounding_box_y=0
+bounding_box_width=1400
+bounding_box_height=900
+seconds_before=1
+seconds_after=4
+frame_step=20

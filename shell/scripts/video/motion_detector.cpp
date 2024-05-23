@@ -25,7 +25,6 @@ public:
     static constexpr int DEFAULT_BOUNDING_BOX_Y = 0;
     static constexpr int DEFAULT_BOUNDING_BOX_WIDTH = 1400;
     static constexpr int DEFAULT_BOUNDING_BOX_HEIGHT = 900;
-    static constexpr const char* DEFAULT_OUTPUT_PATH = "/home/user/WORK/tmp/vid/";
 
     Config(const std::string& configFilePath = "") {
         if (!configFilePath.empty() && std::filesystem::exists(configFilePath)) {
@@ -55,10 +54,6 @@ public:
         boundingBox[1] = std::get<int>(parsedValues.at("bounding_box_y"));
         boundingBox[2] = std::get<int>(parsedValues.at("bounding_box_width"));
         boundingBox[3] = std::get<int>(parsedValues.at("bounding_box_height"));
-    }
-
-    std::string getOutputPath() const {
-        return std::get<std::string>(parsedValues.at("segment_output_path"));
     }
 
     void logConfig() const {
@@ -96,7 +91,6 @@ private:
         parsedValues["bounding_box_y"] = getValue("bounding_box_y", DEFAULT_BOUNDING_BOX_Y);
         parsedValues["bounding_box_width"] = getValue("bounding_box_width", DEFAULT_BOUNDING_BOX_WIDTH);
         parsedValues["bounding_box_height"] = getValue("bounding_box_height", DEFAULT_BOUNDING_BOX_HEIGHT);
-        parsedValues["segment_output_path"] = getValue("segment_output_path", std::string(DEFAULT_OUTPUT_PATH));
     }
 
     template <typename T>
@@ -119,8 +113,8 @@ private:
 
 class VideoProcessor {
 public:
-    VideoProcessor(const std::string& videoPath, const Config& config)
-        : videoPath(videoPath), config(config) {}
+    VideoProcessor(const std::string& videoPath, const std::string& outputPath, const Config& config)
+        : videoPath(videoPath), outputPath(outputPath), config(config) {}
 
     void process() {
         std::string convertedVideoPath = convertToMP4(videoPath);
@@ -150,6 +144,7 @@ public:
 
 private:
     std::string videoPath;
+    std::string outputPath;
     const Config& config;
     cv::VideoCapture cap;
     std::vector<std::pair<double, double>> motionSegments;
@@ -276,7 +271,7 @@ private:
 
     std::string generateOutputFilename(double start, double end) {
         fs::path videoFilePath(videoPath);
-        fs::path outputFilePath(config.getOutputPath());
+        fs::path outputFilePath(outputPath);
 
         fs::path dirPath = outputFilePath;
         std::string baseName = videoFilePath.stem().string();
@@ -311,7 +306,7 @@ int main(int argc, char** argv) {
         Config config(configFilePath);
         config.logConfig();
 
-        VideoProcessor processor(videoPath, config);
+        VideoProcessor processor(videoPath, outputPath, config);
         processor.process();
     } catch (const std::exception& e) {
         std::cerr << "Error reading configuration: " << e.what() << std::endl;
