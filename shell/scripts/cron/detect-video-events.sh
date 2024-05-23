@@ -11,6 +11,38 @@ PERIOD="$MIN_PERIOD"
 CAMERA_CONFIG_DIR="$REPO_DIR/shell/scripts/video/config"
 MOTION_DETECTION_CONFIG_FILE="$CAMERA_CONFIG_DIR/motion-config-$MACHINE_NAME.txt"
 
+function create_last_segment_animation() {
+  local DATE="$(get_current_date_compact)"
+  local HOUR="$(get_current_hour)"
+  if [[ "$HOUR" == "0"* ]]; then
+    HOUR="${HOUR:1}"
+  fi
+
+  local VIDEO_OUTPUT_DIR="$(get_video_segment_dir)"
+  local LAST_FILE="$(ls -1 "$VIDEO_OUTPUT_DIR" | head -n 1)"
+  local LAST_UPLOADED_FILE="$([ -f "$TMP_DIR/vid_segment_file.txt" ] && cat "$TMP_DIR/vid_segment_file.txt" )"
+
+  if [[ "$LAST_FILE" == "$LAST_UPLOADED_FILE" ]]; then
+    return 0
+  fi
+
+  local CROP_X="$(get_config "bounding_box_x" "0" "$MOTION_DETECTION_CONFIG_FILE")"
+  local CROP_Y="$(get_config "bounding_box_y" "0" "$MOTION_DETECTION_CONFIG_FILE")"
+  local CROP_W="$(get_config "bounding_box_width" "in_w-${CROP_X}" "$MOTION_DETECTION_CONFIG_FILE")"
+  local CROP_H="$(get_config "bounding_box_height" "in_h-${CROP_Y}" "$MOTION_DETECTION_CONFIG_FILE")"
+
+  echo "Complex filter for ffmpeg: [0:v]setpts=PTS/8,crop=${CROP_X}:${CROP_Y}:${CROP_W}:${CROP_H}[v]"
+  local ANIMATION_FILE="$TMP_DIR/vid_segment_short_${MACHINE_NAME}.mp4"
+  rm "$ANIMATION_FILE" &> /dev/null
+
+  # crop=out_w:out_h:x:y
+  ffmpeg -y -i "$VIDEO_OUTPUT_DIR/$LAST_FILE" -filter_complex "[0:v]setpts=PTS/8,crop=${CROP_W}:${CROP_H}:${CROP_X}:${CROP_Y}[v]" -map "[v]" -an -c:v libx264 -crf 23 -preset veryfast "$ANIMATION_FILE"
+
+  if [ -f "$ANIMATION_FILE" ]; then
+    upload_file "$ANIMATION_FILE" "video/mp4"
+  fi
+}
+
 function can_process() {
   local HOUR="$(get_current_hour)"
   if [[ "$HOUR" == "0"* ]]; then
@@ -67,6 +99,10 @@ function detect_video_events() {
 }
 
 while true; do
+
+  if can_process; then
+    create_last_segment_animation
+  fi
 
   if can_process; then
     PROCESS_VIDEO_DIR="$(get_video_dir)"

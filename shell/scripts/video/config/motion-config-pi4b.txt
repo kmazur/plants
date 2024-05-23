@@ -1,8 +1,8 @@
 motion_threshold=1.8
 bounding_box_x=600
-bounding_box_y=200
-bounding_box_width=500
-bounding_box_height=330
+bounding_box_y=100
+bounding_box_width=560
+bounding_box_height=480
 seconds_before=1
 seconds_after=5
 frame_step=20
