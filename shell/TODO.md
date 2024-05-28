@@ -62,7 +62,10 @@
     - kibana logs?
   - https://github.com/mcguirepr89/BirdNET-Pi
 
-
+- Stagging of processing
+  - RAW -> postprocess -> drawText -> trim -> detect 
+  - Publish at each stage?
+  - 
 
 
 #Disable Power LED (Red)
