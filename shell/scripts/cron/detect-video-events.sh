@@ -31,7 +31,7 @@ function create_last_segment_animation() {
   local CROP_W="$(get_config "bounding_box_width" "in_w-${CROP_X}" "$MOTION_DETECTION_CONFIG_FILE")"
   local CROP_H="$(get_config "bounding_box_height" "in_h-${CROP_Y}" "$MOTION_DETECTION_CONFIG_FILE")"
 
-  echo "Complex filter for ffmpeg: [0:v]setpts=PTS/8,crop=${CROP_X}:${CROP_Y}:${CROP_W}:${CROP_H}[v]"
+  echo "Complex filter for ffmpeg: [0:v]setpts=PTS/8,crop=${CROP_W}:${CROP_H}:${CROP_X}:${CROP_Y}[v]"
   local ANIMATION_FILE="$TMP_DIR/vid_segment_short_${MACHINE_NAME}.mp4"
   rm "$ANIMATION_FILE" &> /dev/null
 
