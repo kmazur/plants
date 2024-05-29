@@ -12,7 +12,7 @@ function update_period() {
   PERIOD="$(get_scaled_inverse_value "$MIN_PERIOD" "$MAX_PERIOD")"
 }
 
-SEGMENT_DURATION_SECONDS="600"
+SEGMENT_DURATION_SECONDS="300"
 MACHINE_NAME="$(get_required_config "name")"
 VID_CONFIG_FILE="$(get_required_config "video-config-file")"
 
