@@ -36,7 +36,7 @@ function create_last_segment_animation() {
   rm "$ANIMATION_FILE" &> /dev/null
 
   # crop=out_w:out_h:x:y
-  ffmpeg -y -i "$VIDEO_OUTPUT_DIR/$LAST_FILE" -filter_complex "[0:v]setpts=PTS/8,crop=${CROP_W}:${CROP_H}:${CROP_X}:${CROP_Y}[v]" -map "[v]" -an -c:v libx264 -crf 23 -preset veryfast "$ANIMATION_FILE"
+  ffmpeg -y -i "$VIDEO_OUTPUT_DIR/$LAST_FILE" -filter_complex "[0:v]setpts=PTS/4,crop=${CROP_W}:${CROP_H}:${CROP_X}:${CROP_Y}[v]" -map "[v]" -an -c:v libx264 -crf 23 -preset veryfast "$ANIMATION_FILE"
 
   if [ -f "$ANIMATION_FILE" ]; then
     upload_file "$ANIMATION_FILE" "video/mp4"
