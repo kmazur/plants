@@ -1,4 +1,4 @@
-motion_threshold=2.5
+motion_threshold=2.9
 bounding_box_x=0
 bounding_box_y=0
 bounding_box_width=1280
