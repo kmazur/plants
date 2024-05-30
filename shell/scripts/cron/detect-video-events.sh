@@ -19,7 +19,7 @@ function create_last_segment_animation() {
   fi
 
   local VIDEO_OUTPUT_DIR="$(get_video_segment_dir)"
-  local LAST_FILE="$(ls -1 "$VIDEO_OUTPUT_DIR" | head -n 1)"
+  local LAST_FILE="$(ls -1 "$VIDEO_OUTPUT_DIR" | tail -n 1)"
   local LAST_UPLOADED_FILE="$([ -f "$TMP_DIR/vid_segment_file.txt" ] && cat "$TMP_DIR/vid_segment_file.txt" )"
 
   if [[ "$LAST_FILE" == "$LAST_UPLOADED_FILE" ]]; then

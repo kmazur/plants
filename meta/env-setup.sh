@@ -9,7 +9,7 @@ sudo apt-get -y upgrade
 
 echo "INSTALLING:"
 echo "-git"
-sudo apt-get install git
+sudo apt-get -y install git
 
 wget https://raw.githubusercontent.com/kmazur/plants/main/meta/git-update.sh
 chmod +x git-update.sh
@@ -70,12 +70,12 @@ echo "- motion"
 echo "- openjdk-17-jdk"
 echo "- bc"
 sudo apt-get -y install git vim htop pigpio screen imagemagick libcamera-tools python3-opencv jq
-sudo apt-get -y install motion
+#sudo apt-get -y install motion
 #sudo apt-get -y install openjdk-17-jdk
 sudo apt-get -y install python3-pip
 sudo apt-get -y install bc
-sudo apt-get -y install vorbis-tools
-sudo apt-get -y install lame
+# sudo apt-get -y install vorbis-tools
+# sudo apt-get -y install lame
 sudo apt-get -y install libopencv-dev
 sudo apt-get -y install cpufrequtils
 
