@@ -202,8 +202,6 @@ private:
         cv::Mat prevFrameGray;
         double motionStartTime = -1;
         double fps = cap.get(cv::CAP_PROP_FPS);
-        double frameTimeIncrement = 1.0 / fps;
-        double stepTimeIncrement = config.getFrameStep() * frameTimeIncrement;
 
         videoFps = fps;
 
@@ -238,9 +236,11 @@ private:
         double lastMotionTimeSecond = 0.0;
         double frameTimeSecond = 0.0;
 
-        int frameIndexCycle = 0;
         int frameIndex = 0;
-        int frameIndexStep = config.getFrameStep() - 1;
+        int frameIndexStep = config.getFrameStep();
+
+        double frameTimeIncrement = 1.0 / fps;
+        double stepTimeIncrement = frameIndexStep * frameTimeIncrement;
 
         std::vector<MotionData> motionDataList;
 
@@ -255,48 +255,43 @@ private:
                 break;
             }
 
-            frameTimeSecond += frameTimeIncrement;
-            if (frameIndexCycle == frameIndexStep) {
-                cv::cvtColor(currFrame(boundingRect), currRoi, cv::COLOR_BGR2GRAY);
+            frameTimeSecond += stepTimeIncrement;
+            cv::cvtColor(currFrame(boundingRect), currRoi, cv::COLOR_BGR2GRAY);
 
-                if (!prevFrame.empty()) {
-                    cv::absdiff(prevRoi, currRoi, frameDiff);
-                    frameDiff.copyTo(maskedDiff, mask);
-                    double motionScore = cv::sum(maskedDiff)[0] / cv::countNonZero(mask);
+            if (!prevFrame.empty()) {
+                cv::absdiff(prevRoi, currRoi, frameDiff);
+                frameDiff.copyTo(maskedDiff, mask);
+                double motionScore = cv::sum(maskedDiff)[0] / cv::countNonZero(mask);
 
-                    if (motionStartTime >= 0) {
-                        motionDataList.push_back({frameTimeSecond - motionStartTime, frameIndex, motionScore});
-                    }
-
-                    if (frameTimeSecond > ignoreFirstSeconds) {
-                        if (motionScore >= motionThreshold) {
-                            lastMotionTimeSecond = frameTimeSecond;
-                            if (motionStartTime < 0) {
-                                // TODO: frameTimeSecond - config.getSecondsBefore()
-                                motionStartTime = std::max(frameTimeSecond - recordBeforeMotionSeconds, 0.0);
-                                motionDataList.clear();
-                                motionDataList.push_back({0.0, frameIndex, motionScore});
-                            }
-                        } else if (motionStartTime >= 0 && (frameTimeSecond - lastMotionTimeSecond) > recordAfterMotionSeconds) {
-                            // TODO: double motionEndTime = std::min(lastMotionTimeSecond + 1.0, videoLength);
-                            double motionEndTime = std::min(lastMotionTimeSecond + 1.0, frameTimeSecond);
-                            std::cout << "Motion detected at: ["<< motionStartTime << " -> " << motionEndTime << "]\n";
-                            motionSegments.emplace_back(motionStartTime, motionEndTime);
-                            writeMotionDataToFile(motionStartTime, motionEndTime, motionDataList);
-                            motionDataList.clear();
-                            motionStartTime = -1;
-                        }
-                    }
-
+                if (motionStartTime >= 0) {
+                    motionDataList.push_back({frameTimeSecond - motionStartTime, frameIndex, motionScore});
                 }
 
-                frameIndexCycle = 0;
-                std::swap(prevFrame, currFrame);
-                std::swap(prevRoi, currRoi);
+                if (frameTimeSecond > ignoreFirstSeconds) {
+                    if (motionScore >= motionThreshold) {
+                        lastMotionTimeSecond = frameTimeSecond;
+                        if (motionStartTime < 0) {
+                            // TODO: frameTimeSecond - config.getSecondsBefore()
+                            motionStartTime = std::max(frameTimeSecond - recordBeforeMotionSeconds, 0.0);
+                            motionDataList.clear();
+                            motionDataList.push_back({0.0, frameIndex, motionScore});
+                        }
+                    } else if (motionStartTime >= 0 && (frameTimeSecond - lastMotionTimeSecond) > recordAfterMotionSeconds) {
+                        // TODO: double motionEndTime = std::min(lastMotionTimeSecond + 1.0, videoLength);
+                        double motionEndTime = std::min(lastMotionTimeSecond + 1.0, frameTimeSecond);
+                        std::cout << "Motion detected at: ["<< motionStartTime << " -> " << motionEndTime << "]\n";
+                        motionSegments.emplace_back(motionStartTime, motionEndTime);
+                        writeMotionDataToFile(motionStartTime, motionEndTime, motionDataList);
+                        motionDataList.clear();
+                        motionStartTime = -1;
+                    }
+                }
+
             }
 
-            ++frameIndex;
-            ++frameIndexCycle;
+            std::swap(prevFrame, currFrame);
+            std::swap(prevRoi, currRoi);
+            frameIndex += frameIndexStep;
         }
 
         if (motionStartTime >= 0) {
