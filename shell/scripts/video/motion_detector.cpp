@@ -113,15 +113,14 @@ private:
     }
 };
 
-
-    template <>
-    std::string getValue(const std::string& key, const std::string& defaultValue) const {
-        auto it = config.find(key);
-        if (it != config.end()) {
-            return it->second;
-        }
-        return defaultValue;
+template <>
+std::string getValue(const std::string& key, const std::string& defaultValue) const {
+    auto it = config.find(key);
+    if (it != config.end()) {
+        return it->second;
     }
+    return defaultValue;
+}
 
 class VideoProcessor {
 public:
