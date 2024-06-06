@@ -223,6 +223,12 @@ private:
             double nativeTime = (frameIndex / fps) * 1000.0;
             prevTime = nativeTime / 1000.0;
 
+            // Check if the frame is non-empty and the size is valid
+            if (currFrame.empty() || currFrame.cols < boundingRect.width || currFrame.rows < boundingRect.height) {
+                std::cerr << "Error: Current frame is invalid or too small." << std::endl;
+                break;
+            }
+
             // Convert to grayscale only within the ROI
             if (roi.empty() || roi.size() != boundingRect.size()) {
                 roi.create(boundingRect.size(), currFrame.type());
