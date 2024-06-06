@@ -275,9 +275,7 @@ private:
                 double motionScore = cv::sum(maskedDiff)[0] / cv::countNonZero(mask);
 
                 // Accumulate motion data if a segment is being recorded
-                if (motionStartTime >= 0) {
-                    motionDataList.push_back({prevTime, frameIndex, motionScore});
-                }
+                motionDataList.push_back({prevTime, frameIndex, motionScore});
 
                 if (prevTime > ignoreFirstSeconds) {
                     if (motionScore > config.getMotionThreshold()) {
