@@ -281,6 +281,7 @@ private:
                             // TODO: double motionEndTime = std::min(lastMotionTimeSecond + 1.0, videoLength);
                             double motionEndTime = lastMotionTimeSecond;
                             motionSegments.emplace_back(motionStartTime, motionEndTime);
+                            std::cout << "Detected motion at: ["<< motionStartTime << " -> " << motionEndTime << "]" << "\n";
                             writeMotionDataToFile(motionStartTime, motionEndTime, motionDataList);
                             motionDataList.clear();
                             motionStartTime = -1;
