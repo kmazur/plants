@@ -113,8 +113,9 @@ private:
     }
 };
 
+// Correct specialization outside the class definition
 template <>
-std::string getValue(const std::string& key, const std::string& defaultValue) const {
+std::string Config::getValue(const std::string& key, const std::string& defaultValue) const {
     auto it = config.find(key);
     if (it != config.end()) {
         return it->second;
