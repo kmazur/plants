@@ -325,13 +325,33 @@ private:
             return;
         }
 
-        // Write each motion data entry in the format required by ffmpeg drawtext filter
+        // Write each motion data entry in a simple format
         for (const auto& data : motionDataList) {
-            file << data.time / 1000.0 << " : text='Time: " << data.time << " ms, Frame: " << data.frameIndex << ", Motion Score: " << data.motionScore << "'\n";
+            file << data.time << " " << data.frameIndex << " " << data.motionScore << "\n";
         }
 
         file.close();
         std::cout << "Motion data written to file: " << filename << std::endl;
+
+        // After writing the motion data, create a new video with overlayed text
+        std::string segmentFilename = generateOutputFilename(startTime, endTime);
+        overlayMotionScores(segmentFilename, filename);
+    }
+
+     // Method to overlay motion scores on video using ffmpeg
+    void overlayMotionScores(const std::string& videoSegment, const std::string& scoresFile) {
+        std::string outputFilename = videoSegment + "_with_scores.mp4";
+        std::string command = "ffmpeg -y -i \"" + videoSegment + "\" -vf \"drawtext=fontfile=/path/to/font.ttf:textfile=" + scoresFile +
+                              ":x=10:y=h-50:fontcolor=white:fontsize=24:reload=1\" -codec:a copy \"" + outputFilename + "\"";
+
+        std::cout << "Executing FFmpeg command for overlay: " << command << std::endl;
+        int ret = std::system(command.c_str());
+
+        if (ret != 0) {
+            std::cerr << "Error overlaying text on video segment: " << videoSegment << std::endl;
+        } else {
+            std::cout << "Video segment with scores created: " << outputFilename << std::endl;
+        }
     }
 
     void extractSegments(const std::string& convertedVideoPath) {
