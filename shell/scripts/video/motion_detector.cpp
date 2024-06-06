@@ -435,7 +435,7 @@ private:
             overlayMotionScores(outputSegment, scoresFile);
 
             std::string scoresVideo = outputSegment + "_with_scores.mp4";
-            overlayPolygon(scoresVideo)
+            overlayPolygon(scoresVideo);
         }
     }
 
