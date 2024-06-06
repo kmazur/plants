@@ -275,8 +275,10 @@ private:
                 double motionScore = cv::sum(maskedDiff)[0] / cv::countNonZero(mask);
 
                 // Accumulate motion data if a segment is being recorded
-                motionDataList.push_back({prevTime, frameIndex, motionScore});
-                std::cout << "time: " << prevTime << ", frame: " << frameIndex << ", score: " << motionScore << std::endl;
+                if (motionStartTime >= 0) {
+                    motionDataList.push_back({prevTime - motionStartTime, frameIndex, motionScore});
+                    std::cout << "time: " << prevTime << ", frame: " << frameIndex << ", score: " << motionScore << std::endl;
+                }
 
                 if (prevTime > ignoreFirstSeconds) {
                     if (motionScore > config.getMotionThreshold()) {
@@ -284,6 +286,7 @@ private:
                         if (motionStartTime < 0) {
                             motionStartTime = std::max(prevTime - config.getSecondsBefore(), 0.0);
                             std::cout << motionScore << " > " << config.getMotionThreshold() << " -> motion start detected at: " << motionStartTime << " s " << std::endl;
+                            motionDataList.clear();
                         } else {
                             std::cout << motionScore << " > " << config.getMotionThreshold() << " -> motion continuing from: " << motionStartTime << " -> " << prevTime << std::endl;
                         }
@@ -328,7 +331,7 @@ private:
 
         // Write each motion data entry with time and motion score in a format suitable for FFmpeg
         for (const auto& data : motionDataList) {
-            file << (data.time/1000.0) << " " << data.motionScore << "\n"; // Time in seconds and motion score
+            file << data.time << " " << data.motionScore << "\n"; // Time in seconds and motion score
         }
 
         file.close();
