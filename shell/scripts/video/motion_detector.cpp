@@ -187,6 +187,7 @@ private:
     // Helper method to ensure size and type of a matrix
     void ensureSizeAndType(cv::Mat& mat, const cv::Size& size, int type) {
         if (mat.empty() || mat.size() != size || mat.type() != type) {
+            std::cout << "Creating matrix of size: " << size << " and type: " << type << std::endl;
             mat.create(size, type);
         }
     }
@@ -230,6 +231,10 @@ private:
             double nativeTime = (frameIndex / fps) * 1000.0;
             prevTime = nativeTime / 1000.0;
 
+            // Log the current frame's details
+            std::cout << "Frame index: " << frameIndex << ", Size: " << currFrame.size() << ", Type: " << currFrame.type() << std::endl;
+
+
             // Check if the frame is non-empty and the size is valid
             if (currFrame.empty() || currFrame.cols < boundingRect.width || currFrame.rows < boundingRect.height) {
                 std::cerr << "Error: Current frame is invalid or too small." << std::endl;
@@ -238,16 +243,36 @@ private:
 
             // Convert to grayscale only within the ROI
             ensureSizeAndType(roi, boundingRect.size(), CV_8UC1);
+
+            // Log ROI details
+            std::cout << "ROI Size: " << roi.size() << ", Type: " << roi.type() << std::endl;
             cv::cvtColor(currFrame(boundingRect), roi, cv::COLOR_BGR2GRAY);
 
             if (!prevFrame.empty()) {
                 ensureSizeAndType(prevRoi, boundingRect.size(), CV_8UC1);
+
+                // Log previous ROI details
+                std::cout << "Prev ROI Size: " << prevRoi.size() << ", Type: " << prevRoi.type() << std::endl;
                 prevFrame(boundingRect).copyTo(prevRoi);
 
+
                 ensureSizeAndType(frameDiff, boundingRect.size(), CV_8UC1);
-                cv::absdiff(prevRoi, roi, frameDiff);
+                // Log frame difference details before performing absdiff
+                std::cout << "FrameDiff Size: " << frameDiff.size() << ", Type: " << frameDiff.type() << std::endl;
+
+
+                // Check types and sizes before performing absdiff
+                if (prevRoi.type() == roi.type() && prevRoi.size() == roi.size()) {
+                    cv::absdiff(prevRoi, roi, frameDiff);
+                } else {
+                    std::cerr << "Error: prevRoi and roi must be the same size and type for absdiff." << std::endl;
+                    break;
+                }
 
                 ensureSizeAndType(maskedDiff, boundingRect.size(), CV_8UC1);
+                // Log masked difference details
+                std::cout << "MaskedDiff Size: " << maskedDiff.size() << ", Type: " << maskedDiff.type() << std::endl;
+
                 frameDiff.copyTo(maskedDiff, mask);
 
                 double motionScore = cv::sum(maskedDiff)[0] / cv::countNonZero(mask);
