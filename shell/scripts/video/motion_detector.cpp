@@ -166,6 +166,7 @@ private:
     const Config& config;
     cv::VideoCapture cap;
     std::vector<std::pair<double, double>> motionSegments;
+    double videoFps;
 
     std::string convertToMP4(const std::string& inputFilePath) {
         fs::path inputPath(inputFilePath);
@@ -202,6 +203,7 @@ private:
         double motionStartTime = -1;
         int frameIndex = 0;
         double fps = cap.get(cv::CAP_PROP_FPS);
+        videoFps = fps;
 
         if (fps <= 0) {
             std::cerr << "Error retrieving FPS from video." << std::endl;
@@ -357,10 +359,12 @@ private:
 
         // Construct the drawtext command for each score with enable expressions
         std::ostringstream drawtextCommand;
-        for (const auto& data : motionDataList) {
+        for (size_t i = 0; i < motionDataList.size(); ++i) {
+            const auto& data = motionDataList[i];
+            double nextTime = (i + 1 < motionDataList.size()) ? motionDataList[i + 1].time : data.time + 10; // assume 10s default for last segment
             drawtextCommand << "drawtext=fontfile=/path/to/font.ttf:text='Motion Score: " << data.motionScore
                             << "':x=10:y=h-50:fontcolor=white:fontsize=24:box=1:boxcolor=black@0.5:boxborderw=5"
-                            << ":enable='between(t," << data.time << "," << (data.time + 1.0 / 30.0) << ")',";
+                            << ":enable='between(t," << data.time << "," << nextTime << ")',";
         }
 
         std::string drawtextFilters = drawtextCommand.str();
