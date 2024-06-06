@@ -315,7 +315,6 @@ private:
         }
     }
 
-    // Helper function to write motion data to a file
     void writeMotionDataToFile(double startTime, double endTime, const std::vector<MotionData>& motionDataList) {
         std::string filename = generateOutputFilename(startTime, endTime) + ".scores";
 
@@ -325,20 +324,31 @@ private:
             return;
         }
 
-        // Write each motion data entry in a simple format
+        // Write each motion data entry with time and motion score in a format suitable for FFmpeg
         for (const auto& data : motionDataList) {
-            file << data.time << " " << data.frameIndex << " " << data.motionScore << "\n";
+            file << data.time << " " << data.motionScore << "\n"; // Time in seconds and motion score
         }
 
         file.close();
         std::cout << "Motion data written to file: " << filename << std::endl;
     }
 
-     // Method to overlay motion scores on video using ffmpeg
     void overlayMotionScores(const std::string& videoSegment, const std::string& scoresFile) {
         std::string outputFilename = videoSegment + "_with_scores.mp4";
-        std::string command = "ffmpeg -y -i \"" + videoSegment + "\" -vf \"drawtext=fontfile=/path/to/font.ttf:textfile=" + scoresFile +
-                              ":x=10:y=h-50:fontcolor=white:fontsize=24:reload=1\" -codec:a copy \"" + outputFilename + "\"";
+
+        // Construct the drawtext command to read from the scores file and update text dynamically
+        std::string drawtextCommand =
+            "drawtext=fontfile=/path/to/font.ttf:"
+            "text='%{e\\:text}'" // Use FFmpeg expression to evaluate text dynamically
+            ":x=10:y=h-50:fontcolor=white:fontsize=24:"
+            "box=1:boxcolor=black@0.5:boxborderw=5:"
+            "reload=1:" // Reload the text for each frame
+            "start_number='0':"
+            "file='" + scoresFile + "'"
+            ":t=1000000" // Read from the file for the entire duration
+            ":enable='between(t,0,1000000)'";
+
+        std::string command = "ffmpeg -y -i \"" + videoSegment + "\" -vf \"" + drawtextCommand + "\" -codec:a copy \"" + outputFilename + "\"";
 
         std::cout << "Executing FFmpeg command for overlay: " << command << std::endl;
         int ret = std::system(command.c_str());
