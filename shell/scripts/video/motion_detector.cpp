@@ -256,7 +256,6 @@ private:
             }
 
             frameTimeSecond += frameTimeIncrement;
-            std::cout << "Frame: " << frameIndex << " -> time: " << frameTimeSecond << "\n";
             if (frameIndexCycle == frameIndexStep) {
                 cv::cvtColor(currFrame(boundingRect), currRoi, cv::COLOR_BGR2GRAY);
 
