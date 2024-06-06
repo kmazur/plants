@@ -201,8 +201,10 @@ private:
         cv::Mat prevFrame, currFrame, frameDiff;
         cv::Mat prevFrameGray;
         double motionStartTime = -1;
-        int frameIndex = 0;
         double fps = cap.get(cv::CAP_PROP_FPS);
+        double frameTimeIncrement = 1.0 / fps;
+        double stepTimeIncrement = config.getFrameStep() * frameTimeIncrement;
+
         videoFps = fps;
 
         if (fps <= 0) {
@@ -225,101 +227,82 @@ private:
         cv::fillPoly(mask, std::vector<std::vector<cv::Point>>{adjustedPolygon}, cv::Scalar(255));
 
         // Pre-allocate memory for regions and differences
-        cv::Mat roi, prevRoi, maskedDiff;
-        double lastMotionTime = 0.0;
-        double prevTime = 0.0;
+        cv::Mat currRoi, prevRoi, maskedDiff;
+        ensureSizeAndType(currRoi, boundingRect.size(), CV_8UC1);
 
         double ignoreFirstSeconds = 1.0;
+        double motionThreshold = config.getMotionThreshold();
+        double recordAfterMotionSeconds = config.getSecondsAfter();
+
+        double lastMotionTimeSecond = 0.0;
+        double frameTimeSecond = 0.0;
+
+        int frameIndexCycle = 0;
+        int frameIndex = 0;
+        int frameIndexStep = config.getFrameStep() - 1;
 
         std::vector<MotionData> motionDataList;
 
+        ensureSizeAndType(currRoi, boundingRect.size(), CV_8UC1);
+        ensureSizeAndType(prevRoi, boundingRect.size(), CV_8UC1);
+        ensureSizeAndType(frameDiff, boundingRect.size(), CV_8UC1);
+        ensureSizeAndType(maskedDiff, boundingRect.size(), CV_8UC1);
+
         while (true) {
             cap.set(cv::CAP_PROP_POS_FRAMES, frameIndex);
-            if (!cap.read(currFrame)) break;
-
-            double nativeTime = (frameIndex / fps) * 1000.0;
-            prevTime = nativeTime / 1000.0;
-
-            // Check if the frame is non-empty and the size is valid
-            if (currFrame.empty() || currFrame.cols < boundingRect.width || currFrame.rows < boundingRect.height) {
-                std::cerr << "Error: Current frame is invalid or too small." << std::endl;
+            if (!cap.read(currFrame)) {
                 break;
             }
 
-            // Convert to grayscale only within the ROI
-            ensureSizeAndType(roi, boundingRect.size(), CV_8UC1);
-            // Log ROI details
-            cv::cvtColor(currFrame(boundingRect), roi, cv::COLOR_BGR2GRAY);
+            frameTimeSecond += frameTimeIncrement;
+            if (frameIndexCycle == frameIndexStep) {
+                cv::cvtColor(currFrame(boundingRect), currRoi, cv::COLOR_BGR2GRAY);
 
-            if (!prevFrame.empty()) {
-                // Ensure prevFrameGray is the correct size and type before converting
-                ensureSizeAndType(prevFrameGray, boundingRect.size(), CV_8UC1);
-                cv::cvtColor(prevFrame(boundingRect), prevFrameGray, cv::COLOR_BGR2GRAY);
-                ensureSizeAndType(prevRoi, boundingRect.size(), CV_8UC1);
-                prevFrameGray.copyTo(prevRoi);
+                if (!prevFrame.empty()) {
+                    cv::absdiff(prevRoi, currRoi, frameDiff);
+                    frameDiff.copyTo(maskedDiff, mask);
+                    double motionScore = cv::sum(maskedDiff)[0] / cv::countNonZero(mask);
 
-                // Ensure the frameDiff matrix is the same size and type as the ROIs
-                ensureSizeAndType(frameDiff, boundingRect.size(), CV_8UC1);
-
-                // Check types and sizes before performing absdiff
-                if (prevRoi.type() == roi.type() && prevRoi.size() == roi.size()) {
-                    cv::absdiff(prevRoi, roi, frameDiff);
-                } else {
-                    std::cerr << "Error: prevRoi and roi must be the same size and type for absdiff." << std::endl;
-                    break;
-                }
-
-                ensureSizeAndType(maskedDiff, boundingRect.size(), CV_8UC1);
-                frameDiff.copyTo(maskedDiff, mask);
-
-                double motionScore = cv::sum(maskedDiff)[0] / cv::countNonZero(mask);
-
-                // Accumulate motion data if a segment is being recorded
-                if (motionStartTime >= 0) {
-                    motionDataList.push_back({prevTime - motionStartTime, frameIndex, motionScore});
-                    std::cout << "time: " << prevTime - motionStartTime << ", frame: " << frameIndex << ", score: " << motionScore << std::endl;
-                }
-
-                if (prevTime > ignoreFirstSeconds) {
-                    if (motionScore > config.getMotionThreshold()) {
-                        lastMotionTime = prevTime;
-                        if (motionStartTime < 0) {
-                            motionStartTime = std::max(prevTime - config.getSecondsBefore(), 0.0);
-                            std::cout << motionScore << " > " << config.getMotionThreshold() << " -> motion start detected at: " << motionStartTime << " s " << std::endl;
-                            motionDataList.clear();
-                            motionDataList.push_back({0.0, frameIndex, motionScore});
-                            std::cout << "time: " << prevTime - motionStartTime << ", frame: " << frameIndex << ", score: " << motionScore << std::endl;
-                        } else {
-                            std::cout << motionScore << " > " << config.getMotionThreshold() << " -> motion continuing from: " << motionStartTime << " -> " << prevTime << std::endl;
-                        }
-                    } else if (motionStartTime >= 0 && (prevTime - lastMotionTime) > config.getSecondsAfter()) {
-                        double videoLength = frameIndex / fps;
-                        double motionEndTime = std::min(lastMotionTime + 1.0, videoLength);
-                        std::cout << motionScore << " > " << config.getMotionThreshold() << " -> motion end. Motion detected at: " << motionStartTime << " -> " << motionEndTime << std::endl;
-                        motionSegments.emplace_back(motionStartTime, motionEndTime);
-                        // Write the motion data to a file named after the segment
-                        writeMotionDataToFile(motionStartTime, motionEndTime, motionDataList);
-                        motionDataList.clear();
-                        motionStartTime = -1;
-                        break;
+                    if (motionStartTime >= 0) {
+                        motionDataList.push_back({frameTimeSecond - motionStartTime, frameIndex, motionScore});
                     }
+
+                    if (frameTimeSecond > ignoreFirstSeconds) {
+                        if (motionScore >= motionThreshold) {
+                            lastMotionTimeSecond = frameTimeSecond;
+                            if (motionStartTime < 0) {
+                                // TODO: frameTimeSecond - config.getSecondsBefore()
+                                motionStartTime = std::max(frameTimeSecond, 0.0);
+                                motionDataList.clear();
+                                motionDataList.push_back({0.0, frameIndex, motionScore});
+                            }
+                        } else if (motionStartTime >= 0 && (frameTimeSecond - lastMotionTimeSecond) > recordAfterMotionSeconds) {
+                            // TODO: double motionEndTime = std::min(lastMotionTimeSecond + 1.0, videoLength);
+                            double motionEndTime = lastMotionTimeSecond;
+                            motionSegments.emplace_back(motionStartTime, motionEndTime);
+                            writeMotionDataToFile(motionStartTime, motionEndTime, motionDataList);
+                            motionDataList.clear();
+                            motionStartTime = -1;
+                            break;
+                        }
+                    }
+
                 }
+
+                frameIndexCycle = 0;
+                std::swap(prevFrame, currFrame);
+                std::swap(prevRoi, currRoi);
             }
 
-            // Efficient way to swap current and previous frames
-            std::swap(prevFrame, currFrame);
-            frameIndex += config.getFrameStep();
+            ++frameIndex;
+            ++frameIndexCycle;
         }
 
         if (motionStartTime >= 0) {
-            double videoLength = frameIndex / fps;
-            double motionEndTime = std::min(lastMotionTime + 1.0, videoLength);
-            std::cout << "?" << " > " << config.getMotionThreshold() << " -> motion end. Motion detected at: " << motionStartTime << " -> " << motionEndTime << std::endl;
+            // TODO: double motionEndTime = std::min(lastMotionTimeSecond + 1.0, videoLength);
+            double motionEndTime = lastMotionTimeSecond;
             motionSegments.emplace_back(motionStartTime, motionEndTime);
-            // Write the motion data to a file named after the last segment
             writeMotionDataToFile(motionStartTime, motionEndTime, motionDataList);
-            motionDataList.clear();
-            motionStartTime = -1;
         }
     }
 
@@ -332,17 +315,16 @@ private:
             return;
         }
 
-        // Write each motion data entry with time and motion score in a format suitable for FFmpeg
         for (const auto& data : motionDataList) {
-            file << data.time << " " << data.motionScore << "\n"; // Time in seconds and motion score
+            file << data.time << " " << data.motionScore << "\n";
         }
-
         file.close();
-        std::cout << "Motion data written to file: " << filename << std::endl;
     }
 
-    void overlayMotionScores(const std::string& videoSegment, const std::string& scoresFile) {
-        std::string outputFilename = videoSegment + "_with_scores.mp4";
+    void overlayMotionScores(double startTime, double endTime) {
+        std::string videoSegment = getOutputFilename(startTime, endTime);
+        std::string scoresFile = getScoresFilename(startTime, endTime);
+        std::string outputFilename = getScoresVideoFilename(startTime, endTime);
 
         // Read the scores file
         std::ifstream file(scoresFile);
@@ -390,7 +372,10 @@ private:
         }
     }
 
-    void overlayPolygon(const std::string& videoSegment) {
+    void overlayPolygon(double startTime, double endTime) {
+        std::string videoSegment = getScoresVideoFilename(startTime, endTime);
+        std::string outputFilename = getOverlayVideoFilename(startTime, endTime);
+
         const std::vector<cv::Point>& polygon = config.getPolygon();
         std::ostringstream coords;
 
@@ -409,8 +394,6 @@ private:
             return;
         }
 
-        // Overlay the polygon on the video using FFmpeg
-        std::string outputFilename = videoSegment + "_with_polygon.mp4";
         command = "ffmpeg -y -i \"" + videoSegment + "\" -i " + polygonImage + " -filter_complex \"overlay\" -codec:a copy \"" + outputFilename + "\"";
         std::cout << "Overlaying polygon on video: " << command << std::endl;
         ret = std::system(command.c_str());
@@ -427,19 +410,15 @@ private:
 
     void extractSegments(const std::string& convertedVideoPath) {
         for (const auto& segment : motionSegments) {
-            std::string outputSegment = generateOutputFilename(segment.first, segment.second);
-            extractSegmentWithFFmpeg(convertedVideoPath, segment.first, segment.second, outputSegment);
+            std::string outputSegment = getOutputFilename(segment.first, segment.second);
+            extractSegmentWithFFmpeg(convertedVideoPath, segment.first, segment.second);
 
-            // Overlay the motion scores after extracting the segment
-            std::string scoresFile = outputSegment + ".scores";
-            overlayMotionScores(outputSegment, scoresFile);
-
-            std::string scoresVideo = outputSegment + "_with_scores.mp4";
-            overlayPolygon(scoresVideo);
+            overlayMotionScores(segment.first, segment.second);
+            overlayPolygon(segment.first, segment.second);
         }
     }
 
-    std::string generateOutputFilename(double start, double end) {
+    std::string getOutputFilename(double start, double end) {
         fs::path videoFilePath(videoPath);
         fs::path outputFilePath(outputPath);
 
@@ -453,7 +432,26 @@ private:
         return fullPath.string();
     }
 
-    static void extractSegmentWithFFmpeg(const std::string& inputFile, double start, double end, const std::string& outputFile) {
+    std::string getScoresFilename(double start, double end) {
+        std::string outputSegment = getOutputFilename(start, end);
+        std::string scoresFile = outputSegment + ".scores";
+        return scoresFile;
+    }
+
+    std::string getScoresVideoFilename(double start, double end) {
+        std::string outputSegment = getOutputFilename(start, end);
+        std::string scoresFile = outputSegment + "_with_scores.mp4";
+        return scoresFile;
+    }
+
+    std::string getOverlayVideoFilename(double start, double end) {
+        std::string outputSegment = getOutputFilename(start, end);
+        std::string scoresFile = outputSegment + "_with_overlay.mp4";
+        return scoresFile;
+    }
+
+    static void extractSegmentWithFFmpeg(const std::string& inputFile, double start, double end) {
+        std::string outputFile = getOutputFilename(start, end);
         double duration = end - start;
         std::string command = "ffmpeg -y -loglevel error -ss " + std::to_string(start) + " -i \"" + inputFile +
                               "\" -t " + std::to_string(duration) + " -c copy \"" + outputFile + "\"";
