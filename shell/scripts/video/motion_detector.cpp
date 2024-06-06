@@ -232,6 +232,7 @@ private:
 
         double ignoreFirstSeconds = 1.0;
         double motionThreshold = config.getMotionThreshold();
+        double recordBeforeMotionSeconds = config.getSecondsBefore();
         double recordAfterMotionSeconds = config.getSecondsAfter();
 
         double lastMotionTimeSecond = 0.0;
@@ -272,9 +273,10 @@ private:
                             lastMotionTimeSecond = frameTimeSecond;
                             if (motionStartTime < 0) {
                                 // TODO: frameTimeSecond - config.getSecondsBefore()
-                                motionStartTime = std::max(frameTimeSecond, 0.0);
+                                motionStartTime = std::max(frameTimeSecond - recordBeforeMotionSeconds, 0.0);
                                 motionDataList.clear();
                                 motionDataList.push_back({0.0, frameIndex, motionScore});
+                                motionDataList.push_back({recordBeforeMotionSeconds, frameIndex, motionScore});
                             }
                         } else if (motionStartTime >= 0 && (frameTimeSecond - lastMotionTimeSecond) > recordAfterMotionSeconds) {
                             // TODO: double motionEndTime = std::min(lastMotionTimeSecond + 1.0, videoLength);
