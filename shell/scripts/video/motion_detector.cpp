@@ -292,9 +292,9 @@ private:
                         double motionEndTime = std::min(lastMotionTime + 1.0, videoLength);
                         std::cout << motionScore << " > " << config.getMotionThreshold() << " -> motion end. Motion detected at: " << motionStartTime << " -> " << motionEndTime << std::endl;
                         motionSegments.emplace_back(motionStartTime, motionEndTime);
-                        motionStartTime = -1;
                         // Write the motion data to a file named after the segment
                         writeMotionDataToFile(motionStartTime, motionEndTime, motionDataList);
+                        motionStartTime = -1;
                     }
                 }
             }
