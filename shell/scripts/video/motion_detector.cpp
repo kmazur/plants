@@ -273,6 +273,7 @@ private:
                         if (motionScore >= motionThreshold) {
                             lastMotionTimeSecond = frameTimeSecond;
                             if (motionStartTime < 0) {
+                                std::cout << "Frame: " << frameIndex << " -> time: " << frameTimeSecond << " -> Motion detected\n";
                                 // TODO: frameTimeSecond - config.getSecondsBefore()
                                 motionStartTime = std::max(frameTimeSecond - recordBeforeMotionSeconds, 0.0);
                                 motionDataList.clear();
@@ -282,7 +283,7 @@ private:
                             // TODO: double motionEndTime = std::min(lastMotionTimeSecond + 1.0, videoLength);
                             double motionEndTime = lastMotionTimeSecond;
                             motionSegments.emplace_back(motionStartTime, motionEndTime);
-                            std::cout << "Detected motion at: ["<< motionStartTime << " -> " << motionEndTime << "]" << "\n";
+                            std::cout << "Frame: " << frameIndex << " -> time: " << frameTimeSecond << " -> Motion end. Motion is at: ["<< motionStartTime << " -> " << motionEndTime << "]\n";
                             writeMotionDataToFile(motionStartTime, motionEndTime, motionDataList);
                             motionDataList.clear();
                             motionStartTime = -1;
