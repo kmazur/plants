@@ -13,7 +13,12 @@
 
 namespace fs = std::filesystem;
 
-
+// Helper structure to store motion data
+struct MotionData {
+    double time;  // Time in milliseconds
+    int frameIndex;
+    double motionScore;
+};
 
 class Config {
 public:
@@ -222,8 +227,9 @@ private:
         double lastMotionTime = 0.0;
         double prevTime = 0.0;
 
-        bool readDimensions = false;
         double ignoreFirstSeconds = 1.0;
+
+        std::vector<MotionData> motionDataList;
 
         while (true) {
             cap.set(cv::CAP_PROP_POS_FRAMES, frameIndex);
@@ -265,12 +271,19 @@ private:
                 frameDiff.copyTo(maskedDiff, mask);
 
                 double motionScore = cv::sum(maskedDiff)[0] / cv::countNonZero(mask);
+
+                // Accumulate motion data if a segment is being recorded
+                if (motionStartTime >= 0) {
+                    motionDataList.push_back({prevTime, frameIndex, motionScore});
+                }
+
                 if (prevTime > ignoreFirstSeconds) {
                     if (motionScore > config.getMotionThreshold()) {
                         lastMotionTime = prevTime;
                         if (motionStartTime < 0) {
-                            std::cout << motionScore << " > " << config.getMotionThreshold() << " -> motion start detected at: " << motionStartTime << " s " << std::endl;
                             motionStartTime = std::max(prevTime - config.getSecondsBefore(), 0.0);
+                            std::cout << motionScore << " > " << config.getMotionThreshold() << " -> motion start detected at: " << motionStartTime << " s " << std::endl;
+                            motionDataList.clear();
                         } else {
                             std::cout << motionScore << " > " << config.getMotionThreshold() << " -> motion continuing from: " << motionStartTime << " -> " << prevTime << std::endl;
                         }
@@ -280,6 +293,8 @@ private:
                         std::cout << motionScore << " > " << config.getMotionThreshold() << " -> motion end. Motion detected at: " << motionStartTime << " -> " << motionEndTime << std::endl;
                         motionSegments.emplace_back(motionStartTime, motionEndTime);
                         motionStartTime = -1;
+                        // Write the motion data to a file named after the segment
+                        writeMotionDataToFile(motionStartTime, motionEndTime, motionDataList);
                     }
                 }
             }
@@ -295,7 +310,28 @@ private:
             std::cout << "?" << " > " << config.getMotionThreshold() << " -> motion end. Motion detected at: " << motionStartTime << " -> " << motionEndTime << std::endl;
             motionSegments.emplace_back(motionStartTime, motionEndTime);
             motionStartTime = -1;
+            // Write the motion data to a file named after the last segment
+            writeMotionDataToFile(motionStartTime, motionEndTime, motionDataList);
         }
+    }
+
+    // Helper function to write motion data to a file
+    void writeMotionDataToFile(double startTime, double endTime, const std::vector<MotionData>& motionDataList) {
+        std::string filename = generateOutputFilename(startTime, endTime) + ".scores";
+
+        std::ofstream file(filename);
+        if (!file.is_open()) {
+            std::cerr << "Failed to open file for writing: " << filename << std::endl;
+            return;
+        }
+
+        // Write each motion data entry in the format required by ffmpeg drawtext filter
+        for (const auto& data : motionDataList) {
+            file << data.time / 1000.0 << " : text='Time: " << data.time << " ms, Frame: " << data.frameIndex << ", Motion Score: " << data.motionScore << "'\n";
+        }
+
+        file.close();
+        std::cout << "Motion data written to file: " << filename << std::endl;
     }
 
     void extractSegments(const std::string& convertedVideoPath) {
