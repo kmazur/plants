@@ -218,3 +218,35 @@ function get_video_segment_dir() {
 function get_used_space_percent() {
   df -h | grep root | cut -d '%' -f 1 | rev | cut -d ' ' -f 1 | rev
 }
+
+function get_bounding_box_from_polygon() {
+  local POLYGON_STR="$1"
+
+  local MIN_X="10000"
+  local MAX_X="-10000"
+  local MIN_Y="10000"
+  local MAX_Y="-10000"
+
+  local -a COORDS
+  # Split the input string by ';' to get individual coordinates
+  IFS=';' read -ra COORDS <<< "$POLYGON_STR"
+
+  local coord
+  local xy
+  # Loop through each coordinate pair
+  for coord in "${COORDS[@]}"; do
+    # Split each pair by ',' to get x and y
+    IFS=',' read -ra xy <<< "$coord"
+
+    x=${xy[0]}
+    y=${xy[1]}
+
+    # Update the min and max values
+    if [ "$x" -lt "$MIN_X" ]; then MIN_X=$x; fi
+    if [ "$x" -gt "$MAX_X" ]; then MAX_X=$x; fi
+    if [ "$y" -lt "$MIN_Y" ]; then MIN_Y=$y; fi
+    if [ "$y" -gt "$MAX_Y" ]; then MAX_Y=$y; fi
+  done
+
+  echo "$MIN_X,$MIN_Y,$MAX_X,$MAX_Y"
+}

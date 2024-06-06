@@ -26,17 +26,31 @@ function create_last_segment_animation() {
     return 0
   fi
 
-  local CROP_X="$(get_config "bounding_box_x" "0" "$MOTION_DETECTION_CONFIG_FILE")"
-  local CROP_Y="$(get_config "bounding_box_y" "0" "$MOTION_DETECTION_CONFIG_FILE")"
-  local CROP_W="$(get_config "bounding_box_width" "in_w-${CROP_X}" "$MOTION_DETECTION_CONFIG_FILE")"
-  local CROP_H="$(get_config "bounding_box_height" "in_h-${CROP_Y}" "$MOTION_DETECTION_CONFIG_FILE")"
-
-  echo "Complex filter for ffmpeg: [0:v]setpts=PTS/8,crop=${CROP_W}:${CROP_H}:${CROP_X}:${CROP_Y}[v]"
   local ANIMATION_FILE="$TMP_DIR/vid_segment_short_${MACHINE_NAME}.mp4"
   rm "$ANIMATION_FILE" &> /dev/null
 
-  # crop=out_w:out_h:x:y
-  ffmpeg -y -i "$VIDEO_OUTPUT_DIR/$LAST_FILE" -filter_complex "[0:v]setpts=PTS/2,crop=${CROP_W}:${CROP_H}:${CROP_X}:${CROP_Y}[v]" -map "[v]" -an -c:v libx264 -crf 23 -preset veryfast "$ANIMATION_FILE"
+  local POLYGON="$(get_config "polygon" "" "$MOTION_DETECTION_CONFIG_FILE")"
+  if [ -z "$POLYGON" ]; then
+    echo "No polygon defined in $MOTION_DETECTION_CONFIG_FILE! -> skipping cropping"
+
+    # crop=out_w:out_h:x:y
+    ffmpeg -y -i "$VIDEO_OUTPUT_DIR/$LAST_FILE" -filter_complex "[0:v]setpts=PTS/2[v]" -map "[v]" -an -c:v libx264 -crf 23 -preset veryfast "$ANIMATION_FILE"
+  else
+    local BOUNDING_BOX="$(get_bounding_box_from_polygon "$POLYGON")"
+    echo "Cropping to: $BOUNDING_BOX"
+    local CROP_X="$(echo "$BOUNDING_BOX" | cut -d ',' -f 1)"
+    local CROP_Y="$(echo "$BOUNDING_BOX" | cut -d ',' -f 2)"
+    local CROP_X2="$(echo "$BOUNDING_BOX" | cut -d ',' -f 3)"
+    local CROP_Y2="$(echo "$BOUNDING_BOX" | cut -d ',' -f 4)"
+    local CROP_W="$((CROP_X2 - CROP_X))"
+    local CROP_H="$((CROP_Y2 - CROP_Y))"
+
+    echo "Complex filter for ffmpeg: [0:v]setpts=PTS/8,crop=${CROP_W}:${CROP_H}:${CROP_X}:${CROP_Y}[v]"
+
+    # crop=out_w:out_h:x:y
+    ffmpeg -y -i "$VIDEO_OUTPUT_DIR/$LAST_FILE" -filter_complex "[0:v]setpts=PTS/2,crop=${CROP_W}:${CROP_H}:${CROP_X}:${CROP_Y}[v]" -map "[v]" -an -c:v libx264 -crf 23 -preset veryfast "$ANIMATION_FILE"
+
+  fi
 
   if [ -f "$ANIMATION_FILE" ]; then
     upload_file "$ANIMATION_FILE" "video/mp4"

@@ -21,10 +21,7 @@ public:
     static constexpr int DEFAULT_FRAME_STEP = 20;
     static constexpr double DEFAULT_SECONDS_BEFORE = 1.0;
     static constexpr double DEFAULT_SECONDS_AFTER = 4.0;
-    static constexpr int DEFAULT_BOUNDING_BOX_X = 0;
-    static constexpr int DEFAULT_BOUNDING_BOX_Y = 0;
-    static constexpr int DEFAULT_BOUNDING_BOX_WIDTH = 1400;
-    static constexpr int DEFAULT_BOUNDING_BOX_HEIGHT = 900;
+    static constexpr int DEFAULT_POLYGON = "0,0;1400,0;1400,900;0,900";
 
     Config(const std::string& configFilePath = "") {
         if (!configFilePath.empty() && std::filesystem::exists(configFilePath)) {
@@ -49,11 +46,8 @@ public:
         return std::get<double>(parsedValues.at("seconds_after"));
     }
 
-    void getBoundingBox(int (&boundingBox)[4]) const {
-        boundingBox[0] = std::get<int>(parsedValues.at("bounding_box_x"));
-        boundingBox[1] = std::get<int>(parsedValues.at("bounding_box_y"));
-        boundingBox[2] = std::get<int>(parsedValues.at("bounding_box_width"));
-        boundingBox[3] = std::get<int>(parsedValues.at("bounding_box_height"));
+    const std::vector<cv::Point>& getPolygon() const {
+        return polygon;
     }
 
     void logConfig() const {
@@ -68,6 +62,7 @@ public:
 private:
     std::map<std::string, std::string> config;
     std::map<std::string, std::variant<int, double, std::string>> parsedValues;
+    std::vector<cv::Point> polygon;
 
     void loadConfig(const std::string& configFilePath) {
         std::ifstream configFile(configFilePath);
@@ -82,15 +77,25 @@ private:
         }
     }
 
+    void loadPolygon(const std::string& polygonStr) {
+        std::istringstream ss(polygonStr);
+        std::string pointStr;
+        while (std::getline(ss, pointStr, ';')) {
+            int x, y;
+            std::sscanf(pointStr.c_str(), "%d,%d", &x, &y);
+            polygon.emplace_back(cv::Point(x, y));
+        }
+    }
+
     void parseConfig() {
         parsedValues["motion_threshold"] = getValue("motion_threshold", DEFAULT_MOTION_THRESHOLD);
         parsedValues["frame_step"] = getValue("frame_step", DEFAULT_FRAME_STEP);
         parsedValues["seconds_before"] = getValue("seconds_before", DEFAULT_SECONDS_BEFORE);
         parsedValues["seconds_after"] = getValue("seconds_after", DEFAULT_SECONDS_AFTER);
-        parsedValues["bounding_box_x"] = getValue("bounding_box_x", DEFAULT_BOUNDING_BOX_X);
-        parsedValues["bounding_box_y"] = getValue("bounding_box_y", DEFAULT_BOUNDING_BOX_Y);
-        parsedValues["bounding_box_width"] = getValue("bounding_box_width", DEFAULT_BOUNDING_BOX_WIDTH);
-        parsedValues["bounding_box_height"] = getValue("bounding_box_height", DEFAULT_BOUNDING_BOX_HEIGHT);
+        parsedValues["seconds_after"] = getValue("polygon", DEFAULT_POLYGON);
+
+        std::string polygonStr = parsedValues["polygon"];
+        loadPolygon(polygonStr);
     }
 
     template <typename T>
@@ -184,9 +189,20 @@ private:
 
         std::cout << "Starting to detect motion" << std::endl;
 
-        int boundingBox[4];
-        config.getBoundingBox(boundingBox);
+        const std::vector<cv::Point>& polygon = config.getPolygon();
+        cv::Rect boundingRect = cv::boundingRect(polygon);
 
+        // Pre-allocate mask and adjustedPolygon
+        cv::Mat mask = cv::Mat::zeros(boundingRect.size(), CV_8UC1);
+        std::vector<cv::Point> adjustedPolygon(polygon.size());
+
+        std::transform(polygon.begin(), polygon.end(), adjustedPolygon.begin(), [&boundingRect](const cv::Point& p) {
+            return p - boundingRect.tl();
+        });
+        cv::fillPoly(mask, std::vector<std::vector<cv::Point>>{adjustedPolygon}, cv::Scalar(255));
+
+        // Pre-allocate memory for regions and differences
+        cv::Mat roi, prevRoi, maskedDiff;
         double lastMotionTime = 0.0;
         double prevTime = 0.0;
 
@@ -196,42 +212,33 @@ private:
             cap.set(cv::CAP_PROP_POS_FRAMES, frameIndex);
             if (!cap.read(currFrame)) break;
 
-            if (!readDimensions) {
-                readDimensions = true;
-                // Adjust bounding box to be within frame boundaries
-                boundingBox[2] = std::min(boundingBox[2], currFrame.cols - boundingBox[0]);
-                boundingBox[3] = std::min(boundingBox[3], currFrame.rows - boundingBox[1]);
-
-                if (boundingBox[0] < 0 || boundingBox[1] < 0 || boundingBox[0] + boundingBox[2] > currFrame.cols || boundingBox[1] + boundingBox[3] > currFrame.rows) {
-                    std::cerr << "Error: Bounding box is out of frame boundaries." << std::endl;
-                    return;
-                }
-
-                // Log frame size to standard output
-                std::cout << "Frame size: ";
-                std::cout << "width = " << currFrame.cols << ", ";
-                std::cout << "height = " << currFrame.rows << std::endl;
-
-                // Log bounding box to standard output
-                std::cout << "Bounding box coordinates: ";
-                std::cout << "x = " << boundingBox[0] << ", ";
-                std::cout << "y = " << boundingBox[1] << ", ";
-                std::cout << "width = " << boundingBox[2] << ", ";
-                std::cout << "height = " << boundingBox[3] << std::endl;
-
-            }
-
             double nativeTime = (frameIndex / fps) * 1000.0;
             prevTime = nativeTime / 1000.0;
 
-            cv::cvtColor(currFrame, currFrame, cv::COLOR_BGR2GRAY);
-
-            cv::Mat roi(currFrame, cv::Rect(boundingBox[0], boundingBox[1], boundingBox[2], boundingBox[3]));
+            // Convert to grayscale only within the ROI
+            if (roi.empty() || roi.size() != boundingRect.size()) {
+                roi.create(boundingRect.size(), currFrame.type());
+            }
+            cv::cvtColor(currFrame(boundingRect), roi, cv::COLOR_BGR2GRAY);
 
             if (!prevFrame.empty()) {
-                cv::Mat prevRoi(prevFrame, cv::Rect(boundingBox[0], boundingBox[1], boundingBox[2], boundingBox[3]));
+                if (prevRoi.empty() || prevRoi.size() != boundingRect.size()) {
+                    prevRoi.create(boundingRect.size(), currFrame.type());
+                }
+                prevFrame(boundingRect).copyTo(prevRoi);
+
+                if (frameDiff.empty() || frameDiff.size() != boundingRect.size()) {
+                    frameDiff.create(boundingRect.size(), currFrame.type());
+                }
+
                 cv::absdiff(prevRoi, roi, frameDiff);
-                double motionScore = cv::sum(frameDiff)[0] / (frameDiff.rows * frameDiff.cols);
+
+                if (maskedDiff.empty() || maskedDiff.size() != boundingRect.size()) {
+                    maskedDiff.create(boundingRect.size(), currFrame.type());
+                }
+                frameDiff.copyTo(maskedDiff, mask);
+
+                double motionScore = cv::sum(maskedDiff)[0] / cv::countNonZero(mask);
 
                 if (prevTime > 1.0 && motionScore > config.getMotionThreshold()) {
                     lastMotionTime = prevTime;
@@ -250,7 +257,8 @@ private:
                 }
             }
 
-            prevFrame = currFrame.clone();
+            // Efficient way to swap current and previous frames
+            std::swap(prevFrame, currFrame);
             frameIndex += config.getFrameStep();
         }
 
