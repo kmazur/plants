@@ -336,19 +336,39 @@ private:
     void overlayMotionScores(const std::string& videoSegment, const std::string& scoresFile) {
         std::string outputFilename = videoSegment + "_with_scores.mp4";
 
-        // Construct the drawtext command to read from the scores file and update text dynamically
-        std::string drawtextCommand =
-            "drawtext=fontfile=/path/to/font.ttf:"
-            "text='%{e\\:text}'" // Use FFmpeg expression to evaluate text dynamically
-            ":x=10:y=h-50:fontcolor=white:fontsize=24:"
-            "box=1:boxcolor=black@0.5:boxborderw=5:"
-            "reload=1:" // Reload the text for each frame
-            "start_number='0':"
-            "file='" + scoresFile + "'"
-            ":t=1000000" // Read from the file for the entire duration
-            ":enable='between(t,0,1000000)'";
+        // Read the scores file
+        std::ifstream file(scoresFile);
+        if (!file.is_open()) {
+            std::cerr << "Failed to open scores file: " << scoresFile << std::endl;
+            return;
+        }
 
-        std::string command = "ffmpeg -y -i \"" + videoSegment + "\" -vf \"" + drawtextCommand + "\" -codec:a copy \"" + outputFilename + "\"";
+        std::vector<MotionData> motionDataList;
+        std::string line;
+        while (std::getline(file, line)) {
+            std::istringstream lineStream(line);
+            double time;
+            double score;
+            lineStream >> time >> score;
+
+            motionDataList.push_back({time, 0, score});
+        }
+        file.close();
+
+        // Construct the drawtext command for each score with enable expressions
+        std::ostringstream drawtextCommand;
+        for (const auto& data : motionDataList) {
+            drawtextCommand << "drawtext=fontfile=/path/to/font.ttf:text='Motion Score: " << data.motionScore
+                            << "':x=10:y=h-50:fontcolor=white:fontsize=24:box=1:boxcolor=black@0.5:boxborderw=5"
+                            << ":enable='between(t," << data.time << "," << (data.time + 1.0 / 30.0) << ")',";
+        }
+
+        std::string drawtextFilters = drawtextCommand.str();
+        if (!drawtextFilters.empty()) {
+            drawtextFilters.pop_back(); // Remove the trailing comma
+        }
+
+        std::string command = "ffmpeg -y -i \"" + videoSegment + "\" -vf \"" + drawtextFilters + "\" -codec:a copy \"" + outputFilename + "\"";
 
         std::cout << "Executing FFmpeg command for overlay: " << command << std::endl;
         int ret = std::system(command.c_str());
