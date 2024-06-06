@@ -21,7 +21,7 @@ public:
     static constexpr int DEFAULT_FRAME_STEP = 20;
     static constexpr double DEFAULT_SECONDS_BEFORE = 1.0;
     static constexpr double DEFAULT_SECONDS_AFTER = 4.0;
-    static constexpr int DEFAULT_POLYGON = "0,0;1400,0;1400,900;0,900";
+    static constexpr std::string DEFAULT_POLYGON = "0,0;1400,0;1400,900;0,900";
 
     Config(const std::string& configFilePath = "") {
         if (!configFilePath.empty() && std::filesystem::exists(configFilePath)) {
