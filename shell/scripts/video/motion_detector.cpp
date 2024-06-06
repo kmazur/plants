@@ -111,6 +111,9 @@ private:
         }
         return defaultValue;
     }
+};
+
+
     template <>
     std::string getValue(const std::string& key, const std::string& defaultValue) const {
         auto it = config.find(key);
@@ -119,9 +122,6 @@ private:
         }
         return defaultValue;
     }
-};
-
-
 
 class VideoProcessor {
 public:
