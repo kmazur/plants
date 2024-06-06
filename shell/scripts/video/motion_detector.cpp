@@ -224,6 +224,7 @@ private:
         double prevTime = 0.0;
 
         bool readDimensions = false;
+        double ignoreFirstSeconds = 1.0;
 
         while (true) {
             cap.set(cv::CAP_PROP_POS_FRAMES, frameIndex);
@@ -265,21 +266,22 @@ private:
                 frameDiff.copyTo(maskedDiff, mask);
 
                 double motionScore = cv::sum(maskedDiff)[0] / cv::countNonZero(mask);
-
-                if (prevTime > 1.0 && motionScore > config.getMotionThreshold()) {
-                    lastMotionTime = prevTime;
-                    if (motionStartTime < 0) {
-                        std::cout << motionScore << " > " << config.getMotionThreshold() << " -> motion start detected at: " << motionStartTime << " s " << std::endl;
-                        motionStartTime = std::max(prevTime - config.getSecondsBefore(), 0.0);
-                    } else {
-                        std::cout << motionScore << " > " << config.getMotionThreshold() << " -> motion continuing from: " << motionStartTime << " -> " << prevTime << std::endl;
+                if (prevTime > ignoreFirstSeconds) {
+                    if (motionScore > config.getMotionThreshold()) {
+                        lastMotionTime = prevTime;
+                        if (motionStartTime < 0) {
+                            std::cout << motionScore << " > " << config.getMotionThreshold() << " -> motion start detected at: " << motionStartTime << " s " << std::endl;
+                            motionStartTime = std::max(prevTime - config.getSecondsBefore(), 0.0);
+                        } else {
+                            std::cout << motionScore << " > " << config.getMotionThreshold() << " -> motion continuing from: " << motionStartTime << " -> " << prevTime << std::endl;
+                        }
+                    } else if (motionStartTime >= 0 && (prevTime - lastMotionTime) > config.getSecondsAfter()) {
+                        double videoLength = frameIndex / fps;
+                        double motionEndTime = std::min(lastMotionTime + 1.0, videoLength);
+                        std::cout << motionScore << " > " << config.getMotionThreshold() << " -> motion end. Motion detected at: " << motionStartTime << " -> " << motionEndTime << std::endl;
+                        motionSegments.emplace_back(motionStartTime, motionEndTime);
+                        motionStartTime = -1;
                     }
-                } else if (motionStartTime >= 0 && (prevTime - lastMotionTime) > config.getSecondsAfter()) {
-                    double videoLength = frameIndex / fps;
-                    double motionEndTime = std::min(lastMotionTime + 1.0, videoLength);
-                    std::cout << motionScore << " > " << config.getMotionThreshold() << " -> motion end. Motion detected at: " << motionStartTime << " -> " << motionEndTime << std::endl;
-                    motionSegments.emplace_back(motionStartTime, motionEndTime);
-                    motionStartTime = -1;
                 }
             }
 
