@@ -21,7 +21,7 @@ public:
     static constexpr int DEFAULT_FRAME_STEP = 20;
     static constexpr double DEFAULT_SECONDS_BEFORE = 1.0;
     static constexpr double DEFAULT_SECONDS_AFTER = 4.0;
-    static constexpr std::string DEFAULT_POLYGON = "0,0;1400,0;1400,900;0,900";
+    static constexpr const char* DEFAULT_POLYGON = "0,0;1400,0;1400,900;0,900";
 
     Config(const std::string& configFilePath = "") {
         if (!configFilePath.empty() && std::filesystem::exists(configFilePath)) {
@@ -92,9 +92,8 @@ private:
         parsedValues["frame_step"] = getValue("frame_step", DEFAULT_FRAME_STEP);
         parsedValues["seconds_before"] = getValue("seconds_before", DEFAULT_SECONDS_BEFORE);
         parsedValues["seconds_after"] = getValue("seconds_after", DEFAULT_SECONDS_AFTER);
-        parsedValues["seconds_after"] = getValue("polygon", DEFAULT_POLYGON);
 
-        std::string polygonStr = parsedValues["polygon"];
+        std::string polygonStr = getValue<std::string>("polygon", DEFAULT_POLYGON);
         loadPolygon(polygonStr);
     }
 
@@ -109,6 +108,14 @@ private:
                 throw std::runtime_error("Invalid value for key: " + key);
             }
             return value;
+        }
+        return defaultValue;
+    }
+    template <>
+    std::string getValue(const std::string& key, const std::string& defaultValue) const {
+        auto it = config.find(key);
+        if (it != config.end()) {
+            return it->second;
         }
         return defaultValue;
     }
