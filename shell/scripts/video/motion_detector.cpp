@@ -307,7 +307,7 @@ private:
     }
 
     void writeMotionDataToFile(double startTime, double endTime, const std::vector<MotionData>& motionDataList) {
-        std::string filename = generateOutputFilename(startTime, endTime) + ".scores";
+        std::string filename = getOutputFilename(startTime, endTime) + ".scores";
 
         std::ofstream file(filename);
         if (!file.is_open()) {
@@ -450,7 +450,7 @@ private:
         return scoresFile;
     }
 
-    static void extractSegmentWithFFmpeg(const std::string& inputFile, double start, double end) {
+    void extractSegmentWithFFmpeg(const std::string& inputFile, double start, double end) {
         std::string outputFile = getOutputFilename(start, end);
         double duration = end - start;
         std::string command = "ffmpeg -y -loglevel error -ss " + std::to_string(start) + " -i \"" + inputFile +
