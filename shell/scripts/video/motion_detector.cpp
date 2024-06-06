@@ -280,6 +280,7 @@ private:
                         } else if (motionStartTime >= 0 && (frameTimeSecond - lastMotionTimeSecond) > recordAfterMotionSeconds) {
                             // TODO: double motionEndTime = std::min(lastMotionTimeSecond + 1.0, videoLength);
                             double motionEndTime = std::min(lastMotionTimeSecond + 1.0, frameTimeSecond);
+                            std::cout << "Motion detected at: ["<< motionStartTime << " -> " << motionEndTime << "]\n";
                             motionSegments.emplace_back(motionStartTime, motionEndTime);
                             writeMotionDataToFile(motionStartTime, motionEndTime, motionDataList);
                             motionDataList.clear();
