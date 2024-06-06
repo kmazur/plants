@@ -276,7 +276,6 @@ private:
                                 motionStartTime = std::max(frameTimeSecond - recordBeforeMotionSeconds, 0.0);
                                 motionDataList.clear();
                                 motionDataList.push_back({0.0, frameIndex, motionScore});
-                                motionDataList.push_back({recordBeforeMotionSeconds, frameIndex, motionScore});
                             }
                         } else if (motionStartTime >= 0 && (frameTimeSecond - lastMotionTimeSecond) > recordAfterMotionSeconds) {
                             // TODO: double motionEndTime = std::min(lastMotionTimeSecond + 1.0, videoLength);
