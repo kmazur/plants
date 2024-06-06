@@ -184,6 +184,13 @@ private:
         return outputFilePath.string();
     }
 
+    // Helper method to ensure size and type of a matrix
+    void ensureSizeAndType(cv::Mat& mat, const cv::Size& size, int type) {
+        if (mat.empty() || mat.size() != size || mat.type() != type) {
+            mat.create(size, type);
+        }
+    }
+
     void detectMotion() {
         cv::Mat prevFrame, currFrame, frameDiff;
         double motionStartTime = -1;
@@ -230,26 +237,17 @@ private:
             }
 
             // Convert to grayscale only within the ROI
-            if (roi.empty() || roi.size() != boundingRect.size()) {
-                roi.create(boundingRect.size(), currFrame.type());
-            }
+            ensureSizeAndType(roi, boundingRect.size(), CV_8UC1);
             cv::cvtColor(currFrame(boundingRect), roi, cv::COLOR_BGR2GRAY);
 
             if (!prevFrame.empty()) {
-                if (prevRoi.empty() || prevRoi.size() != boundingRect.size()) {
-                    prevRoi.create(boundingRect.size(), currFrame.type());
-                }
+                ensureSizeAndType(prevRoi, boundingRect.size(), CV_8UC1);
                 prevFrame(boundingRect).copyTo(prevRoi);
 
-                if (frameDiff.empty() || frameDiff.size() != boundingRect.size()) {
-                    frameDiff.create(boundingRect.size(), currFrame.type());
-                }
-
+                ensureSizeAndType(frameDiff, boundingRect.size(), CV_8UC1);
                 cv::absdiff(prevRoi, roi, frameDiff);
 
-                if (maskedDiff.empty() || maskedDiff.size() != boundingRect.size()) {
-                    maskedDiff.create(boundingRect.size(), currFrame.type());
-                }
+                ensureSizeAndType(maskedDiff, boundingRect.size(), CV_8UC1);
                 frameDiff.copyTo(maskedDiff, mask);
 
                 double motionScore = cv::sum(maskedDiff)[0] / cv::countNonZero(mask);
