@@ -232,9 +232,6 @@ private:
             double nativeTime = (frameIndex / fps) * 1000.0;
             prevTime = nativeTime / 1000.0;
 
-            // Log the current frame's details
-            std::cout << "Frame index: " << frameIndex << ", Size: " << currFrame.size() << ", Type: " << currFrame.type() << std::endl;
-
             // Check if the frame is non-empty and the size is valid
             if (currFrame.empty() || currFrame.cols < boundingRect.width || currFrame.rows < boundingRect.height) {
                 std::cerr << "Error: Current frame is invalid or too small." << std::endl;
@@ -244,7 +241,6 @@ private:
             // Convert to grayscale only within the ROI
             ensureSizeAndType(roi, boundingRect.size(), CV_8UC1);
             // Log ROI details
-            std::cout << "ROI Size: " << roi.size() << ", Type: " << roi.type() << std::endl;
             cv::cvtColor(currFrame(boundingRect), roi, cv::COLOR_BGR2GRAY);
 
             if (!prevFrame.empty()) {
@@ -254,15 +250,8 @@ private:
                 ensureSizeAndType(prevRoi, boundingRect.size(), CV_8UC1);
                 prevFrameGray.copyTo(prevRoi);
 
-                // Log previous ROI details
-                std::cout << "Prev ROI Size: " << prevRoi.size() << ", Type: " << prevRoi.type() << std::endl;
-
                 // Ensure the frameDiff matrix is the same size and type as the ROIs
                 ensureSizeAndType(frameDiff, boundingRect.size(), CV_8UC1);
-
-                // Log frame difference details before performing absdiff
-                std::cout << "FrameDiff Size: " << frameDiff.size() << ", Type: " << frameDiff.type() << std::endl;
-
 
                 // Check types and sizes before performing absdiff
                 if (prevRoi.type() == roi.type() && prevRoi.size() == roi.size()) {
@@ -273,9 +262,6 @@ private:
                 }
 
                 ensureSizeAndType(maskedDiff, boundingRect.size(), CV_8UC1);
-                // Log masked difference details
-                std::cout << "MaskedDiff Size: " << maskedDiff.size() << ", Type: " << maskedDiff.type() << std::endl;
-
                 frameDiff.copyTo(maskedDiff, mask);
 
                 double motionScore = cv::sum(maskedDiff)[0] / cv::countNonZero(mask);
@@ -283,15 +269,15 @@ private:
                 if (prevTime > 1.0 && motionScore > config.getMotionThreshold()) {
                     lastMotionTime = prevTime;
                     if (motionStartTime < 0) {
-                        std::cout << motionScore << " > " << config.getMotionThreshold() << " -> starting recording at: " << motionStartTime << " / nativeTime: " << nativeTime << " last motion time: " << lastMotionTime << std::endl;
+                        std::cout << motionScore << " > " << config.getMotionThreshold() << " -> motion start detected at: " << motionStartTime << " s " << std::endl;
                         motionStartTime = std::max(prevTime - config.getSecondsBefore(), 0.0);
                     } else {
-                        std::cout << motionScore << " > " << config.getMotionThreshold() << " -> bump recording at: " << motionStartTime << " / nativeTime: " << nativeTime << " last motion time: " << lastMotionTime << std::endl;
+                        std::cout << motionScore << " > " << config.getMotionThreshold() << " -> motion continuing from: " << motionStartTime << " -> " << prevTime << std::endl;
                     }
                 } else if (motionStartTime >= 0 && (prevTime - lastMotionTime) > config.getSecondsAfter()) {
                     double videoLength = frameIndex / fps;
-                    double motionEndTime = std::min(prevTime + 1.0, videoLength);
-                    std::cout << motionScore << " > " << config.getMotionThreshold() << " -> stop recording at: " << motionEndTime << " / nativeTime: " << nativeTime << std::endl;
+                    double motionEndTime = std::min(lastMotionTime + 1.0, videoLength);
+                    std::cout << motionScore << " > " << config.getMotionThreshold() << " -> motion end. Motion detected at: " << motionStartTime << " -> " << motionEndTime << std::endl;
                     motionSegments.emplace_back(motionStartTime, motionEndTime);
                     motionStartTime = -1;
                 }
@@ -304,8 +290,8 @@ private:
 
         if (motionStartTime >= 0) {
             double videoLength = frameIndex / fps;
-            double motionEndTime = std::min(prevTime + 1.0, videoLength);
-            std::cout << "?" << " > " << config.getMotionThreshold() << " -> stop recording at: " << motionEndTime << std::endl;
+            double motionEndTime = std::min(lastMotionTime + 1.0, videoLength);
+            std::cout << "?" << " > " << config.getMotionThreshold() << " -> motion end. Motion detected at: " << motionStartTime << " -> " << motionEndTime << std::endl;
             motionSegments.emplace_back(motionStartTime, motionEndTime);
             motionStartTime = -1;
         }
