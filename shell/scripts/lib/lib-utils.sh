@@ -241,11 +241,13 @@ function get_bounding_box_from_polygon() {
     x=${xy[0]}
     y=${xy[1]}
 
-    # Update the min and max values
-    if [ "$x" -lt "$MIN_X" ]; then MIN_X=$x; fi
-    if [ "$x" -gt "$MAX_X" ]; then MAX_X=$x; fi
-    if [ "$y" -lt "$MIN_Y" ]; then MIN_Y=$y; fi
-    if [ "$y" -gt "$MAX_Y" ]; then MAX_Y=$y; fi
+    if [ -n "$x" ] && [ -n "$y" ]; then
+      # Update the min and max values
+      if [ "$x" -lt "$MIN_X" ]; then MIN_X=$x; fi
+      if [ "$x" -gt "$MAX_X" ]; then MAX_X=$x; fi
+      if [ "$y" -lt "$MIN_Y" ]; then MIN_Y=$y; fi
+      if [ "$y" -gt "$MAX_Y" ]; then MAX_Y=$y; fi
+    fi
   done
 
   echo "$MIN_X,$MIN_Y,$MAX_X,$MAX_Y"
