@@ -284,7 +284,6 @@ private:
                         if (motionStartTime < 0) {
                             motionStartTime = std::max(prevTime - config.getSecondsBefore(), 0.0);
                             std::cout << motionScore << " > " << config.getMotionThreshold() << " -> motion start detected at: " << motionStartTime << " s " << std::endl;
-                            motionDataList.clear();
                         } else {
                             std::cout << motionScore << " > " << config.getMotionThreshold() << " -> motion continuing from: " << motionStartTime << " -> " << prevTime << std::endl;
                         }
@@ -295,6 +294,7 @@ private:
                         motionSegments.emplace_back(motionStartTime, motionEndTime);
                         // Write the motion data to a file named after the segment
                         writeMotionDataToFile(motionStartTime, motionEndTime, motionDataList);
+                        motionDataList.clear();
                         motionStartTime = -1;
                     }
                 }
