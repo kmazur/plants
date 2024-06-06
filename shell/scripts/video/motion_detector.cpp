@@ -312,6 +312,7 @@ private:
             motionSegments.emplace_back(motionStartTime, motionEndTime);
             // Write the motion data to a file named after the last segment
             writeMotionDataToFile(motionStartTime, motionEndTime, motionDataList);
+            motionDataList.clear();
             motionStartTime = -1;
         }
     }
@@ -327,7 +328,7 @@ private:
 
         // Write each motion data entry with time and motion score in a format suitable for FFmpeg
         for (const auto& data : motionDataList) {
-            file << data.time << " " << data.motionScore << "\n"; // Time in seconds and motion score
+            file << (data.time/1000.0) << " " << data.motionScore << "\n"; // Time in seconds and motion score
         }
 
         file.close();
