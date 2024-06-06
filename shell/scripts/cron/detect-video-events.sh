@@ -65,7 +65,7 @@ function can_process() {
 
   if is_scale_suspended; then
     return 1
-  elif [[ "$(get_cpu_temp_int)" -gt "68" ]]; then
+  elif [[ "$(get_cpu_temp_int)" -gt "70" ]]; then
     return 2
   else
     return 0
