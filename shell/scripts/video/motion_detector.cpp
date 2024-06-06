@@ -187,7 +187,6 @@ private:
     // Helper method to ensure size and type of a matrix
     void ensureSizeAndType(cv::Mat& mat, const cv::Size& size, int type) {
         if (mat.empty() || mat.size() != size || mat.type() != type) {
-            std::cout << "Creating matrix of size: " << size << " and type: " << type << std::endl;
             mat.create(size, type);
         }
     }
