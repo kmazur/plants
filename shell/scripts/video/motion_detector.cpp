@@ -389,6 +389,41 @@ private:
         }
     }
 
+    void overlayPolygon(const std::string& videoSegment) {
+        const std::vector<cv::Point>& polygon = config.getPolygon();
+        std::ostringstream coords;
+
+        for (const auto& point : polygon) {
+            coords << point.x << "," << point.y << " ";
+        }
+
+        // Create the polygon image using ImageMagick
+        std::string polygonImage = "polygon.png";
+        std::string command = "convert -size 1280x720 xc:transparent -fill none -stroke red -draw \"polygon " + coords.str() + "\" " + polygonImage;
+        std::cout << "Creating polygon image: " << command << std::endl;
+        int ret = std::system(command.c_str());
+
+        if (ret != 0) {
+            std::cerr << "Error creating polygon image." << std::endl;
+            return;
+        }
+
+        // Overlay the polygon on the video using FFmpeg
+        std::string outputFilename = videoSegment + "_with_polygon.mp4";
+        command = "ffmpeg -y -i \"" + videoSegment + "\" -i " + polygonImage + " -filter_complex \"overlay\" -codec:a copy \"" + outputFilename + "\"";
+        std::cout << "Overlaying polygon on video: " << command << std::endl;
+        ret = std::system(command.c_str());
+
+        if (ret != 0) {
+            std::cerr << "Error overlaying polygon on video segment: " << videoSegment << std::endl;
+        } else {
+            std::cout << "Video segment with polygon created: " << outputFilename << std::endl;
+        }
+
+        // Clean up the temporary polygon image
+        std::remove(polygonImage.c_str());
+    }
+
     void extractSegments(const std::string& convertedVideoPath) {
         for (const auto& segment : motionSegments) {
             std::string outputSegment = generateOutputFilename(segment.first, segment.second);
@@ -397,6 +432,9 @@ private:
             // Overlay the motion scores after extracting the segment
             std::string scoresFile = outputSegment + ".scores";
             overlayMotionScores(outputSegment, scoresFile);
+
+            std::string scoresVideo = outputSegment + "_with_scores.mp4";
+            overlayPolygon(scoresVideo)
         }
     }
 
