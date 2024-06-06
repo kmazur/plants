@@ -97,6 +97,7 @@ private:
         loadPolygon(polygonStr);
     }
 
+   // General template method for non-string types
     template <typename T>
     T getValue(const std::string& key, const T& defaultValue) const {
         auto it = config.find(key);
@@ -111,17 +112,17 @@ private:
         }
         return defaultValue;
     }
+
+    // Template specialization for string types
+    std::string getValue(const std::string& key, const std::string& defaultValue) const {
+        auto it = config.find(key);
+        if (it != config.end()) {
+            return it->second;
+        }
+        return defaultValue;
+    }
 };
 
-// Correct specialization outside the class definition
-template <>
-std::string Config::getValue(const std::string& key, const std::string& defaultValue) {
-    auto it = config.find(key);
-    if (it != config.end()) {
-        return it->second;
-    }
-    return defaultValue;
-}
 
 class VideoProcessor {
 public:
