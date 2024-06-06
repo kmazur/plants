@@ -277,7 +277,7 @@ private:
                 // Accumulate motion data if a segment is being recorded
                 if (motionStartTime >= 0) {
                     motionDataList.push_back({prevTime - motionStartTime, frameIndex, motionScore});
-                    std::cout << "time: " << prevTime << ", frame: " << frameIndex << ", score: " << motionScore << std::endl;
+                    std::cout << "time: " << prevTime - motionStartTime << ", frame: " << frameIndex << ", score: " << motionScore << std::endl;
                 }
 
                 if (prevTime > ignoreFirstSeconds) {
@@ -287,6 +287,8 @@ private:
                             motionStartTime = std::max(prevTime - config.getSecondsBefore(), 0.0);
                             std::cout << motionScore << " > " << config.getMotionThreshold() << " -> motion start detected at: " << motionStartTime << " s " << std::endl;
                             motionDataList.clear();
+                            motionDataList.push_back({prevTime - motionStartTime, frameIndex, motionScore});
+                            std::cout << "time: " << prevTime - motionStartTime << ", frame: " << frameIndex << ", score: " << motionScore << std::endl;
                         } else {
                             std::cout << motionScore << " > " << config.getMotionThreshold() << " -> motion continuing from: " << motionStartTime << " -> " << prevTime << std::endl;
                         }
