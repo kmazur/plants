@@ -362,8 +362,8 @@ private:
         for (size_t i = 0; i < motionDataList.size(); ++i) {
             const auto& data = motionDataList[i];
             double nextTime = (i + 1 < motionDataList.size()) ? motionDataList[i + 1].time : data.time + 10; // assume 10s default for last segment
-            drawtextCommand << "drawtext=fontfile=/path/to/font.ttf:text='Motion Score: " << data.motionScore
-                            << "':x=10:y=h-50:fontcolor=white:fontsize=24:box=1:boxcolor=black@0.5:boxborderw=5"
+            drawtextCommand << "drawtext=fontfile=/path/to/font.ttf:text='Motion Score >" << data.motionScore
+                            << "<':x=10:y=h-50:fontcolor=white:fontsize=24:box=1:boxcolor=black@0.5:boxborderw=5"
                             << ":enable='between(t," << data.time << "," << nextTime << ")',";
         }
 
