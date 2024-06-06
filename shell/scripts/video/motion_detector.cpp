@@ -332,10 +332,6 @@ private:
 
         file.close();
         std::cout << "Motion data written to file: " << filename << std::endl;
-
-        // After writing the motion data, create a new video with overlayed text
-        std::string segmentFilename = generateOutputFilename(startTime, endTime);
-        overlayMotionScores(segmentFilename, filename);
     }
 
      // Method to overlay motion scores on video using ffmpeg
@@ -356,7 +352,12 @@ private:
 
     void extractSegments(const std::string& convertedVideoPath) {
         for (const auto& segment : motionSegments) {
-            extractSegmentWithFFmpeg(convertedVideoPath, segment.first, segment.second, generateOutputFilename(segment.first, segment.second));
+            std::string outputSegment = generateOutputFilename(segment.first, segment.second);
+            extractSegmentWithFFmpeg(convertedVideoPath, segment.first, segment.second, outputSegment);
+
+            // Overlay the motion scores after extracting the segment
+            std::string scoresFile = outputSegment + ".scores";
+            overlayMotionScores(outputSegment, scoresFile);
         }
     }
 
