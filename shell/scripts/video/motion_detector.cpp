@@ -276,6 +276,7 @@ private:
 
                 // Accumulate motion data if a segment is being recorded
                 motionDataList.push_back({prevTime, frameIndex, motionScore});
+                std::cout << "time: " << prevTime << ", frame: " << frameIndex << ", score: " << motionScore << std::endl;
 
                 if (prevTime > ignoreFirstSeconds) {
                     if (motionScore > config.getMotionThreshold()) {
