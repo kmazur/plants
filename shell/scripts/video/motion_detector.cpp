@@ -288,6 +288,7 @@ private:
                         writeMotionDataToFile(motionStartTime, motionEndTime, motionDataList);
                         motionDataList.clear();
                         motionStartTime = -1;
+                        break;
                     }
                 }
 
@@ -296,7 +297,6 @@ private:
             std::swap(prevFrame, currFrame);
             std::swap(prevRoi, currRoi);
             frameIndex += frameIndexStep;
-            break;
         }
 
         if (motionStartTime >= 0) {
