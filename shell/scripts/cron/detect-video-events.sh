@@ -34,7 +34,7 @@ function create_last_segment_animation() {
     log "No polygon defined in $MOTION_DETECTION_CONFIG_FILE! -> skipping cropping"
 
     # crop=out_w:out_h:x:y
-    ffmpeg -y -i "$VIDEO_OUTPUT_DIR/$LAST_FILE" -filter_complex "[0:v]setpts=PTS/2[v]" -map "[v]" -an -c:v libx264 -crf 23 -preset veryfast "$ANIMATION_FILE"
+    ffmpeg -y -i "$LAST_FILE" -filter_complex "[0:v]setpts=PTS/2[v]" -map "[v]" -an -c:v libx264 -crf 23 -preset veryfast "$ANIMATION_FILE"
   else
     local BOUNDING_BOX="$(get_bounding_box_from_polygon "$POLYGON")"
     log "Cropping to: $BOUNDING_BOX"
@@ -48,7 +48,7 @@ function create_last_segment_animation() {
     log "Complex filter for ffmpeg: [0:v]setpts=PTS/8,crop=${CROP_W}:${CROP_H}:${CROP_X}:${CROP_Y}[v]"
 
     # crop=out_w:out_h:x:y
-    ffmpeg -y -i "$VIDEO_OUTPUT_DIR/$LAST_FILE" -filter_complex "[0:v]setpts=PTS/2,crop=${CROP_W}:${CROP_H}:${CROP_X}:${CROP_Y}[v]" -map "[v]" -an -c:v libx264 -crf 23 -preset veryfast "$ANIMATION_FILE"
+    ffmpeg -y -i "$LAST_FILE" -filter_complex "[0:v]setpts=PTS/2,crop=${CROP_W}:${CROP_H}:${CROP_X}:${CROP_Y}[v]" -map "[v]" -an -c:v libx264 -crf 23 -preset veryfast "$ANIMATION_FILE"
 
   fi
 
