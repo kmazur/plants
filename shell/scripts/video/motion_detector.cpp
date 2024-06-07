@@ -498,8 +498,9 @@ private:
         timeinfo.tm_min = minute;
         timeinfo.tm_sec = second;
 
-        // Convert tm structure to time_t
-        std::time_t tt = std::mktime(&timeinfo);
+
+        // Convert tm structure to time_t in UTC
+        std::time_t tt = timegm(&timeinfo);
 
         // Convert time_t to std::chrono::system_clock::time_point
         std::chrono::system_clock::time_point start_time = std::chrono::system_clock::from_time_t(tt);
