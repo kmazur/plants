@@ -53,7 +53,7 @@ function create_last_segment_animation() {
   fi
 
   if [ -f "$ANIMATION_FILE" ]; then
-    upload_file "$ANIMATION_FILE" "video/mp4"
+    upload_file "$ANIMATION_FILE" "video/mp4" && echo "$LAST_FILE" > "$TMP_DIR/vid_segment_file.txt"
   fi
 }
 
