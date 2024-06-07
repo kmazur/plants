@@ -296,6 +296,7 @@ private:
             std::swap(prevFrame, currFrame);
             std::swap(prevRoi, currRoi);
             frameIndex += frameIndexStep;
+            break;
         }
 
         if (motionStartTime >= 0) {
@@ -346,8 +347,6 @@ private:
         file.close();
 
         std::chrono::system_clock::time_point videoStartTime = getVideoStartTime();
-
-
 
         // Construct the drawtext command for each score with enable expressions
         std::ostringstream drawtextCommand;
