@@ -12,6 +12,7 @@ CAMERA_CONFIG_DIR="$REPO_DIR/shell/scripts/video/config"
 MOTION_DETECTION_CONFIG_FILE="$CAMERA_CONFIG_DIR/motion-config-$MACHINE_NAME.txt"
 
 function create_last_segment_animation() {
+  log "Creating last segment animation"
   local DATE="$(get_current_date_compact)"
   local HOUR="$(get_current_hour)"
   if [[ "$HOUR" == "0"* ]]; then
@@ -23,6 +24,7 @@ function create_last_segment_animation() {
   local LAST_UPLOADED_FILE="$([ -f "$TMP_DIR/vid_segment_file.txt" ] && cat "$TMP_DIR/vid_segment_file.txt" )"
 
   if [[ "$LAST_FILE" == "$LAST_UPLOADED_FILE" ]]; then
+    log "Last file was already uploaded"
     return 0
   fi
 
@@ -53,6 +55,7 @@ function create_last_segment_animation() {
   fi
 
   if [ -f "$ANIMATION_FILE" ]; then
+    log "Uploading $ANIMATION_FILE"
     upload_file "$ANIMATION_FILE" "video/mp4" && echo "$LAST_FILE" > "$TMP_DIR/vid_segment_file.txt"
   fi
 }
