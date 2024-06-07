@@ -357,9 +357,9 @@ private:
             std::chrono::system_clock::time_point new_time = videoStartTime + std::chrono::seconds(static_cast<int>(data.time));
             std::time_t new_tt = std::chrono::system_clock::to_time_t(new_time);
             std::stringstream ss;
-            ss << std::put_time(std::localtime(&new_tt), "%Y-%m-%d %H:%M:%S");
+            ss << std::put_time(std::localtime(&new_tt), "%Y-%m-%d %H\\:%M\\:%S");
 
-            drawtextCommand << "drawtext=fontfile=/path/to/font.ttf:text='" << ss.str() << " motion: " << data.motionScore
+            drawtextCommand << "drawtext=fontfile=/path/to/font.ttf:text='" << ss.str() << " motion\\: " << data.motionScore
                             << "':x=10:y=h-50:fontcolor=white:fontsize=24:box=1:boxcolor=black@0.5:boxborderw=5"
                             << ":enable='between(t," << data.time << "," << nextTime << ")',";
         }
