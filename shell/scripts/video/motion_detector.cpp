@@ -10,6 +10,10 @@
 #include <vector>
 #include <algorithm>
 #include <cstdlib>
+#include <regex>
+#include <chrono>
+#include <iomanip>
+#include <stdexcept>
 
 namespace fs = std::filesystem;
 
@@ -341,13 +345,23 @@ private:
         }
         file.close();
 
+        std::chrono::system_clock::time_point videoStartTime = getVideoStartTime();
+
+
+
         // Construct the drawtext command for each score with enable expressions
         std::ostringstream drawtextCommand;
         for (size_t i = 0; i < motionDataList.size(); ++i) {
             const auto& data = motionDataList[i];
             double nextTime = (i + 1 < motionDataList.size()) ? motionDataList[i + 1].time : data.time + 10; // assume 10s default for last segment
-            drawtextCommand << "drawtext=fontfile=/path/to/font.ttf:text='Motion Score >" << data.motionScore
-                            << "<':x=10:y=h-50:fontcolor=white:fontsize=24:box=1:boxcolor=black@0.5:boxborderw=5"
+
+            std::chrono::system_clock::time_point new_time = videoStartTime + std::chrono::seconds(static_cast<int>(data.time));
+            std::time_t new_tt = std::chrono::system_clock::to_time_t(new_time);
+            std::stringstream ss;
+            ss << std::put_time(std::localtime(&new_tt), "%Y-%m-%d %H:%M:%S");
+
+            drawtextCommand << "drawtext=fontfile=/path/to/font.ttf:text='" << ss.str() << " motion: " << data.motionScore
+                            << "':x=10:y=h-50:fontcolor=white:fontsize=24:box=1:boxcolor=black@0.5:boxborderw=5"
                             << ":enable='between(t," << data.time << "," << nextTime << ")',";
         }
 
@@ -453,6 +467,44 @@ private:
                               "\" -t " + std::to_string(duration) + " -c copy \"" + outputFile + "\"";
         std::cout << "Executing ffmpeg for segment: [" << start << " -> " << end << "]\n" << command << std::endl;
         std::system(command.c_str());
+    }
+
+    std::chrono::system_clock::time_point getVideoStartTime() const {
+        // Define the regex pattern to extract the timestamp
+        std::regex pattern(R"((\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2}))");
+
+        // Declare variables to hold the extracted components
+        int year, month, day, hour, minute, second;
+
+        // Perform the regex search
+        std::smatch match;
+        if (std::regex_search(videoPath, match, pattern) && match.size() == 7) {
+            year = std::stoi(match[1].str());
+            month = std::stoi(match[2].str());
+            day = std::stoi(match[3].str());
+            hour = std::stoi(match[4].str());
+            minute = std::stoi(match[5].str());
+            second = std::stoi(match[6].str());
+        } else {
+            std::cerr << "No valid timestamp found in the video path" << std::endl;
+            throw std::invalid_argument("No valid timestamp");
+        }
+
+        // Create a tm structure with the extracted components
+        std::tm timeinfo = {};
+        timeinfo.tm_year = year - 1900; // tm_year is years since 1900
+        timeinfo.tm_mon = month - 1;    // tm_mon is 0-based
+        timeinfo.tm_mday = day;
+        timeinfo.tm_hour = hour;
+        timeinfo.tm_min = minute;
+        timeinfo.tm_sec = second;
+
+        // Convert tm structure to time_t
+        std::time_t tt = std::mktime(&timeinfo);
+
+        // Convert time_t to std::chrono::system_clock::time_point
+        std::chrono::system_clock::time_point start_time = std::chrono::system_clock::from_time_t(tt);
+        return start_time;
     }
 };
 
