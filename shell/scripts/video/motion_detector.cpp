@@ -232,7 +232,7 @@ private:
         cv::Mat currRoi, prevRoi, maskedDiff;
         ensureSizeAndType(currRoi, boundingRect.size(), CV_8UC1);
 
-        double ignoreFirstSeconds = 1.0;
+        double ignoreFirstSeconds = 3.0;
         double motionThreshold = config.getMotionThreshold();
         double recordBeforeMotionSeconds = config.getSecondsBefore();
         double recordAfterMotionSeconds = config.getSecondsAfter();
@@ -282,7 +282,7 @@ private:
                         }
                     } else if (motionStartTime >= 0 && (frameTimeSecond - lastMotionTimeSecond) > recordAfterMotionSeconds) {
                         // TODO: double motionEndTime = std::min(lastMotionTimeSecond + 1.0, videoLength);
-                        double motionEndTime = std::min(lastMotionTimeSecond + 1.0, frameTimeSecond);
+                        double motionEndTime = std::min(lastMotionTimeSecond + 2.0, frameTimeSecond);
                         std::cout << "Motion detected at: ["<< motionStartTime << " -> " << motionEndTime << "]\n";
                         motionSegments.emplace_back(motionStartTime, motionEndTime);
                         writeMotionDataToFile(motionStartTime, motionEndTime, motionDataList);
