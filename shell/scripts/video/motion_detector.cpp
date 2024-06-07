@@ -494,7 +494,7 @@ private:
         timeinfo.tm_year = year - 1900; // tm_year is years since 1900
         timeinfo.tm_mon = month - 1;    // tm_mon is 0-based
         timeinfo.tm_mday = day;
-        timeinfo.tm_hour = hour -1; // for my timezone
+        timeinfo.tm_hour = hour - 2; // for my timezone
         timeinfo.tm_min = minute;
         timeinfo.tm_sec = second;
 
