@@ -489,14 +489,20 @@ private:
             throw std::invalid_argument("No valid timestamp");
         }
 
-        std::chrono::system_clock::time_point start_time = std::chrono::system_clock::from_time_t(std::time_t(0));
-        start_time += std::chrono::years(year - 1970);
-        start_time += std::chrono::months(month - 1);
-        start_time += std::chrono::days(day - 1);
-        start_time += std::chrono::hours(hour);
-        start_time += std::chrono::minutes(minute);
-        start_time += std::chrono::seconds(second);
+        // Create a tm structure with the extracted components
+        std::tm timeinfo = {};
+        timeinfo.tm_year = year - 1900; // tm_year is years since 1900
+        timeinfo.tm_mon = month - 1;    // tm_mon is 0-based
+        timeinfo.tm_mday = day;
+        timeinfo.tm_hour = hour -1; // for my timezone
+        timeinfo.tm_min = minute;
+        timeinfo.tm_sec = second;
 
+        // Convert tm structure to time_t in UTC
+        std::time_t tt = timegm(&timeinfo);
+
+        // Convert time_t to std::chrono::system_clock::time_point
+        std::chrono::system_clock::time_point start_time = std::chrono::system_clock::from_time_t(tt);
         return start_time;
     }
 };
