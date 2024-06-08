@@ -32,9 +32,10 @@ function create_last_segment_animation() {
   rm "$ANIMATION_FILE" &> /dev/null
 
   local POLYGON="$(get_config "polygon" "" "$MOTION_DETECTION_CONFIG_FILE")"
-  if [ -z "$POLYGON" ]; then
-    log "No polygon defined in $MOTION_DETECTION_CONFIG_FILE! -> skipping cropping"
-
+#  if [ -z "$POLYGON" ]; then
+#    log "No polygon defined in $MOTION_DETECTION_CONFIG_FILE! -> skipping cropping"
+  if true; then
+    log "No croppipng - skipping crop"
     # crop=out_w:out_h:x:y
     ffmpeg -y -i "$LAST_FILE" -filter_complex "[0:v]setpts=PTS/2[v]" -map "[v]" -an -c:v libx264 -crf 23 -preset veryfast "$ANIMATION_FILE"
   else
