@@ -288,7 +288,6 @@ private:
                         writeMotionDataToFile(motionStartTime, motionEndTime, motionDataList);
                         motionDataList.clear();
                         motionStartTime = -1;
-                        break;
                     }
                 }
 
