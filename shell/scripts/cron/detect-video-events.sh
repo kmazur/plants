@@ -36,9 +36,10 @@ function create_last_segment_animation() {
 #    log "No polygon defined in $MOTION_DETECTION_CONFIG_FILE! -> skipping cropping"
   if true; then
     log "No croppipng - skipping crop"
-    # crop=out_w:out_h:x:y
-    ffmpeg -y -i "$LAST_FILE" -filter_complex "[0:v]setpts=PTS/2[v]" -map "[v]" -an -c:v libx264 -crf 23 -preset veryfast "$ANIMATION_FILE"
+    mv "$LAST_FILE" "$ANIMATION_FILE"
+    #ffmpeg -y -i "$LAST_FILE" -filter_complex "[0:v]setpts=PTS/2[v]" -map "[v]" -an -c:v libx264 -crf 23 -preset veryfast "$ANIMATION_FILE"
   else
+    # crop=out_w:out_h:x:y
     local BOUNDING_BOX="$(get_bounding_box_from_polygon "$POLYGON")"
     log "Cropping to: $BOUNDING_BOX"
     local CROP_X="$(echo "$BOUNDING_BOX" | cut -d ',' -f 1)"
