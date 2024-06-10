@@ -76,6 +76,8 @@ function can_process() {
     HOUR="${HOUR:1}"
   fi
 
+  MAX_TEMP="$(get_config "$MAX_TEMP_KEY")"
+
   if is_scale_suspended; then
     return 1
   elif [[ "$(get_cpu_temp_int)" -gt "$MAX_TEMP" ]]; then
