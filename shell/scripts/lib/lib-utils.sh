@@ -130,6 +130,23 @@ function set_config() {
   rm "$FILE.flock"
 }
 
+function has_config() {
+  local KEY="$1"
+  local FILE="${3:-$CONFIG_INI}"
+
+  if [ ! -f "$FILE" ]; then
+    touch "$FILE"
+    return 2
+  fi
+
+  local VALUE="$(grep "^$KEY=" "$FILE" | cut -f 2- -d '=')"
+  if [ -n "$VALUE" ]; then
+    return 0
+  else
+    return 1
+  fi
+}
+
 function get_config() {
   local KEY="$1"
   local DEFAULT_VALUE="$2"

@@ -11,6 +11,14 @@ PERIOD="$MIN_PERIOD"
 CAMERA_CONFIG_DIR="$REPO_DIR/shell/scripts/video/config"
 MOTION_DETECTION_CONFIG_FILE="$CAMERA_CONFIG_DIR/motion-config-$MACHINE_NAME.txt"
 
+MAX_TEMP_KEY="motion.detect.max_temperature"
+MAX_TEMP="55"
+if ! has_config "$MAX_TEMP_KEY"; then
+  set_config "$MAX_TEMP_KEY" "55"
+else
+  MAX_TEMP="$(get_config "$MAX_TEMP_KEY")"
+fi
+
 function create_last_segment_animation() {
   log "Creating last segment animation"
   local DATE="$(get_current_date_compact)"
@@ -70,7 +78,7 @@ function can_process() {
 
   if is_scale_suspended; then
     return 1
-  elif [[ "$(get_cpu_temp_int)" -gt "70" ]]; then
+  elif [[ "$(get_cpu_temp_int)" -gt "$MAX_TEMP" ]]; then
     return 2
   else
     return 0
