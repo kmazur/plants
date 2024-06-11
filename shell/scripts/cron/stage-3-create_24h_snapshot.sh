@@ -19,7 +19,7 @@ while true; do
 
   IMAGE_CONFIG_FILE="$(get_required_config "image-config-file")"
   TIMELAPSE_IMAGE_WIDTH="$(get_required_config "width" "$IMAGE_CONFIG_FILE")"
-  TIMELAPSE_IMAGE_HEIGHT="$(get_required_config "height""$IMAGE_CONFIG_FILE")"
+  TIMELAPSE_IMAGE_HEIGHT="$(get_required_config "height" "$IMAGE_CONFIG_FILE")"
 
   INPUT_STAGE_DIR="$(ensure_stage_dir "$INPUT_STAGE")"
   OUTPUT_STAGE_DIR="$(ensure_stage_dir "$OUTPUT_STAGE")"

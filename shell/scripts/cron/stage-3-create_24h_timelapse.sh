@@ -20,7 +20,7 @@ while true; do
   SEGMENT_DURATION_SECONDS="$(get_or_set_config "video.segment_duration_seconds" "300")"
   IMAGE_CONFIG_FILE="$(get_required_config "image-config-file")"
   TIMELAPSE_IMAGE_WIDTH="$(get_required_config "width" "$IMAGE_CONFIG_FILE")"
-  TIMELAPSE_IMAGE_WIDTH="$(get_required_config "height""$IMAGE_CONFIG_FILE")"
+  TIMELAPSE_IMAGE_WIDTH="$(get_required_config "height" "$IMAGE_CONFIG_FILE")"
 
   INPUT_STAGE_DIR="$(ensure_stage_dir "$INPUT_STAGE")"
   OUTPUT_STAGE_DIR="$(ensure_stage_dir "$OUTPUT_STAGE")"
