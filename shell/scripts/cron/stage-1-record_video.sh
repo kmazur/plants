@@ -32,7 +32,7 @@ while true; do
   log "Light level is: $LIGHT_LEVEL"
   declare LIGHT_LEVEL_INT="${LIGHT_LEVEL%%.*}"
 
-  LIGHT_LEVEL_FILE="light_level_${START_DATE_TIME}.jpg"
+  LIGHT_LEVEL_FILE="light_level_${START_DATE_TIME}.txt"
   LIGHT_LEVEL_PATH="$LOCAL_STAGE_DIR/$LIGHT_LEVEL_FILE"
   echo "$LIGHT_LEVEL_INT" > "$LIGHT_LEVEL_PATH"
 
