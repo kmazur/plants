@@ -11,8 +11,23 @@ OUTPUT_STAGE="video/snapshot_annotate"
 # OUTPUT:
 # - video/snapshot_annotate/snapshot_annotated_20240505_101501.jpg
 
+SLEEP_PID=""
+# Signal handlers
+handle_wakeup() {
+    log "Waking up"
+    if [ -n "$SLEEP_PID" ]; then
+        kill "$SLEEP_PID"
+    fi
+}
+
+# Trap signals
+trap 'handle_wakeup' SIGUSR1
+
 while true; do
-  sleep 30
+  sleep 60m &
+  SLEEP_PID="$!"
+  wait
+  unset sleep_pid
 
   IMAGE_CONFIG_FILE="$(get_required_config "image-config-file")"
   IMAGE_WIDTH="$(get_required_config "width" "$IMAGE_CONFIG_FILE")"

@@ -25,3 +25,22 @@ function ensure_stage_dir() {
   mkdir -p "$STAGE_DIR" &> /dev/null
   echo "$STAGE_DIR"
 }
+
+function get_orchestrator_dir() {
+  get_pipeline_stage_dir "orchestrator"
+}
+
+function get_orchestrator_requests_file() {
+  echo "$(get_orchestrator_dir)/REQUESTS.txt"
+}
+
+function request_cpu_time() {
+  local PROCESS="$1"
+  local TOKENS="$2"
+  local SLEEP_PID="$3"
+
+  local DATETIME="$(get_current_date_time_compact)"
+  local REQUESTS_FILE="$(get_orchestrator_requests_file)"
+
+  set_config "$PROCESS" "${TOKENS}:${SLEEP_PID}:${DATETIME}" "$REQUESTS_FILE"
+}
