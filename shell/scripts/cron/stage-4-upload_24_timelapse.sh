@@ -28,13 +28,13 @@ while true; do
   if [ -z "$LATEST_NOT_PROCESSED_FILE" ]; then
     continue
   fi
-  log "Processing: $LATEST_NOT_PROCESSED_PATH"
 
   FILE_NAME="${MACHINE_NAME}_24_timelapse.mp4"
   FILE_PATH="$OUTPUT_STAGE_DIR/$FILE_NAME"
 
   # Does not exist or has changed
   if [ ! -f "$FILE_PATH" ] || ! cmp -s "$FILE_PATH" "$LATEST_NOT_PROCESSED_PATH"; then
+    log "Processing: $LATEST_NOT_PROCESSED_PATH"
     if cp -f "$LATEST_NOT_PROCESSED_PATH" "$FILE_PATH"; then
       if [ -f "$FILE_PATH" ]; then
         if upload_file "$FILE_PATH" "image/jpg"; then
