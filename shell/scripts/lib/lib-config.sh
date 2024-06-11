@@ -28,6 +28,26 @@ function set_config() {
   rm "$FILE.flock"
 }
 
+function remove_config() {
+  local KEY="$1"
+  local FILE="${2:-$CONFIG_INI}"
+  ensure_env
+
+  (
+    flock -x 200
+
+    ensure_file_exists "$FILE"
+
+    ESCAPED_KEY=$(echo "$KEY" | sed 's/\//\\\//g')
+
+    if grep "^$ESCAPED_KEY=" "$FILE" &> /dev/null; then
+      sed -i "s|^$ESCAPED_KEY=.*||" "$FILE" &> /dev/null
+    fi
+
+  ) 200>"$FILE.flock"
+  rm "$FILE.flock"
+}
+
 function has_config_key() {
   local KEY="$1"
   local FILE="${3:-$CONFIG_INI}"
