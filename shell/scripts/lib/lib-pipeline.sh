@@ -50,7 +50,7 @@ function request_cpu_time() {
   log "Requesting '$TOKENS' tokens, waiting on PID: $SLEEP_PID with data: ${TOKENS}:${SLEEP_PID}:${DATETIME} on $REQUESTS_FILE"
 
   set_config "$PROCESS" "${TOKENS}:${SLEEP_PID}:${DATETIME}" "$REQUESTS_FILE"
-  wait
+  wait "$SLEEP_PID"
   unset SLEEP_PID
 
   log "Waking up"

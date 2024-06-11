@@ -117,7 +117,7 @@ function run_scheduler() {
 #  done
 }
 
-#while true; do
-#    run_scheduler
-#    sleep "$SLEEP_INTERVAL"
-#done
+while true; do
+    run_scheduler
+    sleep "$SLEEP_INTERVAL"
+done
