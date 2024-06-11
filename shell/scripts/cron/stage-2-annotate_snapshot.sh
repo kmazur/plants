@@ -29,6 +29,7 @@ while true; do
 
   sleep "$SLEEP_INTERVAL" &
   SLEEP_PID="$!"
+  log "Sleeping PID: $SLEEP_PID"
   wait
   unset sleep_pid
 
