@@ -46,6 +46,14 @@ if has_changed "motion_detector.cpp"; then
   update_sha "motion_detector.cpp"
 fi
 
+cd "$REPO_DIR/shell/scripts/video/" || exit 1
+if has_changed "motion_scorer.cpp"; then
+  echo "Compiling motion_scorer"
+  g++ -std=c++17 -o motion_detector motion_detector.cpp `pkg-config --cflags --libs opencv4` -pthread -Ofast -march=native -flto -finline-functions -funroll-loops -ffast-math
+  mv motion_scorer "$BIN_DIR"
+  update_sha "motion_scorer.cpp"
+fi
+
 
 
 
