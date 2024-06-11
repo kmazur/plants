@@ -12,12 +12,12 @@ OUTPUT_STAGE="video/24_snapshot"
 # - video/24_snapshot/pi4b_24.jpg
 
 PREV_HOUR=""
-MAX_WIDTH="1500"
 while true; do
   sleep 30
 
   MACHINE_NAME="$(get_required_config "name")"
 
+  MAX_WIDTH="$(get_or_set_config "video.24_snapshot.max_width" "2000")"
   IMAGE_CONFIG_FILE="$(get_required_config "image-config-file")"
   TIMELAPSE_IMAGE_WIDTH="$(get_required_config "width" "$IMAGE_CONFIG_FILE")"
   TIMELAPSE_IMAGE_HEIGHT="$(get_required_config "height" "$IMAGE_CONFIG_FILE")"
