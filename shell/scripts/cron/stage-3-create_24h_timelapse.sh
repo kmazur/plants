@@ -14,6 +14,8 @@ OUTPUT_STAGE="video/24_timelapse"
 while true; do
   sleep 30
 
+  VIDEO_24_TIMELAPSE_FPS="$(get_or_set_config "video.24_timelapse.fps" "4")"
+
   MACHINE_NAME="$(get_required_config "name")"
 
   INPUT_STAGE_DIR="$(ensure_stage_dir "$INPUT_STAGE")"
@@ -34,12 +36,13 @@ while true; do
   FILE_PATH="$OUTPUT_STAGE_DIR/$FILE_NAME"
 
   if [[ ! -f "$FILE_PATH" ]]; then
-    if ! ffmpeg -framerate 1 -i "$LATEST_NOT_PROCESSED_PATH" -c:v libx264 -r 1 -pix_fmt yuv420p "$FILE_PATH"; then
+    if ! ffmpeg -framerate "$VIDEO_24_TIMELAPSE_FPS" -i "$LATEST_NOT_PROCESSED_PATH" -c:v libx264 -r "$VIDEO_24_TIMELAPSE_FPS" -pix_fmt yuv420p "$FILE_PATH"; then
       continue
     fi
   else
     NEW_FRAME_VIDEO_PATH="$OUTPUT_STAGE_DIR/${MACHINE_NAME}_24_timelapse_processing_new_vid.mp4"
-    if ! ffmpeg -loop 1 -i "$LATEST_NOT_PROCESSED_PATH" -c:v libx264 -t 1 -pix_fmt yuv420p "$NEW_FRAME_VIDEO_PATH"; then
+    FRAME_DURATION="0$(echo "scale=4; 1/$VIDEO_24_TIMELAPSE_FPS" | bc)"
+    if ! ffmpeg -loop "$VIDEO_24_TIMELAPSE_FPS" -i "$LATEST_NOT_PROCESSED_PATH" -c:v libx264 -t "$FRAME_DURATION" -pix_fmt yuv420p "$NEW_FRAME_VIDEO_PATH"; then
       rm "$NEW_FRAME_VIDEO_PATH" 2> /dev/null
       continue
     fi
