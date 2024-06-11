@@ -18,7 +18,7 @@ function set_config() {
 
 
     if grep "^$KEY=" "$FILE" &> /dev/null; then
-      sed -i "|^${KEY//|/\\|}=|c\\${KEY//|/\\|}=${VAL//|/\\|}" "$FILE" &> /dev/null
+      sed -i "s|^${KEY//\//\\/}=.*|$KEY=$VAL|" "$FILE" &> /dev/null
     else
       echo "$KEY=$VAL" >> "$FILE"
     fi
