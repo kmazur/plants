@@ -13,7 +13,7 @@ MOTION_DETECTION_CONFIG_FILE="$CAMERA_CONFIG_DIR/motion-config-$MACHINE_NAME.txt
 
 MAX_TEMP_KEY="motion.detect.max_temperature"
 MAX_TEMP="55"
-if ! has_config "$MAX_TEMP_KEY"; then
+if ! has_config_key "$MAX_TEMP_KEY"; then
   set_config "$MAX_TEMP_KEY" "55"
 else
   MAX_TEMP="$(get_config "$MAX_TEMP_KEY")"

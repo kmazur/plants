@@ -107,92 +107,6 @@ function is_locked_process_running() {
   fi
 }
 
-function set_config() {
-  local KEY="$1"
-  local VAL="$2"
-  local FILE="${3:-$CONFIG_INI}"
-  ensure_env
-
-  (
-    flock -x 200
-
-    if [ ! -f "$FILE" ]; then
-      touch "$FILE"
-    fi
-
-    if grep "^$KEY=" "$FILE" &> /dev/null; then
-      sed -i "/^$KEY=/c\\$KEY=$VAL" "$FILE" &> /dev/null
-    else
-      echo "$KEY=$VAL" >> "$FILE"
-    fi
-
-  ) 200>"$FILE.flock"
-  rm "$FILE.flock"
-}
-
-function has_config() {
-  local KEY="$1"
-  local FILE="${3:-$CONFIG_INI}"
-
-  if [ ! -f "$FILE" ]; then
-    touch "$FILE"
-    return 2
-  fi
-
-  local VALUE="$(grep "^$KEY=" "$FILE" | cut -f 2- -d '=')"
-  if [ -n "$VALUE" ]; then
-    return 0
-  else
-    return 1
-  fi
-}
-
-function get_config() {
-  local KEY="$1"
-  local DEFAULT_VALUE="$2"
-  local FILE="${3:-$CONFIG_INI}"
-
-  if [ ! -f "$FILE" ]; then
-    touch "$FILE"
-  fi
-
-  local VALUE="$(grep "^$KEY=" "$FILE" | cut -f 2- -d '=')"
-  if [ -n "$VALUE" ]; then
-    echo "$VALUE"
-  elif [ -n "$DEFAULT_VALUE" ]; then
-    echo "$DEFAULT_VALUE"
-  fi
-}
-
-function get_required_config() {
-  local KEY="$1"
-  local FILE="${2:-$CONFIG_INI}"
-
-  if [ ! -f "$FILE" ]; then
-    touch "$FILE"
-  fi
-
-  local VALUE="$(get_config "$KEY" "" "$FILE")"
-  if [[ -z "$VALUE" ]]; then
-    echo "Required config not found! Key='$KEY'"
-    exit 100
-  fi
-  echo "$VALUE"
-}
-
-function get_config_keys() {
-  local FILE="${1:-$CONFIG_INI}"
-
-  if [ ! -f "$FILE" ]; then
-    touch "$FILE"
-  fi
-
-  local KEYS="$(cat "$FILE" | cut -f 1 -d '=' | sort -ur)"
-  echo "$KEYS"
-}
-
-
-
 function add_crontab_entry() {
   local ENTRY="$1"
   (crontab -l | grep "^#"; (crontab -l;  echo "$ENTRY") | grep -v "^#" | sort -u;) | crontab -
@@ -230,6 +144,11 @@ function get_audio_segment_dir() {
 function get_video_segment_dir() {
   local DATE="$1"
   get_output_dir "$VIDEO_SEGMENT_DIR" "$DATE"
+}
+
+function get_pipeline_dir() {
+  local DATE="$1"
+  get_output_dir "$PIPELINE_DIR" "$DATE"
 }
 
 function get_used_space_percent() {

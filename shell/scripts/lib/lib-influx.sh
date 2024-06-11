@@ -52,17 +52,10 @@ function get_publisher_queue_state() {
 declare MAIN_INFLUX_QUEUE_FILE="$(get_publisher_queue "main")"
 declare MAIN_INFLUX_QUEUE_STATE_FILE="$(get_publisher_queue_state "main")"
 
-declare INFLUX_PUBLISHER_REGISTRY_FILE="$INFLUX_DIR/registry.txt"
 function get_publisher_name() {
   local PUBLISHER_NAME="$1"
   local TODAY="$(get_current_date_compact)"
   echo "${PUBLISHER_NAME}_${TODAY}"
-}
-
-function register_publisher() {
-  local PUBLISHER_NAME="$(get_publisher_name "$1")"
-  local QUEUE_FILE="$(get_publisher_queue "$PUBLISHER_NAME")"
-  set_config "${PUBLISHER_NAME}" "${QUEUE_FILE}" "$INFLUX_PUBLISHER_REGISTRY_FILE"
 }
 
 function publish_measurement_single() {

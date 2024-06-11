@@ -1,5 +1,7 @@
 #!/bin/bash
 
+source "$REPO_DIR/shell/scripts/lib/lib-text.sh"
+source "$REPO_DIR/shell/scripts/lib/lib-config.sh"
 source "$REPO_DIR/shell/scripts/lib/lib-logging.sh"
 source "$REPO_DIR/shell/scripts/lib/lib-shell.sh"
 source "$REPO_DIR/shell/scripts/lib/lib-datetime.sh"
@@ -11,3 +13,4 @@ source "$REPO_DIR/shell/scripts/lib/lib-fail-safe.sh"
 source "$REPO_DIR/shell/scripts/lib/lib-http.sh"
 source "$REPO_DIR/shell/scripts/lib/lib-audio.sh"
 source "$REPO_DIR/shell/scripts/lib/lib-daylight.sh"
+source "$REPO_DIR/shell/scripts/lib/lib-pipeline.sh"

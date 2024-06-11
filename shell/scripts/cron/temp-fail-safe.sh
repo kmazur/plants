@@ -19,7 +19,6 @@ MIN_CPU_FREQ=600
 MAX_CPU_FREQ=1000
 
 PUBLISHER="TEMP_FAIL_SAFE"
-register_publisher "$PUBLISHER"
 
 SCALE=""
 while true; do

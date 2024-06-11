@@ -13,7 +13,6 @@ function update_period() {
 }
 
 PUBLISHER="CPU_TEMP"
-register_publisher "$PUBLISHER"
 
 while true; do
   if ! is_scale_suspended; then

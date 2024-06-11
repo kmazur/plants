@@ -17,7 +17,6 @@ MACHINE_NAME="$(get_required_config "name")"
 VID_CONFIG_FILE="$(get_required_config "video-config-file")"
 
 PUBLISHER="LIGHT_LEVEL"
-register_publisher "$PUBLISHER"
 create_hour_base_image
 
 while true; do

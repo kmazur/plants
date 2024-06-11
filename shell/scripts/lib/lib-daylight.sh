@@ -66,14 +66,14 @@ function update_daylight_info() {
 
 function is_night() {
   local HOUR="$(get_current_hour)"
-  local SUNRISE="$(get_config "daylight.sunrise" "6")"
-  local SUNSET="$(get_config "daylight.sunset" "21")"
-  local SUNRISE_HOUR="${SUNRISE:9:2}"
-  local SUNSET_HOUR="${SUNSET:9:2}"
+  #local SUNRISE="$(get_config "daylight.sunrise" "6")"
+  #local SUNSET="$(get_config "daylight.sunset" "21")"
+  #local SUNRISE_HOUR="${SUNRISE:9:2}"
+  #local SUNSET_HOUR="${SUNSET:9:2}"
+  local SUNRISE_HOUR="3"
+  local SUNSET_HOUR="23"
 
-  if [[ "$HOUR" == "0"* ]]; then
-    HOUR="${HOUR:1}"
-  fi
+  HOUR="$((10#$HOUR))"
 
   [[ "$HOUR" -le "$SUNRISE_HOUR" || "$HOUR" -ge "$SUNSET_HOUR" ]]
 }

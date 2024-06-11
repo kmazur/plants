@@ -11,6 +11,7 @@ function get_current_day() {
     date "+%d"
 }
 function get_current_hour() {
+  # TODO: add function with & without leading 0
     date "+%H"
 }
 function get_current_minute() {
@@ -51,6 +52,21 @@ function get_date_time_format_dashed() {
 }
 function get_zoned_date_time_format_dashed() {
   echo "%Y-%m-%dT%H:%M:%S %Z"
+}
+
+function date_compact_to_dashed() {
+  local INPUT_DATE="$1"
+
+  local YEAR=${INPUT_DATE:0:4}
+  local MONTH=${INPUT_DATE:4:2}
+  local DAY=${INPUT_DATE:6:2}
+  local HOUR=${INPUT_DATE:9:2}
+  local MINUTE=${INPUT_DATE:11:2}
+  local SECOND=${INPUT_DATE:13:2}
+
+  local OUTPUT_DATE="${YEAR}-${MONTH}-${DAY}T${HOUR}:${MINUTE}:${SECOND}"
+
+  echo "$OUTPUT_DATE"
 }
 
 function get_yesterday_date_compact() {
