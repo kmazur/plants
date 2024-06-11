@@ -182,6 +182,8 @@ private:
         double frameTimeIncrement = 1.0 / fps;
         double stepTimeIncrement = frameIndexStep * frameTimeIncrement;
 
+        double frameCount = cap.get(cv::CAP_PROP_FRAME_COUNT);
+
         std::cout << "Diagnostics: " <<
         "\nFPS: " << fps <<
         "\nwidth: " << frameWidth <<
@@ -189,6 +191,7 @@ private:
         "\nframeStep: " << frameIndexStep <<
         "\nframeTimeIncrement: " << frameTimeIncrement <<
         "\nstepTimeIncrement: " << stepTimeIncrement <<
+        "\nframeCount: " << frameCount <<
         "\n";
 
         std::vector<MotionData> motionDataList;
@@ -210,6 +213,7 @@ private:
                 cv::absdiff(prevRoi, currRoi, frameDiff);
                 frameDiff.copyTo(maskedDiff, mask);
                 double motionScore = cv::sum(maskedDiff)[0] / cv::countNonZero(mask);
+                std::cout << "Frame: " << frameIndex << " (" << (100 * frameIndex / frameCount) << "%), frame score: " << motionScore << "\n";
 
                 motionDataList.push_back({frameTimeSecond, frameIndex, motionScore});
             }
