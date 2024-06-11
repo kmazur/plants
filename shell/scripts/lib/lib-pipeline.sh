@@ -34,13 +34,33 @@ function get_orchestrator_requests_file() {
   echo "$(get_orchestrator_dir)/REQUESTS.txt"
 }
 
+
+SLEEP_PID=""
 function request_cpu_time() {
   local PROCESS="$1"
   local TOKENS="$2"
-  local SLEEP_PID="$3"
+  local TIMEOUT="${3:-60m}"
 
   local DATETIME="$(get_current_date_time_compact)"
   local REQUESTS_FILE="$(get_orchestrator_requests_file)"
 
+  sleep "$TIMEOUT" &
+  SLEEP_PID="$!"
+
+  log "Requesting '$TOKENS' tokens, waiting on PID: $SLEEP_PID"
+
   set_config "$PROCESS" "${TOKENS}:${SLEEP_PID}:${DATETIME}" "$REQUESTS_FILE"
+  wait "$SLEEP_PID"
+  unset SLEEP_PID
+
+  log "Waking up"
+}
+
+function init_sleep() {
+  function handle_wakeup() {
+      if [ -n "$SLEEP_PID" ]; then
+          kill "$SLEEP_PID"
+      fi
+  }
+  trap 'handle_wakeup' SIGUSR1
 }

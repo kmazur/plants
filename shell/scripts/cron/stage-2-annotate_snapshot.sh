@@ -14,26 +14,17 @@ OUTPUT_STAGE="video/snapshot_annotate"
 SLEEP_PID=""
 # Signal handlers
 handle_wakeup() {
-    log "Waking up"
-    echo "Waking up"
     if [ -n "$SLEEP_PID" ]; then
         kill "$SLEEP_PID"
     fi
 }
 
 trap 'handle_wakeup' SIGUSR1
-
-SLEEP_INTERVAL="60m"
+PROCESS="$OUTPUT_STAGE"
 
 while true; do
-  log "Going to sleep for $SLEEP_INTERVAL"
 
-  sleep "$SLEEP_INTERVAL" &
-  SLEEP_PID="$!"
-  log "Sleeping PID: $SLEEP_PID"
-  wait
-  unset sleep_pid
-  log "Waking up"
+  request_cpu_time "${PROCESS}-scan" "1"
 
   IMAGE_CONFIG_FILE="$(get_required_config "image-config-file")"
   IMAGE_WIDTH="$(get_required_config "width" "$IMAGE_CONFIG_FILE")"
@@ -55,6 +46,8 @@ while true; do
   FILE_DATETIME="$(strip "$LATEST_NOT_PROCESSED_FILE" "snapshot_" ".jpg")"
   FILE_NAME="snapshot_annotated_${FILE_DATETIME}.jpg"
   FILE_PATH="$OUTPUT_STAGE_DIR/$FILE_NAME"
+
+  request_cpu_time "${PROCESS}-draw-text" "5"
 
   FONT_SIZE="$(( IMAGE_WIDTH / 35))"
   if draw_text_bl "$LATEST_NOT_PROCESSED_PATH" "$FILE_PATH" "$(date_compact_to_dashed "$FILE_DATETIME")" "120" "yellow" "3"; then
