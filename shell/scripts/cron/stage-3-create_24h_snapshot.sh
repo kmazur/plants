@@ -69,11 +69,11 @@ while true; do
            "[1:v] scale=$NEW_WIDTH:$NEW_HEIGHT [scaled]; [0:v][scaled] overlay=x=$X:y=$Y" -q:v \
            -y "$TMP_OUTPUT" && cp -f "$TMP_OUTPUT" "$FILE_PATH"; then
 
-      rm -f "$FILE_PATH" 2> /dev/null
-
       PREV_HOUR="$HOUR"
       echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
     fi
+
+    rm -f "$TMP_OUTPUT" 2> /dev/null
   fi
 
 done
