@@ -12,6 +12,7 @@ OUTPUT_STAGE="video/24_snapshot"
 # - video/24_snapshot/pi4b_24.jpg
 
 PREV_HOUR=""
+MAX_WIDTH="1500"
 while true; do
   sleep 30
 
@@ -44,19 +45,28 @@ while true; do
     FILE_NAME="${MACHINE_NAME}_24.jpg"
     FILE_PATH="$OUTPUT_STAGE_DIR/$FILE_NAME"
 
+    if (( TIMELAPSE_IMAGE_WIDTH > MAX_WIDTH )); then
+        NEW_WIDTH=$MAX_WIDTH
+        NEW_HEIGHT=$(( $TIMELAPSE_IMAGE_HEIGHT * MAX_WIDTH / TIMELAPSE_IMAGE_WIDTH ))
+    else
+        NEW_WIDTH=$TIMELAPSE_IMAGE_WIDTH
+        NEW_HEIGHT=$TIMELAPSE_IMAGE_HEIGHT
+    fi
+
+
     if [[ ! -f "$FILE_PATH" || "$(stat --printf="%s" "$FILE_PATH")" == "0" ]]; then
-      if ! create_blank_image "$FILE_PATH" "$((TIMELAPSE_IMAGE_WIDTH * 5))" "$((TIMELAPSE_IMAGE_HEIGHT * 5))"; then
+      if ! create_blank_image "$FILE_PATH" "$((NEW_WIDTH * 5))" "$((NEW_HEIGHT * 5))"; then
         continue
       fi
     fi
 
-    X="$(( (HOUR % 5) * TIMELAPSE_IMAGE_WIDTH ))"
-    Y="$(( (HOUR / 5) * TIMELAPSE_IMAGE_HEIGHT ))"
+    X="$(( (HOUR % 5) * NEW_WIDTH ))"
+    Y="$(( (HOUR / 5) * NEW_HEIGHT ))"
 
     TMP_OUTPUT="$OUTPUT_STAGE_DIR/${MACHINE_NAME}_24_processing.jpg"
 
     if ffmpeg -i "$FILE_PATH" -i "$LATEST_NOT_PROCESSED_PATH" -filter_complex \
-           "[1:v] scale=$TIMELAPSE_IMAGE_WIDTH:$TIMELAPSE_IMAGE_HEIGHT [scaled]; [0:v][scaled] overlay=x=$X:y=$Y" \
+           "[1:v] scale=$NEW_WIDTH:$NEW_HEIGHT [scaled]; [0:v][scaled] overlay=x=$X:y=$Y" \
            -y "$TMP_OUTPUT" && cp -f "$TMP_OUTPUT" "$FILE_PATH"; then
 
       rm -f "$FILE_PATH" 2> /dev/null
