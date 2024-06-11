@@ -11,16 +11,10 @@ OUTPUT_STAGE="video/24_timelapse"
 # OUTPUT:
 # - video/24_timelapse/pi4b_24_timelapse.mp4
 
-PREV_HOUR=""
 while true; do
   sleep 30
 
   MACHINE_NAME="$(get_required_config "name")"
-
-  SEGMENT_DURATION_SECONDS="$(get_or_set_config "video.segment_duration_seconds" "300")"
-  IMAGE_CONFIG_FILE="$(get_required_config "image-config-file")"
-  TIMELAPSE_IMAGE_WIDTH="$(get_required_config "width" "$IMAGE_CONFIG_FILE")"
-  TIMELAPSE_IMAGE_WIDTH="$(get_required_config "height" "$IMAGE_CONFIG_FILE")"
 
   INPUT_STAGE_DIR="$(ensure_stage_dir "$INPUT_STAGE")"
   OUTPUT_STAGE_DIR="$(ensure_stage_dir "$OUTPUT_STAGE")"
@@ -40,7 +34,7 @@ while true; do
   FILE_PATH="$OUTPUT_STAGE_DIR/$FILE_NAME"
 
   if [[ ! -f "$FILE_PATH" ]]; then
-    if ! ffmpeg -framerate 30 -i "$LATEST_NOT_PROCESSED_PATH" -c:v libx264 -r 30 -pix_fmt yuv420p "$FILE_NAME"; then
+    if ! ffmpeg -framerate 30 -i "$LATEST_NOT_PROCESSED_PATH" -c:v libx264 -r 30 -pix_fmt yuv420p "$FILE_PATH"; then
       continue
     fi
   else
