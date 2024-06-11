@@ -31,7 +31,7 @@ while true; do
   FILE_NAME="snapshot_annotated_${FILE_DATETIME}.jpg"
   FILE_PATH="$OUTPUT_STAGE_DIR/$FILE_NAME"
 
-  if draw_text_bl "$LATEST_NOT_PROCESSED_PATH" "$FILE_PATH" "$(date_compact_to_dashed "$FILE_DATETIME")" "30" "yellow" "3"; then
+  if draw_text_bl "$LATEST_NOT_PROCESSED_PATH" "$FILE_PATH" "$(date_compact_to_dashed "$FILE_DATETIME")" "120" "yellow" "3"; then
     if [ -f "$FILE_PATH" ]; then
       echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
     fi
