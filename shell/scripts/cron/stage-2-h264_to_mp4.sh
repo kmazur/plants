@@ -32,7 +32,9 @@ while true; do
   FILE_NAME="video_${FILE_DATETIME}.mp4"
   FILE_PATH="$OUTPUT_STAGE_DIR/$FILE_NAME"
 
+  log "Starting h264 -> mp4 conversion"
   if ffmpeg -y -loglevel error -i "$LATEST_NOT_PROCESSED_PATH" -c:v copy -an "$FILE_PATH"; then
+    log "Done h264 -> mp4 conversion"
     echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
   fi
 

@@ -35,8 +35,10 @@ while true; do
   FILE_NAME="scores_${FILE_DATETIME}.txt"
   FILE_PATH="$OUTPUT_STAGE_DIR/$FILE_NAME"
 
+  log "Starting motion score detection"
   if "$BIN_DIR/motion_scorer" "$LATEST_NOT_PROCESSED_PATH" "$FILE_PATH" "$MOTION_DETECTION_CONFIG_FILE"; then
     if [ -f "$FILE_PATH" ]; then
+      log "Done motion score detection"
       echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
     fi
   fi
