@@ -20,6 +20,7 @@ while true; do
 
   LOCAL_STAGE_DIR="$(ensure_stage_dir "$OUTPUT_STAGE")"
 
+  log "Capturing image"
   START_DATE_TIME="$(get_current_date_time_compact)"
   IMAGE_CAPTURE_FILE="snapshot_${START_DATE_TIME}.jpg"
   IMAGE_CAPTURE_PATH="$LOCAL_STAGE_DIR/$IMAGE_CAPTURE_FILE"
@@ -50,7 +51,7 @@ while true; do
     fi
   fi
 
-  log "Recording video"
+  log "Recording video for ${SEGMENT_DURATION_SECONDS} seconds"
   START_DATE_TIME="$(get_current_date_time_compact)"
   VIDEO_FILE_NAME="video_$START_DATE_TIME.h264"
   VIDEO_FILE_PATH="$LOCAL_STAGE_DIR/$VIDEO_FILE_NAME"
