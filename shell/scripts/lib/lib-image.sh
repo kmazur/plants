@@ -9,7 +9,7 @@ function draw_text_bl() {
 
   local PADDING="$((FONT_SIZE / 3))"
 
-  ffmpeg -y -i "$INPUT_IMAGE" -vf "drawtext=text=\'$TEXT\':x=$PADDING:y=H-th-$PADDING:fontsize=$FONT_SIZE:fontcolor=$FONT_COLOR" -codec:a copy "$OUTPUT_IMAGE"
+  ffmpeg -y -i "$INPUT_IMAGE" -vf "drawtext=text=\'$TEXT\':x=$PADDING:y=H-th-$PADDING:fontsize=$FONT_SIZE:fontcolor=$FONT_COLOR" -q:v 1 "$OUTPUT_IMAGE"
 }
 
 function create_blank_image() {
