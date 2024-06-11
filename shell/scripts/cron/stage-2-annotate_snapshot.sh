@@ -11,15 +11,6 @@ OUTPUT_STAGE="video/snapshot_annotate"
 # OUTPUT:
 # - video/snapshot_annotate/snapshot_annotated_20240505_101501.jpg
 
-SLEEP_PID=""
-# Signal handlers
-handle_wakeup() {
-    if [ -n "$SLEEP_PID" ]; then
-        kill "$SLEEP_PID"
-    fi
-}
-
-trap 'handle_wakeup' SIGUSR1
 PROCESS="$OUTPUT_STAGE"
 
 while true; do
