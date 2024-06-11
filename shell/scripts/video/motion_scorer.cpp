@@ -150,13 +150,26 @@ private:
         const std::vector<cv::Point>& polygon = config.getPolygon();
         cv::Rect boundingRect = cv::boundingRect(polygon);
 
-        cv::Mat mask = cv::Mat::zeros(boundingRect.size(), CV_8UC1);
-        std::vector<cv::Point> adjustedPolygon(polygon.size());
+        // Ensure boundingRect is within the frame dimensions
+        int frameWidth = cap.get(cv::CAP_PROP_FRAME_WIDTH);
+        int frameHeight = cap.get(cv::CAP_PROP_FRAME_HEIGHT);
 
-        std::transform(polygon.begin(), polygon.end(), adjustedPolygon.begin(), [&boundingRect](const cv::Point& p) {
+        boundingRect &= cv::Rect(0, 0, frameWidth, frameHeight);
+
+        // Adjust the polygon points if necessary
+        std::vector<cv::Point> adjustedPolygon;
+        std::transform(polygon.begin(), polygon.end(), std::back_inserter(adjustedPolygon), [&boundingRect](const cv::Point& p) {
+            return cv::Point(std::clamp(p.x, boundingRect.x, boundingRect.x + boundingRect.width),
+                             std::clamp(p.y, boundingRect.y, boundingRect.y + boundingRect.height));
+        });
+
+        cv::Mat mask = cv::Mat::zeros(boundingRect.size(), CV_8UC1);
+        std::vector<cv::Point> relativePolygon(adjustedPolygon.size());
+
+        std::transform(adjustedPolygon.begin(), adjustedPolygon.end(), relativePolygon.begin(), [&boundingRect](const cv::Point& p) {
             return p - boundingRect.tl();
         });
-        cv::fillPoly(mask, std::vector<std::vector<cv::Point>>{adjustedPolygon}, cv::Scalar(255));
+        cv::fillPoly(mask, std::vector<std::vector<cv::Point>>{relativePolygon}, cv::Scalar(255));
 
         cv::Mat currRoi, prevRoi, maskedDiff;
         ensureSizeAndType(currRoi, boundingRect.size(), CV_8UC1);
