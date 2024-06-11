@@ -30,8 +30,9 @@ while true; do
     continue
   fi
 
+  FILE_DATETIME="$(strip "$LATEST_NOT_PROCESSED_FILE" "light_level_" ".txt")"
   LIGHT_LEVEL="$(cat "$LATEST_NOT_PROCESSED_PATH")"
-  if publish_measurement_single "$PUBLISHER" "image_analysis" "light_level=$LIGHT_LEVEL"; then
+  if publish_measurement_single "$PUBLISHER" "image_analysis" "light_level=$LIGHT_LEVEL" "$(date_compact_to_epoch "$FILE_DATETIME")"; then
     echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
   fi
 

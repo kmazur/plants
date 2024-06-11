@@ -69,6 +69,20 @@ function date_compact_to_dashed() {
   echo "$OUTPUT_DATE"
 }
 
+function date_compact_to_epoch() {
+  local INPUT_DATE="$1"
+
+  local YEAR=${INPUT_DATE:0:4}
+  local MONTH=${INPUT_DATE:4:2}
+  local DAY=${INPUT_DATE:6:2}
+  local HOUR=${INPUT_DATE:9:2}
+  local MINUTE=${INPUT_DATE:11:2}
+  local SECOND=${INPUT_DATE:13:2}
+
+  local TIMESTAMP=$(date -d "${YEAR}-${MONTH}-${DAY} ${HOUR}:${MINUTE}:${SECOND}" +%s)
+  echo "$TIMESTAMP"
+}
+
 function get_yesterday_date_compact() {
   date -d @$(( $(date +"%s") - 86400)) +"$(get_date_format_compact)"
 }
