@@ -16,20 +16,21 @@ while true; do
 
   MACHINE_NAME="$(get_required_config "name")"
 
-  LOCAL_STAGE_DIR="$(ensure_stage_dir "$OUTPUT_STAGE")"
-  PROCESSED_PATH="$LOCAL_STAGE_DIR/processed.txt"
+  INPUT_STAGE_DIR="$(ensure_stage_dir "$INPUT_STAGE")"
+  OUTPUT_STAGE_DIR="$(ensure_stage_dir "$OUTPUT_STAGE")"
+  PROCESSED_PATH="$OUTPUT_STAGE_DIR/processed.txt"
   touch "$PROCESSED_PATH"
 
-  NOT_PROCESSED_FILES=$(diff --new-line-format="" --unchanged-line-format="" --old-line-format="%L" <(ls -1 "$INPUT_STAGE") <(cat "$PROCESSED_PATH"))
-  LATEST_NOT_PROCESSED_FILE="$(echo "$NOT_PROCESSED_FILES" | tail -n 1)"
-  LATEST_NOT_PROCESSED_PATH="$INPUT_STAGE/$LATEST_NOT_PROCESSED_FILE"
+  NOT_PROCESSED_FILES=$(diff --new-line-format="" --unchanged-line-format="" --old-line-format="%L" <(ls -1 "$INPUT_STAGE_DIR") <(cat "$PROCESSED_PATH"))
+  LATEST_NOT_PROCESSED_FILE="$(echo "$NOT_PROCESSED_FILES" | head -n 1)"
+  LATEST_NOT_PROCESSED_PATH="$INPUT_STAGE_DIR/$LATEST_NOT_PROCESSED_FILE"
 
   if [ -z "$LATEST_NOT_PROCESSED_PATH" ]; then
     continue
   fi
 
   FILE_NAME="${MACHINE_NAME}_24_timelapse.mp4"
-  FILE_PATH="$LOCAL_STAGE_DIR/$FILE_NAME"
+  FILE_PATH="$OUTPUT_STAGE_DIR/$FILE_NAME"
 
   # Does not exist or has changed
   if [ ! -f "$FILE_PATH" ] || ! cmp -s "$FILE_PATH" "$LATEST_NOT_PROCESSED_PATH"; then

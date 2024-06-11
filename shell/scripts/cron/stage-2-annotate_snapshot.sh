@@ -14,13 +14,14 @@ OUTPUT_STAGE="video/snapshot_annotate"
 while true; do
   sleep 30
 
-  LOCAL_STAGE_DIR="$(ensure_stage_dir "$OUTPUT_STAGE")"
-  PROCESSED_PATH="$LOCAL_STAGE_DIR/processed.txt"
+  INPUT_STAGE_DIR="$(ensure_stage_dir "$INPUT_STAGE")"
+  OUTPUT_STAGE_DIR="$(ensure_stage_dir "$OUTPUT_STAGE")"
+  PROCESSED_PATH="$OUTPUT_STAGE_DIR/processed.txt"
   touch "$PROCESSED_PATH"
 
-  NOT_PROCESSED_FILES=$(diff --new-line-format="" --unchanged-line-format="" --old-line-format="%L" <(ls -1 "$INPUT_STAGE") <(cat "$PROCESSED_PATH"))
+  NOT_PROCESSED_FILES=$(diff --new-line-format="" --unchanged-line-format="" --old-line-format="%L" <(ls -1 "$INPUT_STAGE_DIR") <(cat "$PROCESSED_PATH"))
   LATEST_NOT_PROCESSED_FILE="$(echo "$NOT_PROCESSED_FILES" | head -n 1)"
-  LATEST_NOT_PROCESSED_PATH="$INPUT_STAGE/$LATEST_NOT_PROCESSED_FILE"
+  LATEST_NOT_PROCESSED_PATH="$INPUT_STAGE_DIR/$LATEST_NOT_PROCESSED_FILE"
 
   if [ -z "$LATEST_NOT_PROCESSED_PATH" ]; then
     continue
@@ -28,7 +29,7 @@ while true; do
 
   FILE_DATETIME="$(strip "$LATEST_NOT_PROCESSED_FILE" "snapshot_" ".jpg")"
   FILE_NAME="snapshot_annotated_${FILE_DATETIME}.jpg"
-  FILE_PATH="$LOCAL_STAGE_DIR/$FILE_NAME"
+  FILE_PATH="$OUTPUT_STAGE_DIR/$FILE_NAME"
 
   if draw_text_bl "$LATEST_NOT_PROCESSED_PATH" "$FILE_PATH" "$(date_compact_to_dashed "$FILE_DATETIME")" "30" "yellow"; then
     if [ -f "$FILE_PATH" ]; then

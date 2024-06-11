@@ -22,34 +22,35 @@ while true; do
   TIMELAPSE_IMAGE_WIDTH="$(get_required_config "width" "$IMAGE_CONFIG_FILE")"
   TIMELAPSE_IMAGE_WIDTH="$(get_required_config "height""$IMAGE_CONFIG_FILE")"
 
-  LOCAL_STAGE_DIR="$(ensure_stage_dir "$OUTPUT_STAGE")"
-  PROCESSED_PATH="$LOCAL_STAGE_DIR/processed.txt"
+  INPUT_STAGE_DIR="$(ensure_stage_dir "$INPUT_STAGE")"
+  OUTPUT_STAGE_DIR="$(ensure_stage_dir "$OUTPUT_STAGE")"
+  PROCESSED_PATH="$OUTPUT_STAGE_DIR/processed.txt"
   touch "$PROCESSED_PATH"
 
-  NOT_PROCESSED_FILES=$(diff --new-line-format="" --unchanged-line-format="" --old-line-format="%L" <(ls -1 "$INPUT_STAGE") <(cat "$PROCESSED_PATH"))
+  NOT_PROCESSED_FILES=$(diff --new-line-format="" --unchanged-line-format="" --old-line-format="%L" <(ls -1 "$INPUT_STAGE_DIR") <(cat "$PROCESSED_PATH"))
   LATEST_NOT_PROCESSED_FILE="$(echo "$NOT_PROCESSED_FILES" | head -n 1)"
-  LATEST_NOT_PROCESSED_PATH="$INPUT_STAGE/$LATEST_NOT_PROCESSED_FILE"
+  LATEST_NOT_PROCESSED_PATH="$INPUT_STAGE_DIR/$LATEST_NOT_PROCESSED_FILE"
 
   if [ -z "$LATEST_NOT_PROCESSED_PATH" ]; then
     continue
   fi
 
   FILE_NAME="${MACHINE_NAME}_24_timelapse.mp4"
-  FILE_PATH="$LOCAL_STAGE_DIR/$FILE_NAME"
+  FILE_PATH="$OUTPUT_STAGE_DIR/$FILE_NAME"
 
   if [[ ! -f "$FILE_PATH" ]]; then
     if ! ffmpeg -framerate 30 -i "$LATEST_NOT_PROCESSED_PATH" -c:v libx264 -r 30 -pix_fmt yuv420p "$FILE_NAME"; then
       continue
     fi
   else
-    NEW_FRAME_VIDEO_PATH="$LOCAL_STAGE_DIR/${MACHINE_NAME}_24_timelapse_processing_new_vid.mp4"
+    NEW_FRAME_VIDEO_PATH="$OUTPUT_STAGE_DIR/${MACHINE_NAME}_24_timelapse_processing_new_vid.mp4"
     if ! ffmpeg -loop 1 -i "$LATEST_NOT_PROCESSED_PATH" -c:v libx264 -t "0.03333" -pix_fmt yuv420p "$NEW_FRAME_VIDEO_PATH"; then
       rm "$NEW_FRAME_VIDEO_PATH" 2> /dev/null
       continue
     fi
 
-    TMP_OUTPUT_PATH="$LOCAL_STAGE_DIR/${MACHINE_NAME}_24_timelapse_processing_tmp_output.mp4"
-    CONCAT_LIST_PATH="$LOCAL_STAGE_DIR/concat_list.txt"
+    TMP_OUTPUT_PATH="$OUTPUT_STAGE_DIR/${MACHINE_NAME}_24_timelapse_processing_tmp_output.mp4"
+    CONCAT_LIST_PATH="$OUTPUT_STAGE_DIR/concat_list.txt"
     {
       echo "file '$FILE_PATH'"
       echo "file '$NEW_FRAME_VIDEO_PATH'"
