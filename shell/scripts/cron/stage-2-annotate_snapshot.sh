@@ -15,6 +15,7 @@ SLEEP_PID=""
 # Signal handlers
 handle_wakeup() {
     log "Waking up"
+    echo "Waking up"
     if [ -n "$SLEEP_PID" ]; then
         kill "$SLEEP_PID"
     fi
@@ -32,6 +33,7 @@ while true; do
   log "Sleeping PID: $SLEEP_PID"
   wait
   unset sleep_pid
+  log "Waking up"
 
   IMAGE_CONFIG_FILE="$(get_required_config "image-config-file")"
   IMAGE_WIDTH="$(get_required_config "width" "$IMAGE_CONFIG_FILE")"
