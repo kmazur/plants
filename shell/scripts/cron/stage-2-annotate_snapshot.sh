@@ -20,11 +20,14 @@ handle_wakeup() {
     fi
 }
 
-# Trap signals
 trap 'handle_wakeup' SIGUSR1
 
+SLEEP_INTERVAL="60m"
+
 while true; do
-  sleep 60m &
+  log "Going to sleep for $SLEEP_INTERVAL"
+
+  sleep "$SLEEP_INTERVAL" &
   SLEEP_PID="$!"
   wait
   unset sleep_pid
