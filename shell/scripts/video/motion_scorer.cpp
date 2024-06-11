@@ -204,7 +204,6 @@ private:
                 break;
             }
 
-            frameTimeSecond += stepTimeIncrement;
             cv::cvtColor(currFrame(boundingRect), currRoi, cv::COLOR_BGR2GRAY);
 
             if (!prevFrame.empty()) {
@@ -218,6 +217,8 @@ private:
             std::swap(prevFrame, currFrame);
             std::swap(prevRoi, currRoi);
             frameIndex += frameIndexStep;
+
+            frameTimeSecond += stepTimeIncrement;
         }
 
         writeMotionDataToFile(motionDataList);
