@@ -6,6 +6,7 @@ ensure_env
 
 SCHEDULER_FILE="$(get_orchestrator_requests_file)"
 MAX_TEMP=78
+MIN_TEMP=50
 BASE_TOKENS=100
 SLEEP_INTERVAL=10
 TEMP_IMPACT_FILE="$(get_orchestrator_dir)/CPU_IMPACT.txt"
@@ -32,10 +33,12 @@ function wake_up_process() {
 
 function calculate_dynamic_tokens() {
     local temp="$1"
-    if (( $(echo "$temp >= $MAX_TEMP" | bc -l) )); then
+    if (( $(echo "$temp < $MIN_TEMP" | bc -l) )); then
+        echo "$BASE_TOKENS"
+    elif (( $(echo "$temp >= $MAX_TEMP" | bc -l) )); then
         echo 0
     else
-        local tokens=$(echo "$BASE_TOKENS * ($MAX_TEMP - $temp) / $MAX_TEMP" | bc)
+        local tokens=$(echo "$BASE_TOKENS * ($MAX_TEMP - $temp) / ($MAX_TEMP - $MIN_TEMP)" | bc)
         echo "$tokens"
     fi
 }
