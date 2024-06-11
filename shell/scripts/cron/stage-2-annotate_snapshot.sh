@@ -14,6 +14,9 @@ OUTPUT_STAGE="video/snapshot_annotate"
 while true; do
   sleep 30
 
+  IMAGE_CONFIG_FILE="$(get_required_config "image-config-file")"
+  IMAGE_WIDTH="$(get_required_config "width" "$IMAGE_CONFIG_FILE")"
+
   INPUT_STAGE_DIR="$(ensure_stage_dir "$INPUT_STAGE")"
   OUTPUT_STAGE_DIR="$(ensure_stage_dir "$OUTPUT_STAGE")"
   PROCESSED_PATH="$OUTPUT_STAGE_DIR/processed.txt"
@@ -31,6 +34,7 @@ while true; do
   FILE_NAME="snapshot_annotated_${FILE_DATETIME}.jpg"
   FILE_PATH="$OUTPUT_STAGE_DIR/$FILE_NAME"
 
+  FONT_SIZE="$(( IMAGE_WIDTH / 35))"
   if draw_text_bl "$LATEST_NOT_PROCESSED_PATH" "$FILE_PATH" "$(date_compact_to_dashed "$FILE_DATETIME")" "120" "yellow" "3"; then
     if [ -f "$FILE_PATH" ]; then
       echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
