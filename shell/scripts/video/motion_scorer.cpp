@@ -221,7 +221,7 @@ private:
         }
 
         for (const auto& data : motionDataList) {
-            file << data.time << " " << data.motionScore << "\n";
+            file << data.frameIndex << " " << data.time << " " << data.motionScore << "\n";
         }
         file.close();
     }
