@@ -28,6 +28,7 @@ while true; do
   if [ -z "$LATEST_NOT_PROCESSED_FILE" ]; then
     continue
   fi
+  log "Processing: $LATEST_NOT_PROCESSED_PATH"
 
   FILE_NAME="${MACHINE_NAME}.jpg"
   FILE_PATH="$OUTPUT_STAGE_DIR/$FILE_NAME"

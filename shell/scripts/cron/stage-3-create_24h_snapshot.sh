@@ -33,6 +33,7 @@ while true; do
   if [ -z "$LATEST_NOT_PROCESSED_FILE" ]; then
     continue
   fi
+  log "Processing: $LATEST_NOT_PROCESSED_PATH"
 
   FILE_DATETIME="$(strip "$LATEST_NOT_PROCESSED_FILE" "snapshot_annotated_" ".jpg")"
 

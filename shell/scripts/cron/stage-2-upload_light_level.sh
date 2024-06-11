@@ -30,6 +30,7 @@ while true; do
   if [ -z "$LATEST_NOT_PROCESSED_FILE" ]; then
     continue
   fi
+  log "Processing: $LATEST_NOT_PROCESSED_PATH"
 
   FILE_DATETIME="$(strip "$LATEST_NOT_PROCESSED_FILE" "light_level_" ".txt")"
   LIGHT_LEVEL="$(cat "$LATEST_NOT_PROCESSED_PATH")"
