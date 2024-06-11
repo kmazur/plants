@@ -94,7 +94,7 @@ function run_scheduler() {
     local estimated_tokens="$tokens"
 
     if (( total_tokens + estimated_tokens <= available_tokens )); then
-      log "Running $process with $tokens requested at $timestamp with pid $pid"
+      log "Running $process with $tokens/$available_tokens requested at $timestamp with pid $pid"
       remove_config "$process" "$SCHEDULER_FILE"
       wake_up_process "$pid"
       active_processes+=("$entry")
