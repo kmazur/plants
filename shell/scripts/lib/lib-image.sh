@@ -6,10 +6,11 @@ function draw_text_bl() {
   local TEXT="$3"
   local FONT_SIZE="${4:-90}"
   local FONT_COLOR="${5:-yellow}"
+  local QUALITY="${6:-1}"
 
   local PADDING="$((FONT_SIZE / 3))"
 
-  ffmpeg -y -i "$INPUT_IMAGE" -vf "drawtext=text=\'$TEXT\':x=$PADDING:y=H-th-$PADDING:fontsize=$FONT_SIZE:fontcolor=$FONT_COLOR" -q:v 1 "$OUTPUT_IMAGE"
+  ffmpeg -y -i "$INPUT_IMAGE" -vf "drawtext=text=\'$TEXT\':x=$PADDING:y=H-th-$PADDING:fontsize=$FONT_SIZE:fontcolor=$FONT_COLOR" -q:v "$QUALITY" "$OUTPUT_IMAGE"
 }
 
 function create_blank_image() {
