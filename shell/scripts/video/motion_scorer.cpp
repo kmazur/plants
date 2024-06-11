@@ -154,7 +154,6 @@ private:
         int frameWidth = cap.get(cv::CAP_PROP_FRAME_WIDTH);
         int frameHeight = cap.get(cv::CAP_PROP_FRAME_HEIGHT);
 
-        std::cout << "Diagnostics: \nFPS: " << fps << "\nwidth: " << frameWidth << "\nheight: " << frameHeight << "\n";
 
         boundingRect &= cv::Rect(0, 0, frameWidth, frameHeight);
 
@@ -182,6 +181,15 @@ private:
 
         double frameTimeIncrement = 1.0 / fps;
         double stepTimeIncrement = frameIndexStep * frameTimeIncrement;
+
+        std::cout << "Diagnostics: " <<
+        "\nFPS: " << fps <<
+        "\nwidth: " << frameWidth <<
+        "\nheight: " << frameHeight <<
+        "\nframeStep: " << frameIndexStep <<
+        "\nframeTimeIncrement: " << frameTimeIncrement <<
+        "\nstepTimeIncrement: " << stepTimeIncrement <<
+        "\n";
 
         std::vector<MotionData> motionDataList;
 
