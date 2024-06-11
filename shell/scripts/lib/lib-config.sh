@@ -16,9 +16,10 @@ function set_config() {
 
     ensure_file_exists "$FILE"
 
+    ESCAPED_KEY=$(echo "$KEY" | sed 's/\//\\\//g')
 
-    if grep "^$KEY=" "$FILE" &> /dev/null; then
-      sed -i "s|^${KEY//\//\\/}=.*|$KEY=$VAL|" "$FILE" &> /dev/null
+    if grep "^$ESCAPED_KEY=" "$FILE" &> /dev/null; then
+      sed -i "s|^$ESCAPED_KEY=.*|$KEY=$VAL|" "$FILE" &> /dev/null
     else
       echo "$KEY=$VAL" >> "$FILE"
     fi
