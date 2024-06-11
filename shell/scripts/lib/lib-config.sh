@@ -87,6 +87,7 @@ function get_or_set_config() {
   local VALUE="$(grep "^$KEY=" "$FILE" | cut -f 2- -d '=' | head -n 1)"
   if [ -n "$VALUE" ]; then
     echo "$VALUE"
+  else
     set_config "$KEY" "$DEFAULT_VALUE" "$FILE"
     echo "$DEFAULT_VALUE"
   fi
