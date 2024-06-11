@@ -23,7 +23,7 @@ while true; do
   LATEST_NOT_PROCESSED_FILE="$(echo "$NOT_PROCESSED_FILES" | head -n 1)"
   LATEST_NOT_PROCESSED_PATH="$INPUT_STAGE_DIR/$LATEST_NOT_PROCESSED_FILE"
 
-  if [ -z "$LATEST_NOT_PROCESSED_PATH" ]; then
+  if [ -z "$LATEST_NOT_PROCESSED_FILE" ]; then
     continue
   fi
 
