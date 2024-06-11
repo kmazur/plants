@@ -13,7 +13,8 @@ TEMP_IMPACT_FILE="$(get_orchestrator_dir)/CPU_IMPACT.txt"
 
 function parse_scheduler_file() {
     local file="$1"
-    local -n entries=$2
+    local -n ref_entries="$2"
+    ref_entries=()
     while IFS= read -r line; do
         if [[ "$line" =~ ^([^=]+)+=([^\:]+)\:([0-9]+)\:([0-9]{4}[0-9]{2}[0-9]{2}_[0-9]{2}[0-9]{2}[0-9]{2})$ ]]; then
             local process="${BASH_REMATCH[1]}"
@@ -21,7 +22,7 @@ function parse_scheduler_file() {
             local sleep_pid="${BASH_REMATCH[3]}"
             local datetime="${BASH_REMATCH[4]}"
             local timestamp="$(date_compact_to_epoch "$datetime")"
-            entries+=("$process:$tokens:$timestamp:$sleep_pid")
+            ref_entries+=("$process:$tokens:$timestamp:$sleep_pid")
         fi
     done < "$file"
 }
