@@ -13,6 +13,19 @@ function ensure_directory_exists() {
   fi
 }
 
+function ensure_file_exists() {
+  local FILE_PATH="$1"
+
+  local DIR_PATH=$(dirname "$FILE_PATH")
+  if [ ! -d "$DIR_PATH" ]; then
+      mkdir -p "$DIR_PATH"
+  fi
+
+  if [ ! -f "$FILE_PATH" ]; then
+    touch "$FILE_PATH"
+  fi
+}
+
 
 
 

@@ -14,9 +14,7 @@ function set_config() {
   (
     flock -x 200
 
-    if [ ! -f "$FILE" ]; then
-      touch "$FILE"
-    fi
+    ensure_file_exists "$FILE"
 
     if grep "^$KEY=" "$FILE" &> /dev/null; then
       sed -i "/^$KEY=/c\\$KEY=$VAL" "$FILE" &> /dev/null
@@ -63,9 +61,7 @@ function get_config() {
   local DEFAULT_VALUE="$2"
   local FILE="${3:-$CONFIG_INI}"
 
-  if [ ! -f "$FILE" ]; then
-    touch "$FILE"
-  fi
+  ensure_file_exists "$FILE"
 
   local VALUE="$(grep "^$KEY=" "$FILE" | cut -f 2- -d '=' | head -n 1)"
   if [ -n "$VALUE" ]; then
@@ -80,9 +76,7 @@ function get_or_set_config() {
   local DEFAULT_VALUE="$2"
   local FILE="${3:-$CONFIG_INI}"
 
-  if [ ! -f "$FILE" ]; then
-    touch "$FILE"
-  fi
+  ensure_file_exists "$FILE"
 
   local VALUE="$(grep "^$KEY=" "$FILE" | cut -f 2- -d '=' | head -n 1)"
   if [ -n "$VALUE" ]; then
@@ -97,9 +91,7 @@ function get_required_config() {
   local KEY="$1"
   local FILE="${2:-$CONFIG_INI}"
 
-  if [ ! -f "$FILE" ]; then
-    touch "$FILE"
-  fi
+  ensure_file_exists "$FILE"
 
   local VALUE="$(get_config "$KEY" "" "$FILE")"
   if [[ -z "$VALUE" ]]; then
@@ -112,9 +104,7 @@ function get_required_config() {
 function get_config_keys() {
   local FILE="${1:-$CONFIG_INI}"
 
-  if [ ! -f "$FILE" ]; then
-    touch "$FILE"
-  fi
+  ensure_file_exists "$FILE"
 
   local KEYS="$(cat "$FILE" | cut -f 1 -d '=' | sort -ur)"
   echo "$KEYS"
