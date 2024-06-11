@@ -32,7 +32,7 @@ while true; do
   FILE_NAME="video_${FILE_DATETIME}.mp4"
   FILE_PATH="$OUTPUT_STAGE_DIR/$FILE_NAME"
 
-  if ffmpeg -y -loglevel error -i "$LATEST_NOT_PROCESSED_FILE" -c:v copy -an "$FILE_PATH"; then
+  if ffmpeg -y -loglevel error -i "$LATEST_NOT_PROCESSED_PATH" -c:v copy -an "$FILE_PATH"; then
     echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
   fi
 
