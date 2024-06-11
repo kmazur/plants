@@ -34,12 +34,12 @@ while true; do
   FILE_PATH="$OUTPUT_STAGE_DIR/$FILE_NAME"
 
   if [[ ! -f "$FILE_PATH" ]]; then
-    if ! ffmpeg -framerate 30 -i "$LATEST_NOT_PROCESSED_PATH" -c:v libx264 -r 30 -pix_fmt yuv420p "$FILE_PATH"; then
+    if ! ffmpeg -framerate 1 -i "$LATEST_NOT_PROCESSED_PATH" -c:v libx264 -r 1 -pix_fmt yuv420p "$FILE_PATH"; then
       continue
     fi
   else
     NEW_FRAME_VIDEO_PATH="$OUTPUT_STAGE_DIR/${MACHINE_NAME}_24_timelapse_processing_new_vid.mp4"
-    if ! ffmpeg -loop 1 -i "$LATEST_NOT_PROCESSED_PATH" -c:v libx264 -t "0.03333" -pix_fmt yuv420p "$NEW_FRAME_VIDEO_PATH"; then
+    if ! ffmpeg -loop 1 -i "$LATEST_NOT_PROCESSED_PATH" -c:v libx264 -t 1 -pix_fmt yuv420p "$NEW_FRAME_VIDEO_PATH"; then
       rm "$NEW_FRAME_VIDEO_PATH" 2> /dev/null
       continue
     fi
