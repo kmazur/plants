@@ -15,7 +15,7 @@
 function get_pipeline_stage_dir() {
   local STAGE="$1"
   local DATE="${2:-$(get_current_date_compact)}"
-  echo "$(get_pipeline_dir "$1")/$STAGE"
+  echo "$(get_pipeline_dir "$DATE")/$STAGE"
 }
 
 function ensure_stage_dir() {

@@ -117,7 +117,6 @@ function get_output_dir() {
   local ROOT_DIR="$1"
   local DATE="${2:-$(get_current_date_compact)}"
   local OUTPUT_DIR="$ROOT_DIR/$DATE"
-  mkdir -p "$OUTPUT_DIR" &> /dev/null
   echo "$OUTPUT_DIR"
 }
 
