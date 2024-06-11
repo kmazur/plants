@@ -97,7 +97,7 @@ function run_scheduler() {
       wake_up_process "$pid"
       active_processes+=("$entry")
       total_tokens=$((total_tokens + estimated_tokens))
-      log
+      log "Running $process with $tokens requested at $timestamp with pid $pid"
     elif (( available_tokens <= 0 )); then
       log "No more tokens available"
       break
