@@ -11,6 +11,9 @@ BASE_TOKENS=100
 SLEEP_INTERVAL=10
 TEMP_IMPACT_FILE="$(get_orchestrator_dir)/CPU_IMPACT.txt"
 
+ensure_file_exists "$SCHEDULER_FILE"
+ensure_file_exists "$TEMP_IMPACT_FILE"
+
 function parse_scheduler_file() {
     local file="$1"
     local -n ref_entries="$2"
