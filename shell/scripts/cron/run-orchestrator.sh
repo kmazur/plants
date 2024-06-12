@@ -12,7 +12,7 @@ MAX_TOKENS=100
 REPLENISH_RATE=5.0  # tokens per second
 RESERVE_THRESHOLD=10  # Threshold wait time (seconds) to start reserving tokens
 TEMP_INFLUENCE_FACTOR=4.5  # Influence factor for temperature adjustment
-SLEEP_INTERVAL=1
+SLEEP_INTERVAL=2
 
 declare -A accumulated_tokens
 
