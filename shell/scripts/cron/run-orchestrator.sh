@@ -11,6 +11,7 @@ BASE_TOKENS=100
 MAX_TOKENS=100
 REPLENISH_RATE=5.0  # tokens per second
 RESERVE_THRESHOLD=10  # Threshold wait time (seconds) to start reserving tokens
+TEMP_INFLUENCE_FACTOR=4.5  # Influence factor for temperature adjustment
 
 declare -A accumulated_tokens
 
@@ -49,7 +50,7 @@ function adjust_replenish_rate() {
     elif (( $(echo "$temp >= $MAX_TEMP" | bc -l) )); then
         replenish_rate=0.0
     else
-        replenish_rate=$(echo "scale=2; $REPLENISH_RATE - (4.5 * ($temp - $MIN_TEMP) / ($MAX_TEMP - $MIN_TEMP))" | bc)
+        replenish_rate=$(echo "scale=2; $REPLENISH_RATE - ($TEMP_INFLUENCE_FACTOR * ($temp - $MIN_TEMP) / ($MAX_TEMP - $MIN_TEMP))" | bc)
     fi
 }
 
@@ -75,6 +76,8 @@ function run_scheduler() {
     unset IFS
     entries=("${sorted[@]}")
 
+    local num_processes=${#entries[@]}
+
     for entry in "${entries[@]}"; do
         # entries+=("$process:$tokens:$timestamp:$sleep_pid:$wait_time")
         local process=$(echo "$entry" | cut -d: -f1)
@@ -84,22 +87,28 @@ function run_scheduler() {
         local wait_time=$(echo "$entry" | cut -d: -f5)
         local estimated_tokens="$tokens"
 
-        # Accumulate tokens for processes waiting longer than the threshold
-        if (( wait_time > RESERVE_THRESHOLD )); then
-            local tokens_to_accumulate=$(echo "$available_tokens * 0.1" | bc -l)
-            accumulated_tokens[$process]=$(echo "${accumulated_tokens[$process]:-0} + $tokens_to_accumulate" | bc)
-            available_tokens=$(echo "$available_tokens - $tokens_to_accumulate" | bc)
-        fi
-
-        if (( $(echo "${accumulated_tokens[$process]:-0} >= $tokens" | bc -l) )); then
+        # Check if we can immediately fulfill the token request
+        if (( $(echo "$available_tokens + ${accumulated_tokens[$process]:-0} >= $estimated_tokens" | bc -l) )); then
+            available_tokens=$(echo "$available_tokens - ($estimated_tokens - ${accumulated_tokens[$process]:-0})" | bc)
             wake_up_process "$pid"
             unset accumulated_tokens[$process]
             remove_config "$process" "$SCHEDULER_FILE"
-        elif (( wait_time <= RESERVE_THRESHOLD )); then
+        else
+            # Accumulate tokens for processes waiting longer than the threshold
+            if (( wait_time > RESERVE_THRESHOLD )); then
+                local accumulation_factor=$(echo "scale=2; 0.1 + (0.9 * ($available_tokens / $MAX_TOKENS))" | bc)
+                local tokens_to_accumulate=$(echo "$available_tokens * $accumulation_factor / $num_processes" | bc -l)
+                accumulated_tokens[$process]=$(echo "${accumulated_tokens[$process]:-0} + $tokens_to_accumulate" | bc)
+                available_tokens=$(echo "$available_tokens - $tokens_to_accumulate" | bc)
+            fi
+        fi
+
+        # If process hasn't reached threshold, allocate tokens normally
+        if (( wait_time <= RESERVE_THRESHOLD )); then
             if (( $(echo "$estimated_tokens <= $available_tokens" | bc -l) )); then
-                remove_config "$process" "$SCHEDULER_FILE"
-                wake_up_process "$pid"
                 available_tokens=$(echo "$available_tokens - $estimated_tokens" | bc)
+                wake_up_process "$pid"
+                remove_config "$process" "$SCHEDULER_FILE"
             fi
         fi
     done
