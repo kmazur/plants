@@ -10,6 +10,9 @@ MIN_TEMP=50
 BASE_TOKENS=100
 MAX_TOKENS=100
 REPLENISH_RATE=5.0  # tokens per second
+RESERVE_THRESHOLD=10  # Threshold wait time (seconds) to start reserving tokens
+
+declare -A accumulated_tokens
 
 ensure_file_exists "$SCHEDULER_FILE"
 
@@ -28,7 +31,8 @@ function parse_scheduler_file() {
             local sleep_pid="${BASH_REMATCH[3]}"
             local datetime="${BASH_REMATCH[4]}"
             local timestamp="$(date_compact_to_epoch "$datetime")"
-            ref_entries+=("$process:$tokens:$timestamp:$sleep_pid")
+            local wait_time=$(( $(date +%s) - $timestamp ))
+            ref_entries+=("$process:$tokens:$timestamp:$sleep_pid:$wait_time")
         fi
     done < "$file"
 }
@@ -66,32 +70,39 @@ function run_scheduler() {
     local entries=()
     parse_scheduler_file "$SCHEDULER_FILE" entries
 
-    # Sort processes by datetime to prevent starvation
-    IFS=$'\n' sorted=($(sort -t: -k3 <<<"${entries[*]}"))
+    # Sort processes by wait time (highest first) to prevent starvation
+    IFS=$'\n' sorted=($(sort -t: -k5 -nr <<<"${entries[*]}"))
     unset IFS
     entries=("${sorted[@]}")
 
-    local total_tokens=0
-
     for entry in "${entries[@]}"; do
-        # entries+=("$process:$tokens:$timestamp:$sleep_pid")
+        # entries+=("$process:$tokens:$timestamp:$sleep_pid:$wait_time")
         local process=$(echo "$entry" | cut -d: -f1)
         local tokens=$(echo "$entry" | cut -d: -f2)
         local timestamp=$(echo "$entry" | cut -d: -f3)
         local pid=$(echo "$entry" | cut -d: -f4)
+        local wait_time=$(echo "$entry" | cut -d: -f5)
         local estimated_tokens="$tokens"
 
-        if (( $(echo "$total_tokens + $estimated_tokens <= $available_tokens" | bc -l) )); then
-            remove_config "$process" "$SCHEDULER_FILE"
+        # Accumulate tokens for processes waiting longer than the threshold
+        if (( wait_time > RESERVE_THRESHOLD )); then
+            local tokens_to_accumulate=$(echo "$available_tokens * 0.1" | bc -l)
+            accumulated_tokens[$process]=$(echo "${accumulated_tokens[$process]:-0} + $tokens_to_accumulate" | bc)
+            available_tokens=$(echo "$available_tokens - $tokens_to_accumulate" | bc)
+        fi
+
+        if (( $(echo "${accumulated_tokens[$process]:-0} >= $tokens" | bc -l) )); then
             wake_up_process "$pid"
-            total_tokens=$(echo "$total_tokens + $estimated_tokens" | bc)
-        elif (( $(echo "$available_tokens <= 0" | bc -l) )); then
-            break
+            unset accumulated_tokens[$process]
+            remove_config "$process" "$SCHEDULER_FILE"
+        elif (( wait_time <= RESERVE_THRESHOLD )); then
+            if (( $(echo "$estimated_tokens <= $available_tokens" | bc -l) )); then
+                remove_config "$process" "$SCHEDULER_FILE"
+                wake_up_process "$pid"
+                available_tokens=$(echo "$available_tokens - $estimated_tokens" | bc)
+            fi
         fi
     done
-
-    # Persist the remaining tokens
-    available_tokens=$(echo "$available_tokens - $total_tokens" | bc)
 }
 
 while true; do
