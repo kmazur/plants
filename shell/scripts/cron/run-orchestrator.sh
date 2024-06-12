@@ -91,7 +91,7 @@ function run_scheduler() {
 
 while true; do
     # Adjust replenish rate based on current temperature
-    local current_temp=$(get_cpu_temp)
+    current_temp=$(get_cpu_temp)
     adjust_replenish_rate "$current_temp"
 
     # Replenish tokens
