@@ -12,8 +12,11 @@ OUTPUT_STAGE="video/24_snapshot"
 # - video/24_snapshot/pi4b_24.jpg
 
 PREV_HOUR=""
+PROCESS="$OUTPUT_STAGE"
+
 while true; do
-  sleep 30
+
+  request_cpu_time "${PROCESS}-scan" "1"
 
   MACHINE_NAME="$(get_required_config "name")"
 
@@ -55,6 +58,8 @@ while true; do
 
 
     if [[ ! -f "$FILE_PATH" || "$(stat --printf="%s" "$FILE_PATH")" == "0" ]]; then
+
+      request_cpu_time "${PROCESS}-create-blank-image" "30"
       if ! create_blank_image "$FILE_PATH" "$((NEW_WIDTH * 5))" "$((NEW_HEIGHT * 5))"; then
         continue
       fi
@@ -65,6 +70,7 @@ while true; do
 
     TMP_OUTPUT="$OUTPUT_STAGE_DIR/${MACHINE_NAME}_24_processing.jpg"
 
+    request_cpu_time "${PROCESS}-embedd-image" "30"
     if ffmpeg -i "$FILE_PATH" -i "$LATEST_NOT_PROCESSED_PATH" -filter_complex \
            "[1:v] scale=$NEW_WIDTH:$NEW_HEIGHT [scaled]; [0:v][scaled] overlay=x=$X:y=$Y" -q:v "3" \
            -y "$TMP_OUTPUT" && cp -f "$TMP_OUTPUT" "$FILE_PATH"; then

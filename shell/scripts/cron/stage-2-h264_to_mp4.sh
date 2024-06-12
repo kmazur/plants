@@ -11,8 +11,11 @@ OUTPUT_STAGE="video/mp4"
 # OUTPUT:
 # - video/mp4/video_20240505_101501.mp4
 
+PROCESS="$OUTPUT_STAGE"
+
 while true; do
-  sleep 30
+
+  request_cpu_time "${PROCESS}-scan" "1"
 
   INPUT_STAGE_DIR="$(ensure_stage_dir "$INPUT_STAGE")"
   OUTPUT_STAGE_DIR="$(ensure_stage_dir "$OUTPUT_STAGE")"
@@ -31,6 +34,8 @@ while true; do
   FILE_DATETIME="$(strip "$LATEST_NOT_PROCESSED_FILE" "video_" ".h264")"
   FILE_NAME="video_${FILE_DATETIME}.mp4"
   FILE_PATH="$OUTPUT_STAGE_DIR/$FILE_NAME"
+
+  request_cpu_time "${PROCESS}-mp4-conversion" "50"
 
   log "Starting h264 -> mp4 conversion"
   if ffmpeg -y -loglevel error -i "$LATEST_NOT_PROCESSED_PATH" -c:v copy -an "$FILE_PATH"; then

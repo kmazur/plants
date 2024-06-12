@@ -11,8 +11,12 @@ OUTPUT_STAGE="video/24_timelapse_upload"
 # OUTPUT:
 # - none
 
+
+PROCESS="$OUTPUT_STAGE"
+
 while true; do
-  sleep 30
+
+  request_cpu_time "${PROCESS}-scan" "1"
 
   MACHINE_NAME="$(get_required_config "name")"
 
@@ -37,6 +41,7 @@ while true; do
     log "Processing: $LATEST_NOT_PROCESSED_PATH"
     if cp -f "$LATEST_NOT_PROCESSED_PATH" "$FILE_PATH"; then
       if [ -f "$FILE_PATH" ]; then
+        request_cpu_time "${PROCESS}-upload" "5"
         if upload_file "$FILE_PATH" "image/jpg"; then
           #echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
           continue
