@@ -69,7 +69,6 @@ function run_scheduler() {
     local total_tokens=0
 
     for entry in "${entries[@]}"; do
-        # entries+=("$process:$tokens:$timestamp:$sleep_pid")
         local process=$(echo "$entry" | cut -d: -f1)
         local tokens=$(echo "$entry" | cut -d: -f2)
         local timestamp=$(echo "$entry" | cut -d: -f3)
@@ -103,5 +102,5 @@ while true; do
     # Log available tokens and replenish rate
     log "Available tokens: $available_tokens, Replenish rate: $replenish_rate"
 
-    sleep "$SLEEP_INTERVAL"
+    #sleep "$SLEEP_INTERVAL"
 done
