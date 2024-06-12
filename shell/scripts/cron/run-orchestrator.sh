@@ -107,7 +107,7 @@ function run_scheduler() {
       break
     fi
   done
-  log "Used up tokens: $total_tokens/"
+  log "Used up tokens: $total_tokens"
 
   # Record the temperature after running processes
   local temp_after=$(get_cpu_temp)
