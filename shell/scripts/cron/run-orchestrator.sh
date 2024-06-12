@@ -76,11 +76,11 @@ function run_scheduler() {
         local pid=$(echo "$entry" | cut -d: -f4)
         local estimated_tokens="$tokens"
 
-        if (( total_tokens + estimated_tokens <= available_tokens )); then
+        if (( $(echo "$total_tokens + $estimated_tokens <= $available_tokens" | bc -l) )); then
             remove_config "$process" "$SCHEDULER_FILE"
             wake_up_process "$pid"
             total_tokens=$(echo "$total_tokens + $estimated_tokens" | bc)
-        elif (( available_tokens <= 0 )); then
+        elif (( $(echo "$available_tokens <= 0" | bc -l) )); then
             break
         fi
     done
