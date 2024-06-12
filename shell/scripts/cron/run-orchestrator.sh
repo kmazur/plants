@@ -88,6 +88,7 @@ function run_scheduler() {
   local current_temp=$(get_cpu_temp)
   local available_tokens=$(calculate_dynamic_tokens "$current_temp")
 
+  log "Available tokens: $available_tokens"
   for entry in "${entries[@]}"; do
     #entries+=("$process:$tokens:$timestamp:$sleep_pid")
     local process=$(echo "$entry" | cut -d: -f1)
@@ -97,7 +98,6 @@ function run_scheduler() {
     local estimated_tokens="$tokens"
 
     if (( total_tokens + estimated_tokens <= available_tokens )); then
-      log "Running $process with $tokens/$available_tokens requested at $timestamp with pid $pid"
       remove_config "$process" "$SCHEDULER_FILE"
       wake_up_process "$pid"
       active_processes+=("$entry")
@@ -107,6 +107,7 @@ function run_scheduler() {
       break
     fi
   done
+  log "Used up tokens: $total_tokens/"
 
   # Record the temperature after running processes
   local temp_after=$(get_cpu_temp)
