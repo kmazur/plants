@@ -13,3 +13,16 @@
 #*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "temp-fail-safe" 20 60
 #*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "process-influx-queue" 10 500
 
+
+#*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-1-record_video"
+#*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-2-annotate_snapshot"
+#*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-2-h264_to_mp4"
+#*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-2-upload_light_level"
+#*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-3-create_24h_snapshot"
+#*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-3-create_24h_timelapse"
+#*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-3-extract_motion_scores"
+#*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-3-upload_annotated_snapshot"
+#*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-4-upload_24_snapshot"
+#*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-4-upload_24_timelapse"
+#*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "run-orchestrator"
+

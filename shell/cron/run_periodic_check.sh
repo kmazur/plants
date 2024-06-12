@@ -34,6 +34,7 @@ echo "Pid file does not exist or there is no process with pid! Running process: 
 cd "$LOGS_DIR" || exit 1
 
 LOG_FILE="$(get_logs_dir)/$PROCESS_NAME.log"
+ensure_file_exists "$LOG_FILE"
 
 {
   echo "# ========="
