@@ -41,7 +41,7 @@ function remove_config() {
     ESCAPED_KEY=$(echo "$KEY" | sed 's/\//\\\//g')
 
     if grep "^$ESCAPED_KEY=" "$FILE" &> /dev/null; then
-      sed -i "s|^$ESCAPED_KEY=.*||" "$FILE" &> /dev/null
+      sed -i "/^$ESCAPED_KEY=.*/d" "$FILE" &> /dev/null
     fi
 
   ) 200>"$FILE.flock"
