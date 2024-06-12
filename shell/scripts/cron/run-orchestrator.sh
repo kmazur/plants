@@ -112,6 +112,11 @@ function run_scheduler() {
             fi
         fi
     done
+
+    # Log waiting processes and their accumulated tokens
+    for process in "${!accumulated_tokens[@]}"; do
+        log "Process: $process, Accumulated Tokens: ${accumulated_tokens[$process]}"
+    done
 }
 
 while true; do
