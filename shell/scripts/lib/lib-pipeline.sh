@@ -31,7 +31,7 @@ function get_orchestrator_dir() {
 }
 
 function get_orchestrator_requests_file() {
-  echo "$(get_orchestrator_dir)/REQUESTS.txt"
+  echo "/dev/shm/REQUESTS.txt"
 }
 
 
