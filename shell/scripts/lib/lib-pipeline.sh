@@ -68,5 +68,5 @@ function get_processed_diff() {
   local PROCESSED_PATH="$OUTPUT_STAGE_DIR/processed.txt"
   touch "$PROCESSED_PATH"
 
-  diff --new-line-format="" --unchanged-line-format="" --old-line-format="%L" <(ls -1 "$INPUT_STAGE_DIR" | grep "$FILE_PATTERN" | sort -ur | grep -v "^$") <(cat "$PROCESSED_PATH" | sort -ur | grep -v "^$")
+  diff --new-line-format="" --unchanged-line-format="" --old-line-format="%L" <(ls -1 "$INPUT_STAGE_DIR" | grep "$FILE_PATTERN" | sort -u | grep -v "^$") <(cat "$PROCESSED_PATH" | sort -u | grep -v "^$")
 }
