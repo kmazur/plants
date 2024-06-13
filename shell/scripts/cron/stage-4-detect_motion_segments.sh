@@ -88,7 +88,7 @@ while true; do
             motion_end_time=$max_seconds
           fi
           segment_counter=$((segment_counter + 1))
-          segment_file="${prefix}${date}_${time}_${motion_start_time}_${motion_end_time}.txt"
+          segment_file="$OUTPUT_STAGE_DIR/${prefix}${date}_${time}_${motion_start_time}_${motion_end_time}.txt"
           echo "$motion_start_time $motion_end_time" > "$segment_file"
         fi
       fi
@@ -102,7 +102,7 @@ while true; do
       motion_end_time=$max_seconds
     fi
     segment_counter=$((segment_counter + 1))
-    segment_file="${prefix}${date}_${time}_${motion_start_time}_${motion_end_time}.txt"
+    segment_file="$OUTPUT_STAGE_DIR/${prefix}${date}_${time}_${motion_start_time}_${motion_end_time}.txt"
     echo "$motion_start_time $motion_end_time" > "$segment_file"
   fi
 
