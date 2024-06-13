@@ -5,14 +5,13 @@ source "$LIB_INIT_FILE"
 ensure_env
 
 SCHEDULER_FILE="$(get_orchestrator_requests_file)"
-MAX_TEMP=78
+MAX_TEMP=80
 MIN_TEMP=50
 BASE_TOKENS=100
 MAX_TOKENS=100
-REPLENISH_RATE=5.0  # tokens per second
+REPLENISH_RATE=10  # tokens per second
 RESERVE_THRESHOLD=10  # Threshold wait time (seconds) to start reserving tokens
-TEMP_INFLUENCE_FACTOR=4.5  # Influence factor for temperature adjustment
-SLEEP_INTERVAL=2
+SLEEP_INTERVAL=0.1
 
 declare -A accumulated_tokens
 
@@ -51,7 +50,7 @@ function adjust_replenish_rate() {
     elif (( $(echo "$temp >= $MAX_TEMP" | bc -l) )); then
         replenish_rate=0.0
     else
-        replenish_rate=$(echo "scale=2; $REPLENISH_RATE - ($TEMP_INFLUENCE_FACTOR * ($temp - $MIN_TEMP) / ($MAX_TEMP - $MIN_TEMP))" | bc)
+        replenish_rate=$(echo "scale=2; $REPLENISH_RATE - (($temp - $MIN_TEMP) / ($MAX_TEMP - $MIN_TEMP))" | bc)
     fi
 }
 
