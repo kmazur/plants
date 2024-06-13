@@ -15,7 +15,7 @@ PROCESS="$OUTPUT_STAGE"
 
 function calc() {
   local OPERATION="$1"
-  printf "%.6f" "$(echo "$OPERATION" | bc)"
+  printf "%.4f" "$(echo "$OPERATION" | bc)"
 }
 
 while true; do
