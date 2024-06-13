@@ -34,7 +34,6 @@ function get_orchestrator_requests_file() {
   echo "/dev/shm/REQUESTS.txt"
 }
 
-
 SLEEP_PID=""
 function request_cpu_time() {
   local PROCESS="$1"
