@@ -22,10 +22,7 @@ while true; do
 
   INPUT_STAGE_DIR="$(ensure_stage_dir "$INPUT_STAGE")"
   OUTPUT_STAGE_DIR="$(ensure_stage_dir "$OUTPUT_STAGE")"
-  PROCESSED_PATH="$OUTPUT_STAGE_DIR/processed.txt"
-  touch "$PROCESSED_PATH"
-
-  NOT_PROCESSED_FILES=$(diff --new-line-format="" --unchanged-line-format="" --old-line-format="%L" <(ls -1 "$INPUT_STAGE_DIR" | grep "light_level_") <(cat "$PROCESSED_PATH"))
+  NOT_PROCESSED_FILES="$(get_processed_diff "$INPUT_STAGE_DIR" "$OUTPUT_STAGE_DIR" "light_level_")"
   LATEST_NOT_PROCESSED_FILE="$(echo "$NOT_PROCESSED_FILES" | tail -n 1)"
   LATEST_NOT_PROCESSED_PATH="$INPUT_STAGE_DIR/$LATEST_NOT_PROCESSED_FILE"
 

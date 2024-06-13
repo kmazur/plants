@@ -60,3 +60,14 @@ function init_sleep() {
   }
   trap 'handle_wakeup' SIGUSR1
 }
+
+function get_processed_diff() {
+  local INPUT_STAGE_DIR="$1"
+  local OUTPUT_STAGE_DIR="$2"
+  local FILE_PATTERN="$3"
+
+  local PROCESSED_PATH="$OUTPUT_STAGE_DIR/processed.txt"
+  touch "$PROCESSED_PATH"
+
+  diff --new-line-format="" --unchanged-line-format="" --old-line-format="%L" <(ls -1 "$INPUT_STAGE_DIR" | grep "$FILE_PATTERN" | sort -ur | grep -v "^$") <(cat "$PROCESSED_PATH" | sort -ur | grep -v "^$")
+}
