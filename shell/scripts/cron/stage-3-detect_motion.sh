@@ -43,7 +43,7 @@ while true; do
   request_cpu_time "${PROCESS}-motion-segments" "10"
 
 
-  input_file="$LATEST_NOT_PROCESSED_FILE"
+  input_file="$LATEST_NOT_PROCESSED_PATH"
   # Configuration variables
   motion_threshold="$(get_config "motion_threshold" "2.5" "$MOTION_DETECTION_CONFIG_FILE")"
   pre_motion_time="$(get_config "seconds_before" "1" "$MOTION_DETECTION_CONFIG_FILE")"
