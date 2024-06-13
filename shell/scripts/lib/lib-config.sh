@@ -25,7 +25,6 @@ function set_config() {
     fi
 
   ) 200>"$FILE.flock"
-  rm "$FILE.flock"
 }
 
 function remove_config() {
@@ -45,7 +44,6 @@ function remove_config() {
     fi
 
   ) 200>"$FILE.flock"
-  #rm "$FILE.flock"
 }
 
 function has_config_key() {

@@ -13,6 +13,11 @@ OUTPUT_STAGE="video/segments"
 
 PROCESS="$OUTPUT_STAGE"
 
+function calc() {
+  local OPERATION="$1"
+  printf "%.6f" "$(echo "$OPERATION" | bc)"
+}
+
 while true; do
 
   request_cpu_time "${PROCESS}-scan" "1"
@@ -67,7 +72,7 @@ while true; do
     if (( $(echo "$motion_score >= $motion_threshold" | bc -l) )); then
       if [ "$in_motion" = false ]; then
         in_motion=true
-        motion_start_time=$(echo "$seconds - $pre_motion_time" | bc)
+        motion_start_time=$(calc "$seconds - $pre_motion_time")
         if (( $(echo "$motion_start_time < 0" | bc -l) )); then
           motion_start_time=0.0
         fi
@@ -75,10 +80,10 @@ while true; do
       last_motion_time=$seconds
     else
       if [ "$in_motion" = true ]; then
-        elapsed_since_last_motion=$(echo "$seconds - $last_motion_time" | bc)
+        elapsed_since_last_motion=$(calc "$seconds - $last_motion_time")
         if (( $(echo "$elapsed_since_last_motion >= $motion_end_buffer_time" | bc -l) )); then
           in_motion=false
-          motion_end_time=$(echo "$last_motion_time + $post_motion_time" | bc)
+          motion_end_time=$(calc "$last_motion_time + $post_motion_time" | bc)
           if (( $(echo "$motion_end_time > $max_seconds" | bc -l) )); then
             motion_end_time=$max_seconds
           fi
