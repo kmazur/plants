@@ -41,6 +41,7 @@ function cleanup() {
     remove_dirs "$AUDIO_SEGMENT_DIR"
     remove_dirs "$VIDEO_SEGMENT_DIR"
     remove_dirs "$LOGS_DIR"
+    remove_dirs "$PIPELINE_DIR"
   fi
 }
 
