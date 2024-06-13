@@ -55,6 +55,7 @@ while true; do
   motion_end_buffer_time="$(get_or_set_config "motion_end_buffer_time" "5")"
 
   # Initialize variables
+  prefix="scores_"
   in_motion=false
   motion_start_time=0
   last_motion_time=0
@@ -88,7 +89,7 @@ while true; do
             motion_end_time=$max_seconds
           fi
           segment_counter=$((segment_counter + 1))
-          segment_file="$OUTPUT_STAGE_DIR/${prefix}${date}_${time}_${motion_start_time}_${motion_end_time}.txt"
+          segment_file="$OUTPUT_STAGE_DIR/${prefix}${FILE_DATETIME}_${motion_start_time}_${motion_end_time}.txt"
           echo "$motion_start_time $motion_end_time" > "$segment_file"
         fi
       fi
@@ -102,7 +103,7 @@ while true; do
       motion_end_time=$max_seconds
     fi
     segment_counter=$((segment_counter + 1))
-    segment_file="$OUTPUT_STAGE_DIR/${prefix}${date}_${time}_${motion_start_time}_${motion_end_time}.txt"
+    segment_file="$OUTPUT_STAGE_DIR/${prefix}${FILE_DATETIME}_${motion_start_time}_${motion_end_time}.txt"
     echo "$motion_start_time $motion_end_time" > "$segment_file"
   fi
 
