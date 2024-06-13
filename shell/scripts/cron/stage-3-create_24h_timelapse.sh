@@ -23,6 +23,8 @@ while true; do
 
   INPUT_STAGE_DIR="$(ensure_stage_dir "$INPUT_STAGE")"
   OUTPUT_STAGE_DIR="$(ensure_stage_dir "$OUTPUT_STAGE")"
+  PROCESSED_PATH="$OUTPUT_STAGE_DIR/processed.txt"
+
   NOT_PROCESSED_FILES="$(get_processed_diff "$INPUT_STAGE_DIR" "$OUTPUT_STAGE_DIR" "snapshot_annotated_")"
   LATEST_NOT_PROCESSED_FILE="$(echo "$NOT_PROCESSED_FILES" | head -n 1)"
   LATEST_NOT_PROCESSED_PATH="$INPUT_STAGE_DIR/$LATEST_NOT_PROCESSED_FILE"
