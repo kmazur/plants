@@ -213,7 +213,7 @@ private:
                 cv::absdiff(prevRoi, currRoi, frameDiff);
                 frameDiff.copyTo(maskedDiff, mask);
                 double motionScore = cv::sum(maskedDiff)[0] / cv::countNonZero(mask);
-                std::cout << "Frame: " << frameIndex << " (" << (100 * frameIndex / frameCount) << "%), frame score: " << motionScore << "\n";
+                std::cout << "Frame: " << frameIndex << " (" << (100 * frameIndex / frameCount) << "%), frame score: " << motionScore << std::endl;
 
                 motionDataList.push_back({frameTimeSecond, frameIndex, motionScore});
             }
