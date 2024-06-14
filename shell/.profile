@@ -106,3 +106,5 @@ function goto() {
         ssh "192.168.0.18"
     fi
 }
+
+alias cdll="cd \$(get_logs_dir)"
