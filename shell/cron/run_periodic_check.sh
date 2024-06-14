@@ -8,12 +8,14 @@ catch_error() {
   echo "Error occurred at line $1. Exiting." >> /home/user/cron_error.log
 }
 
-echo "Wrapper started with parameters: $@"
+echo "Wrapper started with parameters: $*"
 echo "Current directory: $(pwd)"
 echo "I am: $(whoami)"
 echo "Environment variables: $(printenv)"
 echo "Sourcing the profile from $HOME/.profile"
+
 source "$HOME/.profile"
+
 echo "Sourcing $LIB_INIT_FILE"
 source "$LIB_INIT_FILE"
 
