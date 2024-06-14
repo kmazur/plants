@@ -80,7 +80,7 @@ while true; do
 
   DRAWTEXT_COMMAND="${DRAWTEXT_COMMAND%,}"
 
-  COMMAND="ffmpeg -y -i \"$LATEST_NOT_PROCESSED_FILE\" -vf \"$DRAWTEXT_COMMAND\" -codec:a copy \"$FILE_PATH\""
+  COMMAND="ffmpeg -y -i \"$LATEST_NOT_PROCESSED_PATH\" -vf \"$DRAWTEXT_COMMAND\" -codec:a copy \"$FILE_PATH\""
   echo "Executing FFmpeg command for overlay: $COMMAND"
   eval "$COMMAND"
 
