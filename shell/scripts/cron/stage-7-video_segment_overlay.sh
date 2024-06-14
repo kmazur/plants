@@ -50,7 +50,7 @@ while true; do
   coords="$(echo "$polygon" | tr ';' ' ')"
 
   # Create the polygon image using ImageMagick
-  polygonImage="$FILE_PATH/polygon.png"
+  polygonImage="$OUTPUT_STAGE_DIR/polygon.png"
   VIDEO_WIDTH=$(get_config "width" "" "$VIDEO_CONFIG_FILE")
   VIDEO_HEIGHT=$(get_config "height" "" "$VIDEO_CONFIG_FILE")
   command="convert -size ${VIDEO_WIDTH}x${VIDEO_HEIGHT} xc:transparent -fill none -stroke red -draw \"polygon $coords\" $polygonImage"
