@@ -40,7 +40,7 @@ while true; do
   request_cpu_time "${PROCESS}-draw-text" "5"
 
   FONT_SIZE="$(( IMAGE_WIDTH / 35))"
-  if draw_text_bl "$LATEST_NOT_PROCESSED_PATH" "$FILE_PATH" "$(date_compact_to_dashed "$FILE_DATETIME")" "120" "yellow" "3"; then
+  if draw_text_bl "$LATEST_NOT_PROCESSED_PATH" "$FILE_PATH" "$(date_compact_to_dashed "$FILE_DATETIME")" "$FONT_SIZE" "yellow" "3"; then
     if [ -f "$FILE_PATH" ]; then
       echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
     fi
