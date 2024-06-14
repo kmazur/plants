@@ -74,6 +74,21 @@ function get_processed_diff() {
     <(sort -u "$PROCESSED_PATH" | grep -v "^$")
 }
 
+function get_second_not_processed_file() {
+  local INPUT_STAGE_DIR="$1"
+  local OUTPUT_STAGE_DIR="$2"
+  local FILE_PATTERN="$3"
+
+  local NOT_PROCESSED_FILES
+  NOT_PROCESSED_FILES="$(get_not_processed_files "$INPUT_STAGE_DIR" "$OUTPUT_STAGE_DIR" "$FILE_PATTERN")"
+  local FILES
+  FILES="$(echo "$NOT_PROCESSED_FILES" | head -n 2)"
+  if [[ "$(echo "$FILES" | wc -l)" -lt "2" ]]; then
+    return 0
+  fi
+  echo "$FILES" | head -n 1
+}
+
 function get_not_processed_files() {
   local INPUT_STAGE_DIR="$1"
   local OUTPUT_STAGE_DIR="$2"

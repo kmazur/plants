@@ -91,10 +91,4 @@ while true; do
       echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
   fi
 
-
-
-
-  if ffmpeg -i "$VIDEO_FILE_PATH" -ss "$SEGMENT_START" -t "$DURATION" -c copy -an "$FILE_PATH"; then
-
-  fi
 done
