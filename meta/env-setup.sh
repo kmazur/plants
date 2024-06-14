@@ -4,25 +4,33 @@ echo "UPDATING SSH"
 mkdir -p ~/.ssh
 
 echo "UPDATING SYSTEM: update & upgrade"
-sudo apt-get update
-sudo apt-get -y upgrade
+sudo apt-get update && sudo apt-get -y upgrade
 
 echo "INSTALLING:"
 echo "-git"
 sudo apt-get -y install git
 
-wget https://raw.githubusercontent.com/kmazur/plants/main/meta/git-update.sh
-chmod +x git-update.sh
-./git-update.sh
+wget https://raw.githubusercontent.com/kmazur/plants/main/meta/git-update.sh && chmod +x git-update.sh && ./git-update.sh
 
 WORK_DIR="/home/$USER/WORK"
 cp -f "$WORK_DIR/workspace/plants/shell/.profile" "$HOME"
 source "$HOME/.profile"
 
-
 ARCH=$(uname -a)
 if [ ! -f "$CONFIG_INI" ]; then
-  echo "name=UNKNOWN" > "$CONFIG_INI"
+  touch "$CONFIG_INI"
+
+  export MACHINE_NAME="UNKNOWN"
+  IP="$(/usr/sbin/ifconfig wlan0 | grep inet | tr ' ' "\n" | grep 192 | head -n 1 2> /dev/null)"
+  if [[ "$IP" == "192.168.0.80" ]]; then
+    export MACHINE_NAME="pi4b"
+  elif [[ "$IP" == "192.168.0.199" ]]; then
+    export MACHINE_NAME="birdbox-ctrl"
+  elif [[ "$IP" == "192.168.0.18" ]]; then
+    export MACHINE_NAME="birdbox-ir"
+  fi
+
+  echo "name=$MACHINE_NAME" > "$CONFIG_INI"
   if [[ "$ARCH" == *"aarch64"* ]]; then
     echo "camera.width=4608" >>"$CONFIG_INI"
     echo "camera.height=2592" >>"$CONFIG_INI"
@@ -109,10 +117,10 @@ echo "VIM: Installing theme: monokai"
 install_vim "https://github.com/sainnhe/sonokai" "sonokai"
 mkdir -p "$HOME/.vim/colors" && cp -r "$HOME/.vim/bundle/sonokai/colors" "$HOME/.vim"
 
-echo "VIM: Installing plugin: NERDTree"
-install_vim "https://github.com/preservim/nerdtree.git" "nerdtree"
-echo "VIM: Installing plugin: EasyMotion"
-install_vim "https://github.com/easymotion/vim-easymotion" "vim-easymotion"
+#echo "VIM: Installing plugin: NERDTree"
+#install_vim "https://github.com/preservim/nerdtree.git" "nerdtree"
+#echo "VIM: Installing plugin: EasyMotion"
+#install_vim "https://github.com/easymotion/vim-easymotion" "vim-easymotion"
 
 echo "VIM: Configuring .vimrc"
 cp -f "$REPO_DIR/meta/files/vim/.vimrc" "$HOME"

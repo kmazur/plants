@@ -26,8 +26,7 @@ if [ -d "$HOME/.local/bin" ] ; then
     PATH="$HOME/.local/bin:$PATH"
 fi
 
-
-export BASE_DIR="/home/user"
+export BASE_DIR="/home/$USER"
 export WORK_DIR="$BASE_DIR/WORK"
 export TMP_DIR="$WORK_DIR/tmp"
 export CONFIG_DIR="$WORK_DIR/config"
@@ -53,7 +52,9 @@ export LIB_INIT_FILE="$REPO_DIR/shell/scripts/lib/lib.sh"
 function _create_env_dirs() {
     local DIRS="$(env | grep "_DIR" | grep "/home/user/" | cut -d '=' -f 2)"
     for DIR in $DIRS; do
-        mkdir -p "$DIR" &> /dev/null
+        if [ ! -d "$DIR" ]; then
+            mkdir -p "$DIR" &> /dev/null
+        fi
     done
 }
 _create_env_dirs
@@ -67,11 +68,11 @@ fi
 
 export ENV_INITIALIZED="true"
 
-export PS1="\[\e[32m\][$MACHINE_NAME][\w]\$\[\e[m\] "
+export PS1="\[\e[32m\][$MACHINE_NAME][\w][$?]\$\[\e[m\] "
 
 function setup_shell() {
     local MACHINE_NAME="$1"
-    local IP="$(/usr/sbin/ifconfig wlan0 | grep inet | tr ' ' "\n" | grep 192 | head -n 1)"
+    local IP="$(/usr/sbin/ifconfig wlan0 | grep inet | tr ' ' "\n" | grep 192 | head -n 1 2> /dev/null)"
     echo -ne "\033]0;$MACHINE_NAME ($IP)\007"
 }
 setup_shell "$MACHINE_NAME"
@@ -101,6 +102,6 @@ function goto() {
     elif [[ "$WHAT" == "192.168.0.199" || "$WHAT" == "ctrl" ]]; then
         ssh "192.168.0.199"
     elif [[ "$WHAT" == "192.168.0.18" || "$WHAT" == "ir" ]]; then
-            ssh "192.168.0.18"
+        ssh "192.168.0.18"
     fi
 }
