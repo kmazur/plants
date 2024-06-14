@@ -9,8 +9,8 @@ MAX_TEMP=80
 MIN_TEMP=50
 BASE_TOKENS=100
 MAX_TOKENS=100
-REPLENISH_RATE=10  # tokens per second
-RESERVE_THRESHOLD=10  # Threshold wait time (seconds) to start reserving tokens
+REPLENISH_RATE="$(get_or_set_config "orchestrator.replenish_rate" "10")"  # tokens per second
+RESERVE_THRESHOLD=60  # Threshold wait time (seconds) to start reserving tokens
 SLEEP_INTERVAL=0.1
 
 declare -A accumulated_tokens
