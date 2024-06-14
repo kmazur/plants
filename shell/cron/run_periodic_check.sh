@@ -7,7 +7,9 @@ trap 'catch_error $LINENO' ERR
 catch_error() {
   echo "Error occurred at line $1. Exiting." >> /home/user/cron_error.log
 }
-
+echo "blah"
+echo "2"
+echo "3"
 echo "Wrapper started with parameters: $*"
 echo "Current directory: $(pwd)"
 echo "I am: $(whoami)"
