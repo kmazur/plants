@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
 source "$HOME/.profile"
 source "$LIB_INIT_FILE"
