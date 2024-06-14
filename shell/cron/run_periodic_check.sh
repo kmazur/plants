@@ -1,4 +1,7 @@
 #!/bin/bash
+echo "Wrapper started with parameters: $*"
+echo "Current directory: $(pwd)"
+echo "Environment variables: $(printenv)"
 
 source "$HOME/.profile"
 source "$LIB_INIT_FILE"
