@@ -5,12 +5,12 @@ source "$LIB_INIT_FILE"
 ensure_env
 
 SCHEDULER_FILE="$(get_orchestrator_requests_file)"
-MAX_TEMP=80
-MIN_TEMP=50
-BASE_TOKENS=100
-MAX_TOKENS=100
+MAX_TEMP="$(get_or_set_config "orchestrator.max_temperature" "79")"
+MIN_TEMP="$(get_or_set_config "orchestrator.min_temperature" "50")"
+BASE_TOKENS="$(get_or_set_config "orchestrator.initial_tokens" "0")"
+MAX_TOKENS="$(get_or_set_config "orchestrator.max_tokens" "100")"
 REPLENISH_RATE="$(get_or_set_config "orchestrator.replenish_rate" "10")"  # tokens per second
-RESERVE_THRESHOLD=60  # Threshold wait time (seconds) to start reserving tokens
+RESERVE_THRESHOLD="$(get_or_set_config "orchestrator.accumulation_threshold_seconds" "60")"  # Threshold wait time (seconds) to start reserving tokens
 SLEEP_INTERVAL="$(get_or_set_config "orchestrator.run_interval" "5")"
 
 declare -A accumulated_tokens
@@ -127,18 +127,27 @@ function run_scheduler() {
 }
 
 while true; do
-    # Adjust replenish rate based on current temperature
-    current_temp=$(get_cpu_temp)
-    adjust_replenish_rate "$current_temp"
+  MAX_TEMP="$(get_or_set_config "orchestrator.max_temperature" "79")"
+  MIN_TEMP="$(get_or_set_config "orchestrator.min_temperature" "50")"
+  BASE_TOKENS="$(get_or_set_config "orchestrator.initial_tokens" "0")"
+  MAX_TOKENS="$(get_or_set_config "orchestrator.max_tokens" "100")"
+  REPLENISH_RATE="$(get_or_set_config "orchestrator.replenish_rate" "10")"  # tokens per second
+  RESERVE_THRESHOLD="$(get_or_set_config "orchestrator.accumulation_threshold_seconds" "60")"  # Threshold wait time (seconds) to start reserving tokens
+  SLEEP_INTERVAL="$(get_or_set_config "orchestrator.run_interval" "5")"
 
-    # Replenish tokens based on elapsed time
-    replenish_tokens
 
-    # Run the scheduler
-    run_scheduler
+  # Adjust replenish rate based on current temperature
+  current_temp=$(get_cpu_temp)
+  adjust_replenish_rate "$current_temp"
 
-    # Log available tokens and replenish rate
-    log "Available tokens: $available_tokens, Replenish rate: $replenish_rate"
+  # Replenish tokens based on elapsed time
+  replenish_tokens
 
-    sleep "$SLEEP_INTERVAL"
+  # Run the scheduler
+  run_scheduler
+
+  # Log available tokens and replenish rate
+  log "Available tokens: $available_tokens, Replenish rate: $replenish_rate"
+
+  sleep "$SLEEP_INTERVAL"
 done
