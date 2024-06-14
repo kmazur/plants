@@ -84,7 +84,7 @@ while true; do
         elapsed_since_last_motion=$(calc "$seconds - $last_motion_time")
         if (( $(echo "$elapsed_since_last_motion >= $motion_end_buffer_time" | bc -l) )); then
           in_motion=false
-          motion_end_time=$(calc "$last_motion_time + $post_motion_time" | bc)
+          motion_end_time=$(calc "$last_motion_time + $post_motion_time")
           if (( $(echo "$motion_end_time > $max_seconds" | bc -l) )); then
             motion_end_time=$max_seconds
           fi
