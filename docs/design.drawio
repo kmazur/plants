@@ -1,6 +1,6 @@
-<mxfile host="app.diagrams.net" modified="2024-06-14T11:31:56.781Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36" etag="QnhXSHuNqQs0dmwzjFrs" version="24.4.10" type="device">
+<mxfile host="app.diagrams.net" modified="2024-06-14T13:23:33.419Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36" etag="vmlCPsBtWS4ZDUPZvjgP" version="24.4.10" type="device">
   <diagram name="Page-1" id="8P1FacYM7Q2uCN1N5VEa">
-    <mxGraphModel dx="3718" dy="2668" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="2537" dy="2022" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -350,8 +350,8 @@
         <mxCell id="sunBoqktDuy5uy9g9zun-139" value="segment.txt" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="sunBoqktDuy5uy9g9zun-117">
           <mxGeometry x="65" y="190" width="120" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="sunBoqktDuy5uy9g9zun-124" value="STAGE: MOTION_SCORE_DETECTION" style="swimlane;whiteSpace=wrap;html=1;" vertex="1" parent="1">
-          <mxGeometry x="3530" y="1070" width="620" height="160" as="geometry" />
+        <mxCell id="sunBoqktDuy5uy9g9zun-124" value="STAGE: MOTION_SEGMENT_OVERLAY" style="swimlane;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="3540" y="1070" width="620" height="160" as="geometry" />
         </mxCell>
         <mxCell id="sunBoqktDuy5uy9g9zun-125" value="vid_segment_time.mp4" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="sunBoqktDuy5uy9g9zun-124">
           <mxGeometry x="40" y="60" width="145" height="60" as="geometry" />

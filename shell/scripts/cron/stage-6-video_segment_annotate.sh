@@ -11,7 +11,7 @@ OUTPUT_STAGE="video/video_segments_annotated"
 # - video/segments/scores_20240505_101501_0.3333_5.1000.txt
 # - video/video_segments/video_segment_20240505_101501_0.3333_5.1000.mp4
 # OUTPUT:
-# - video/video_segments_annotated/video_segment_20240505_101501_0.3333_5.1000.mp4
+# - video/video_segments_annotated/video_segment_annotated_20240505_101501_0.3333_5.1000.mp4
 
 PROCESS="$OUTPUT_STAGE"
 
@@ -81,7 +81,7 @@ while true; do
   DRAWTEXT_COMMAND="${DRAWTEXT_COMMAND%,}"
 
   COMMAND="ffmpeg -y -i \"$LATEST_NOT_PROCESSED_PATH\" -vf \"$DRAWTEXT_COMMAND\" -codec:a copy \"$FILE_PATH\""
-  echo "Executing FFmpeg command for overlay: $COMMAND"
+  echo "Executing FFmpeg command for annotating: $COMMAND"
 
   request_cpu_time "${PROCESS}-motion-segments-execute" "60"
   eval "$COMMAND"
