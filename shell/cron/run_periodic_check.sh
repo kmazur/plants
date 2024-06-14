@@ -1,4 +1,13 @@
 #!/usr/bin/env bash
+
+# Enable error handling
+set -e
+trap 'catch_error $LINENO' ERR
+
+catch_error() {
+  echo "Error occurred at line $1. Exiting." >> /home/user/cron_error.log
+}
+
 echo "Wrapper started with parameters: $@"
 echo "Current directory: $(pwd)"
 echo "I am: $(whoami)"
