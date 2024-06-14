@@ -108,6 +108,6 @@ function goto() {
     fi
 }
 
-if [[ "$SHELL" == "bash" ]]; then
+if [[ "$SHELL" == "/bin/bash" ]]; then
     alias cdll="cd \$(get_logs_dir)"
 fi
