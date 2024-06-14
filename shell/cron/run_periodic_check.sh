@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
-echo "Wrapper started with parameters: $*"
+echo "Wrapper started with parameters: $@"
 echo "Current directory: $(pwd)"
+echo "I am: $(whoami)"
 echo "Environment variables: $(printenv)"
-
+echo "Sourcing the profile from $HOME/.profile"
 source "$HOME/.profile"
+echo "Sourcing $LIB_INIT_FILE"
 source "$LIB_INIT_FILE"
 
 PROCESS_NAME="$1"
