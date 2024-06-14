@@ -26,7 +26,7 @@ if [ -d "$HOME/.local/bin" ] ; then
     PATH="$HOME/.local/bin:$PATH"
 fi
 
-export BASE_DIR="/home/$USER"
+export BASE_DIR="/home/user"
 export WORK_DIR="$BASE_DIR/WORK"
 export TMP_DIR="$WORK_DIR/tmp"
 export CONFIG_DIR="$WORK_DIR/config"
@@ -108,4 +108,6 @@ function goto() {
     fi
 }
 
-alias cdll="cd \$(get_logs_dir)"
+if [[ "$SHELL" == "bash" ]]; then
+    alias cdll="cd \$(get_logs_dir)"
+fi
