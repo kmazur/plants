@@ -4,26 +4,18 @@
 source "$LIB_INIT_FILE"
 ensure_env
 
-INPUT_STAGE="video/motion_scores"
-OUTPUT_STAGE="video/segments"
+INPUT_STAGE="video/segments"
+OUTPUT_STAGE="video/video_segments"
 # INPUT:
-# - video/motion_scores/scores_20240505_101501.txt
-# OUTPUT:
 # - video/segments/scores_20240505_101501_0.3333_5.1000.txt
+# OUTPUT:
+# - video/video_segments/video_segment_20240505_101501_0.3333_5.1000.txt
 
 PROCESS="$OUTPUT_STAGE"
-
-function calc() {
-  local OPERATION="$1"
-  printf "%.4f" "$(echo "$OPERATION" | bc)"
-}
 
 while true; do
 
   request_cpu_time "${PROCESS}-scan" "1"
-
-  CAMERA_CONFIG_DIR="$REPO_DIR/shell/scripts/video/config"
-  MOTION_DETECTION_CONFIG_FILE="$CAMERA_CONFIG_DIR/motion-config-$MACHINE_NAME.txt"
 
   INPUT_STAGE_DIR="$(ensure_stage_dir "$INPUT_STAGE")"
   OUTPUT_STAGE_DIR="$(ensure_stage_dir "$OUTPUT_STAGE")"

@@ -68,5 +68,32 @@ function get_processed_diff() {
   local PROCESSED_PATH="$OUTPUT_STAGE_DIR/processed.txt"
   touch "$PROCESSED_PATH"
 
-  diff --new-line-format="" --unchanged-line-format="" --old-line-format="%L" <(ls -1 "$INPUT_STAGE_DIR" | grep "$FILE_PATTERN" | sort -u | grep -v "^$") <(cat "$PROCESSED_PATH" | sort -u | grep -v "^$")
+
+  diff --new-line-format="" --unchanged-line-format="" --old-line-format="%L" \
+    <(ls -1 "$INPUT_STAGE_DIR" | grep "$FILE_PATTERN" | sort -u | grep -v "^$") \
+    <(sort -u "$PROCESSED_PATH" | grep -v "^$")
+}
+
+function get_not_processed_files() {
+  local INPUT_STAGE_DIR="$1"
+  local OUTPUT_STAGE_DIR="$2"
+  local FILE_PATTERN="$3"
+
+  local NOT_PROCESSED_FILES
+  NOT_PROCESSED_FILES="$(get_processed_diff "$INPUT_STAGE_DIR" "$OUTPUT_STAGE_DIR" "$FILE_PATTERN")"
+
+  [[ -z "$NOT_PROCESSED_FILES" ]] && return 0
+
+  # Get the list of open files in the directory, filter out directories and the header
+  local OPEN_FILES
+  OPEN_FILES=$(lsof +D "$INPUT_STAGE_DIR" | awk 'NR>1 && $5 == "REG" {print $9}' | grep -oE '[^/]+$')
+
+  local FILTERED_FILES=""
+  for file in $NOT_PROCESSED_FILES; do
+    if ! echo "$OPEN_FILES" | grep -q "^$file$"; then
+      FILTERED_FILES+="$file"$'\n'
+    fi
+  done
+
+  echo "$FILTERED_FILES" | grep -v "^$"
 }

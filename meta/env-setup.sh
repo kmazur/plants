@@ -77,6 +77,7 @@ echo "- jq"
 echo "- motion"
 echo "- openjdk-17-jdk"
 echo "- bc"
+echo "- lsof"
 sudo apt-get -y install git vim htop pigpio screen imagemagick libcamera-tools python3-opencv jq
 #sudo apt-get -y install motion
 #sudo apt-get -y install openjdk-17-jdk
@@ -86,6 +87,7 @@ sudo apt-get -y install bc
 # sudo apt-get -y install lame
 sudo apt-get -y install libopencv-dev
 sudo apt-get -y install cpufrequtils
+sudo apt-get -y install lsof
 
 
 echo "Set timezone to Europe/Warsaw"
