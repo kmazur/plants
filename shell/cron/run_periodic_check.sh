@@ -1,24 +1,6 @@
 #!/usr/bin/env bash
 
-# Enable error handling
-set -e
-trap 'catch_error $LINENO' ERR
-
-catch_error() {
-  echo "Error occurred at line $1. Exiting." >> /home/user/cron_error.log
-}
-echo "blah"
-echo "2"
-echo "3"
-echo "Wrapper started with parameters: $*"
-echo "Current directory: $(pwd)"
-echo "I am: $(whoami)"
-echo "Environment variables: $(printenv)"
-echo "Sourcing the profile from $HOME/.profile"
-
 source "$HOME/.profile"
-
-echo "Sourcing $LIB_INIT_FILE"
 source "$LIB_INIT_FILE"
 
 PROCESS_NAME="$1"
