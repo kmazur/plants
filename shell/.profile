@@ -114,5 +114,5 @@ if [[ "$SHELL" == "/bin/bash" ]]; then
 fi
 
 function run_periodic_checks() {
-    crontab -l | grep "run_periodic_check.sh" | grep -v "^#" | cut -d ' ' -f 6- | xargs -I {} bash -c "{}"
+    "$REPO_DIR/shell/scripts/cron/run_all_periodics.sh" &>> /home/user/cron.log
 }
