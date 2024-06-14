@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 echo "Wrapper started with parameters: $*"
 echo "Current directory: $(pwd)"
 echo "Environment variables: $(printenv)"
