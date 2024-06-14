@@ -58,11 +58,18 @@ function replenish_tokens() {
     local current_time=$(date +%s.%N)
     local elapsed_time=$(echo "$current_time - $last_replenish_time" | bc)
     local tokens_to_add=$(echo "$elapsed_time * $replenish_rate" | bc)
-    available_tokens=$(echo "$available_tokens + $tokens_to_add" | bc)
+    local total_accumulated_tokens=0
 
-    if (( $(echo "$available_tokens > $MAX_TOKENS" | bc -l) )); then
-        available_tokens=$MAX_TOKENS
+    for tokens in "${accumulated_tokens[@]}"; do
+        total_accumulated_tokens=$(echo "$total_accumulated_tokens + $tokens" | bc)
+    done
+
+    local available_capacity=$(echo "$MAX_TOKENS - $total_accumulated_tokens" | bc)
+    if (( $(echo "$tokens_to_add + $available_tokens > $available_capacity" | bc -l) )); then
+        tokens_to_add=$(echo "$available_capacity - $available_tokens" | bc)
     fi
+
+    available_tokens=$(echo "$available_tokens + $tokens_to_add" | bc)
 
     last_replenish_time=$current_time
 }
