@@ -4,16 +4,17 @@
 source "$LIB_INIT_FILE"
 ensure_env
 
-INPUT_STAGE="video/24_snapshot"
-OUTPUT_STAGE="video/24_snapshot_upload"
+INPUT_STAGE="video/video_segments_overlay"
+OUTPUT_STAGE="video/upload_video_segments_overlay"
 # INPUT:
-# - video/24_snapshot/pi4b_24.jpg
+# - video/video_segments_overlay/video_segment_overlay_20240505_101501_0.3333_5.1000.mp4
 # OUTPUT:
 # - none
 
 PROCESS="$OUTPUT_STAGE"
 
 while true; do
+
   request_cpu_time "${PROCESS}-scan" "1"
 
   MACHINE_NAME="$(get_required_config "name")"
@@ -22,7 +23,7 @@ while true; do
   OUTPUT_STAGE_DIR="$(ensure_stage_dir "$OUTPUT_STAGE")"
   PROCESSED_PATH="$OUTPUT_STAGE_DIR/processed.txt"
 
-  NOT_PROCESSED_FILES="$(get_not_processed_files "$INPUT_STAGE_DIR" "$OUTPUT_STAGE_DIR" "_24.jpg")"
+  NOT_PROCESSED_FILES="$(get_not_processed_files "$INPUT_STAGE_DIR" "$OUTPUT_STAGE_DIR" "video_segment_overlay_")"
   LATEST_NOT_PROCESSED_FILE="$(echo "$NOT_PROCESSED_FILES" | tail -n 1)"
   LATEST_NOT_PROCESSED_PATH="$INPUT_STAGE_DIR/$LATEST_NOT_PROCESSED_FILE"
 
@@ -36,7 +37,7 @@ while true; do
     echo "$FILES_TO_SKIP" >> "$PROCESSED_PATH"
   fi
 
-  FILE_NAME="${MACHINE_NAME}_24.jpg"
+  FILE_NAME="vid_segment_short_${MACHINE_NAME}.mp4"
   FILE_PATH="$OUTPUT_STAGE_DIR/$FILE_NAME"
 
   # Does not exist or has changed
@@ -45,7 +46,7 @@ while true; do
     if cp -f "$LATEST_NOT_PROCESSED_PATH" "$FILE_PATH"; then
       if [ -f "$FILE_PATH" ]; then
         request_cpu_time "${PROCESS}-upload" "5"
-        if upload_file "$FILE_PATH" "image/jpg"; then
+        if upload_file "$FILE_PATH" "video/mp4"; then
           echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
         fi
       fi

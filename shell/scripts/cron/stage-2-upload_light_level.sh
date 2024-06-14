@@ -25,12 +25,13 @@ while true; do
   PROCESSED_PATH="$OUTPUT_STAGE_DIR/processed.txt"
 
   NOT_PROCESSED_FILES="$(get_not_processed_files "$INPUT_STAGE_DIR" "$OUTPUT_STAGE_DIR" "light_level_")"
-  LATEST_NOT_PROCESSED_FILE="$(echo "$NOT_PROCESSED_FILES" | tail -n 1)"
+  LATEST_NOT_PROCESSED_FILE="$(echo "$NOT_PROCESSED_FILES" | head -n 1)"
   LATEST_NOT_PROCESSED_PATH="$INPUT_STAGE_DIR/$LATEST_NOT_PROCESSED_FILE"
 
   if [ -z "$LATEST_NOT_PROCESSED_FILE" ]; then
     continue
   fi
+  
   log "Processing: $LATEST_NOT_PROCESSED_PATH"
 
   FILE_DATETIME="$(strip "$LATEST_NOT_PROCESSED_FILE" "light_level_" ".txt")"

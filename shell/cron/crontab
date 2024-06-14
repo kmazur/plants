@@ -30,6 +30,7 @@
 #*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-5-extract_motion_segments"
 #*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-6-video_segment_annotate"
 #*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-7-video_segment_overlay"
+#*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-8-upload_video_segment_overlay"
 
 #*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-3-upload_annotated_snapshot"
 #*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "run-orchestrator"
