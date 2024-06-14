@@ -77,6 +77,7 @@ while true; do
           motion_start_time=0.0
         fi
         segment_file="$OUTPUT_STAGE_DIR/${prefix}${FILE_DATETIME}_${motion_start_time}_${motion_end_time}.txt"
+        echo "$line" >> "$segment_file"
       fi
       last_motion_time=$seconds
     else
