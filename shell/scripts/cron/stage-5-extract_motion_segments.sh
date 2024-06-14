@@ -5,6 +5,7 @@ source "$LIB_INIT_FILE"
 ensure_env
 
 INPUT_STAGE="video/segments"
+INPUT2_STAGE="video/mp4"
 OUTPUT_STAGE="video/video_segments"
 # INPUT:
 # - video/segments/scores_20240505_101501_0.3333_5.1000.txt
@@ -19,6 +20,7 @@ while true; do
   request_cpu_time "${PROCESS}-scan" "1"
 
   INPUT_STAGE_DIR="$(ensure_stage_dir "$INPUT_STAGE")"
+  INPUT2_STAGE_DIR="$(ensure_stage_dir "$INPUT2_STAGE")"
   OUTPUT_STAGE_DIR="$(ensure_stage_dir "$OUTPUT_STAGE")"
   PROCESSED_PATH="$OUTPUT_STAGE_DIR/processed.txt"
 
@@ -35,11 +37,19 @@ while true; do
   FILE_DATETIME="$(echo "$FILE_DATETIME_AND_SEGMENT" | cut -d '_' -f 1,2)"
   SEGMENT_START="$(echo "$FILE_DATETIME_AND_SEGMENT" | cut -d '_' -f 3)"
   SEGMENT_END="$(echo "$FILE_DATETIME_AND_SEGMENT" | cut -d '_' -f 4)"
+  DURATION=$(calc "$SEGMENT_END - $SEGMENT_START")
 
   FILE_NAME="video_segment_${FILE_DATETIME_AND_SEGMENT}.mp4"
   FILE_PATH="$OUTPUT_STAGE_DIR/$FILE_NAME"
 
-  DURATION=$(calc "$SEGMENT_END - $SEGMENT_START")
+  VIDEO_FILE_NAME="video_${FILE_DATETIME}.mp4"
+  VIDEO_FILE_PATH="$INPUT2_STAGE_DIR/$VIDEO_FILE_NAME"
+
+  if [ ! -f "$VIDEO_FILE_PATH" ]; then
+    echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
+    log "Video file: $VIDEO_FILE_PATH does not exist! Skipping"
+    continue
+  fi
 
   log "Starting motion segment extraction"
   request_cpu_time "${PROCESS}-motion-segments" "40"
