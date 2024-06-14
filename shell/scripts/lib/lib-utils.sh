@@ -200,3 +200,8 @@ function get_bounding_box_from_polygon() {
 
   echo "$MIN_X,$MIN_Y,$MAX_X,$MAX_Y"
 }
+
+function calc() {
+  local OPERATION="$1"
+  printf "%.4f" "$(echo "$OPERATION" | bc)"
+}

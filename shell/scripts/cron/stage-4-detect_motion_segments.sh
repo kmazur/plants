@@ -13,11 +13,6 @@ OUTPUT_STAGE="video/segments"
 
 PROCESS="$OUTPUT_STAGE"
 
-function calc() {
-  local OPERATION="$1"
-  printf "%.4f" "$(echo "$OPERATION" | bc)"
-}
-
 while true; do
 
   request_cpu_time "${PROCESS}-scan" "1"

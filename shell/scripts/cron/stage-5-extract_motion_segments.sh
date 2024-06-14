@@ -8,8 +8,9 @@ INPUT_STAGE="video/segments"
 OUTPUT_STAGE="video/video_segments"
 # INPUT:
 # - video/segments/scores_20240505_101501_0.3333_5.1000.txt
+# - video/mp4/video_20240505_101501.mp4
 # OUTPUT:
-# - video/video_segments/video_segment_20240505_101501_0.3333_5.1000.txt
+# - video/video_segments/video_segment_20240505_101501_0.3333_5.1000.mp4
 
 PROCESS="$OUTPUT_STAGE"
 
@@ -22,7 +23,7 @@ while true; do
   PROCESSED_PATH="$OUTPUT_STAGE_DIR/processed.txt"
 
   NOT_PROCESSED_FILES="$(get_not_processed_files "$INPUT_STAGE_DIR" "$OUTPUT_STAGE_DIR" "scores_")"
-  LATEST_NOT_PROCESSED_FILE="$(echo "$NOT_PROCESSED_FILES" | tail -n 1)"
+  LATEST_NOT_PROCESSED_FILE="$(echo "$NOT_PROCESSED_FILES" | head -n 1)"
   LATEST_NOT_PROCESSED_PATH="$INPUT_STAGE_DIR/$LATEST_NOT_PROCESSED_FILE"
 
   if [ -z "$LATEST_NOT_PROCESSED_FILE" ]; then
@@ -30,76 +31,21 @@ while true; do
   fi
   log "Processing: $LATEST_NOT_PROCESSED_PATH"
 
-  FILE_DATETIME="$(strip "$LATEST_NOT_PROCESSED_FILE" "scores_" ".txt")"
-  FILE_NAME="scores_${FILE_DATETIME}.txt"
+  FILE_DATETIME_AND_SEGMENT="$(strip "$LATEST_NOT_PROCESSED_FILE" "scores_" ".txt")"
+  FILE_DATETIME="$(echo "$FILE_DATETIME_AND_SEGMENT" | cut -d '_' -f 1,2)"
+  SEGMENT_START="$(echo "$FILE_DATETIME_AND_SEGMENT" | cut -d '_' -f 3)"
+  SEGMENT_END="$(echo "$FILE_DATETIME_AND_SEGMENT" | cut -d '_' -f 4)"
+
+  FILE_NAME="video_segment_${FILE_DATETIME_AND_SEGMENT}.mp4"
   FILE_PATH="$OUTPUT_STAGE_DIR/$FILE_NAME"
 
-  log "Starting motion segment detection"
+  DURATION=$(calc "$SEGMENT_END - $SEGMENT_START")
 
-  request_cpu_time "${PROCESS}-motion-segments" "10"
+  log "Starting motion segment extraction"
+  request_cpu_time "${PROCESS}-motion-segments" "40"
 
-
-  input_file="$LATEST_NOT_PROCESSED_PATH"
-  # Configuration variables
-  motion_threshold="$(get_config "motion_threshold" "2.5" "$MOTION_DETECTION_CONFIG_FILE")"
-  pre_motion_time="$(get_config "seconds_before" "1" "$MOTION_DETECTION_CONFIG_FILE")"
-  post_motion_time="$(get_config "seconds_after" "1" "$MOTION_DETECTION_CONFIG_FILE")"
-  motion_end_buffer_time="$(get_or_set_config "motion_end_buffer_time" "5")"
-
-  # Initialize variables
-  prefix="scores_"
-  in_motion=false
-  motion_start_time=0
-  last_motion_time=0
-  segment_counter=0
-
-  # Read the maximum seconds value from the last line of the file
-  max_seconds=$(tail -n 1 "$input_file" | awk '{print $2}')
-
-  # Process the input file line by line
-  while read -r line; do
-    frame_index=$(echo "$line" | cut -d ' ' -f 1)
-    seconds=$(echo "$line" | cut -d ' ' -f 2)
-    motion_score=$(echo "$line" | cut -d ' ' -f 3)
-
-    if (( $(echo "$motion_score >= $motion_threshold" | bc -l) )); then
-      if [ "$in_motion" = false ]; then
-        in_motion=true
-        motion_start_time=$(calc "$seconds - $pre_motion_time")
-        if (( $(echo "$motion_start_time < 0" | bc -l) )); then
-          motion_start_time=0.0
-        fi
-      fi
-      last_motion_time=$seconds
-    else
-      if [ "$in_motion" = true ]; then
-        elapsed_since_last_motion=$(calc "$seconds - $last_motion_time")
-        if (( $(echo "$elapsed_since_last_motion >= $motion_end_buffer_time" | bc -l) )); then
-          in_motion=false
-          motion_end_time=$(calc "$last_motion_time + $post_motion_time")
-          if (( $(echo "$motion_end_time > $max_seconds" | bc -l) )); then
-            motion_end_time=$max_seconds
-          fi
-          segment_counter=$((segment_counter + 1))
-          segment_file="$OUTPUT_STAGE_DIR/${prefix}${FILE_DATETIME}_${motion_start_time}_${motion_end_time}.txt"
-          echo "$motion_start_time $motion_end_time" > "$segment_file"
-        fi
-      fi
-    fi
-  done < "$input_file"
-
-  # Handle case where motion is still in progress at the end of the file
-  if [ "$in_motion" = true ]; then
-    motion_end_time=$(echo "$last_motion_time + $post_motion_time" | bc)
-    if (( $(echo "$motion_end_time > $max_seconds" | bc -l) )); then
-      motion_end_time=$max_seconds
-    fi
-    segment_counter=$((segment_counter + 1))
-    segment_file="$OUTPUT_STAGE_DIR/${prefix}${FILE_DATETIME}_${motion_start_time}_${motion_end_time}.txt"
-    echo "$motion_start_time $motion_end_time" > "$segment_file"
+  if ffmpeg -i "$LATEST_NOT_PROCESSED_PATH" -ss "$SEGMENT_START" -t "$DURATION" -c copy -an "$FILE_PATH"; then
+    log "Done motion segment extraction"
+    echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
   fi
-
-  log "Done motion score detection"
-  echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
-
 done
