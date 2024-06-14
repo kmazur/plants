@@ -52,7 +52,7 @@ while true; do
   fi
 
   log "Starting video segment annotation"
-  request_cpu_time "${PROCESS}-motion-segments" "40"
+  request_cpu_time "${PROCESS}-motion-segments-build" "10"
 
   MOTION_DATA_LIST=()
   while IFS= read -r LINE; do
@@ -82,12 +82,14 @@ while true; do
 
   COMMAND="ffmpeg -y -i \"$LATEST_NOT_PROCESSED_PATH\" -vf \"$DRAWTEXT_COMMAND\" -codec:a copy \"$FILE_PATH\""
   echo "Executing FFmpeg command for overlay: $COMMAND"
+
+  request_cpu_time "${PROCESS}-motion-segments-execute" "60"
   eval "$COMMAND"
 
   if [ $? -ne 0 ]; then
       echo "Error overlaying text on video segment: $LATEST_NOT_PROCESSED_FILE"
   else
-      log "Done motion segment extraction"
+      log "Done video segment annotating"
       echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
   fi
 

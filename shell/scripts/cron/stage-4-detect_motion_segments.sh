@@ -39,7 +39,7 @@ while true; do
 
   log "Starting motion segment detection"
 
-  request_cpu_time "${PROCESS}-motion-segments" "10"
+  request_cpu_time "${PROCESS}-motion-segments" "30"
 
 
   input_file="$LATEST_NOT_PROCESSED_PATH"
@@ -48,6 +48,7 @@ while true; do
   pre_motion_time="$(get_config "seconds_before" "1" "$MOTION_DETECTION_CONFIG_FILE")"
   post_motion_time="$(get_config "seconds_after" "1" "$MOTION_DETECTION_CONFIG_FILE")"
   motion_end_buffer_time="$(get_or_set_config "motion_end_buffer_time" "5")"
+  motion_video_start_seconds_ignore="$(get_or_set_config "start_seconds_ignore" "1")"
 
   # Initialize variables
   prefix="scores_"
@@ -67,6 +68,10 @@ while true; do
 
     if [ "$in_motion" = true ]; then
       echo "$line" >> "$segment_file"
+    fi
+
+    if (( $(echo "$seconds < $motion_video_start_seconds_ignore" | bc -l) )); then
+      continue
     fi
 
     if (( $(echo "$motion_score >= $motion_threshold" | bc -l) )); then
