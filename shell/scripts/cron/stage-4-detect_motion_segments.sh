@@ -53,8 +53,8 @@ while true; do
   prefix="scores_"
   in_motion=false
   motion_start_time=0
+  motion_end_time=0
   last_motion_time=0
-  segment_counter=0
 
   # Read the maximum seconds value from the last line of the file
   max_seconds=$(tail -n 1 "$input_file" | awk '{print $2}')
@@ -65,6 +65,10 @@ while true; do
     seconds=$(echo "$line" | cut -d ' ' -f 2)
     motion_score=$(echo "$line" | cut -d ' ' -f 3)
 
+    if [ "$in_motion" = true ]; then
+      echo "$line" >> "$segment_file"
+    fi
+
     if (( $(echo "$motion_score >= $motion_threshold" | bc -l) )); then
       if [ "$in_motion" = false ]; then
         in_motion=true
@@ -72,6 +76,7 @@ while true; do
         if (( $(echo "$motion_start_time < 0" | bc -l) )); then
           motion_start_time=0.0
         fi
+        segment_file="$OUTPUT_STAGE_DIR/${prefix}${FILE_DATETIME}_${motion_start_time}_${motion_end_time}.txt"
       fi
       last_motion_time=$seconds
     else
@@ -83,9 +88,7 @@ while true; do
           if (( $(echo "$motion_end_time > $max_seconds" | bc -l) )); then
             motion_end_time=$max_seconds
           fi
-          segment_counter=$((segment_counter + 1))
-          segment_file="$OUTPUT_STAGE_DIR/${prefix}${FILE_DATETIME}_${motion_start_time}_${motion_end_time}.txt"
-          echo "$motion_start_time $motion_end_time" > "$segment_file"
+          mv "$segment_file" "$OUTPUT_STAGE_DIR/${prefix}${FILE_DATETIME}_${motion_start_time}_${motion_end_time}.txt"
         fi
       fi
     fi
@@ -97,9 +100,7 @@ while true; do
     if (( $(echo "$motion_end_time > $max_seconds" | bc -l) )); then
       motion_end_time=$max_seconds
     fi
-    segment_counter=$((segment_counter + 1))
-    segment_file="$OUTPUT_STAGE_DIR/${prefix}${FILE_DATETIME}_${motion_start_time}_${motion_end_time}.txt"
-    echo "$motion_start_time $motion_end_time" > "$segment_file"
+    mv "$segment_file" "$OUTPUT_STAGE_DIR/${prefix}${FILE_DATETIME}_${motion_start_time}_${motion_end_time}.txt"
   fi
 
   log "Done motion score detection"
