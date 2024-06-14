@@ -111,3 +111,7 @@ function goto() {
 if [[ "$SHELL" == "/bin/bash" ]]; then
     alias cdll="cd \$(get_logs_dir)"
 fi
+
+function run_periodic_checks() {
+    crontab -l | grep "run_periodic_check.sh" | grep -v "^#" | cut -d ' ' -f 6- | xargs -I {} bash -c "{}"
+}
