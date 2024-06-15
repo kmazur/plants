@@ -40,7 +40,7 @@ void Scheduler::runScheduler() {
     // Calculate total weight for the first 4 processes with waitTime > reserveThreshold
     double totalWeight = 0.0;
     size_t count = 0;
-    for (size_t i = 0; i < numProcesses && count < 4; ++i) {
+    for (size_t i = 0; i < numProcesses && count < 2; ++i) {
         if (requests[i].waitTime > config.getReserveThreshold()) {
             totalWeight += (numProcesses - i);
             ++count;
