@@ -43,7 +43,8 @@ void Scheduler::runScheduler() {
         totalWeight += (numProcesses - i);
     }
 
-    for (const auto& request : requests) {
+    for (size_t i = 0; i < requests.size(); ++i) {
+        const auto& request = requests[i];
         std::string process = request.process;
         double tokens = request.requestedTokens;
         double waitTime = request.waitTime;
@@ -60,7 +61,7 @@ void Scheduler::runScheduler() {
             requestProvider.markRequestFulfilled(request.process);
         } else {
             if (request.waitTime > config.getReserveThreshold()) {
-                double positionWeight = (numProcesses - &request - &requests[0] + 1);
+                double positionWeight = (numProcesses - i);
                 double accumulationFactor = 0.1 + (0.9 * (tokenManager.getAvailableTokens() / config.getMaxTokens()));
                 double tokensToAccumulate = (tokenManager.getAvailableTokens() * accumulationFactor * positionWeight) / totalWeight;
                 tokenManager.accumulateTokens(process, tokensToAccumulate);
