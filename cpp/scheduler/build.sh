@@ -49,7 +49,7 @@ for SRC_FILE in "${SRC_FILES[@]}"; do
   if has_changed "$SRC_FILE"; then
     echo "Compiling $SRC_FILE"
     $CXX $CXXFLAGS -c "$SRC_PATH" -o "$OBJ_PATH"
-    update_sha "$SRC_FILE"
+    update_sha "$FILENAME"
   fi
   OBJ_PATHS+=("$OBJ_PATH")
 done
