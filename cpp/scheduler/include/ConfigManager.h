@@ -27,13 +27,13 @@ private:
     void readConfigFile();
     void writeConfigFile();
 
-    double maxTemp;
-    double minTemp;
-    double initialTokens;
-    double maxTokens;
-    double replenishRate;
-    double reserveThreshold;
-    double runInterval;
+    int maxTemp;
+    int minTemp;
+    int initialTokens;
+    int maxTokens;
+    int replenishRate;
+    int reserveThreshold;
+    int runInterval;
 };
 
 #endif // CONFIGMANAGER_H
