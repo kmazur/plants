@@ -1,4 +1,6 @@
-#include <vector>
+#ifndef REQUEST_H
+#define REQUEST_H
+
 #include <string>
 
 struct Request {
@@ -9,8 +11,4 @@ struct Request {
     double waitTime;
 };
 
-class RequestProvider {
-public:
-    virtual std::vector<Request> getRequests() = 0;
-    virtual ~RequestProvider() = default;
-};
+#endif // REQUEST_H

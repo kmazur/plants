@@ -1,37 +1,43 @@
+#include "FileRequestProvider.h"
 #include <fstream>
 #include <sstream>
 
-class FileRequestProvider : public RequestProvider {
-public:
-    FileRequestProvider(const std::string& filePath) : filePath(filePath) {}
+extern double dateCompactToEpoch(const std::string& datetime);
 
-    std::vector<Request> getRequests() override {
-        std::vector<Request> requests;
-        std::ifstream infile(filePath);
-        std::string line;
+FileRequestProvider::FileRequestProvider(const std::string& filePath, size_t maxRequests)
+    : filePath(filePath), maxRequests(maxRequests), requests(maxRequests) {}
 
-        while (std::getline(infile, line)) {
-            std::istringstream ss(line);
-            std::string process, tokensStr, pidStr, datetime;
+const std::vector<Request>& FileRequestProvider::getRequests() const {
+    requests.clear(); // Clear previous requests
+    requests.resize(maxRequests); // Ensure the vector has the capacity for maxRequests
+    std::ifstream infile(filePath);
+    std::string line;
+    size_t requestIndex = 0;
 
-            std::getline(ss, process, '=');
-            std::getline(ss, tokensStr, ':');
-            std::getline(ss, pidStr, ':');
-            std::getline(ss, datetime);
-
-            Request request;
-            request.process = process;
-            request.requestedTokens = std::stod(tokensStr);
-            request.sleepPid = std::stoi(pidStr);
-            request.requestTimestamp = dateCompactToEpoch(datetime);
-            request.waitTime = std::time(nullptr) - request.requestTimestamp;
-
-            requests.push_back(request);
+    while (std::getline(infile, line) && requestIndex < maxRequests) {
+        if (line.empty()) {
+            continue;
         }
-
-        return requests;
+        parseLine(line, requests[requestIndex]);
+        ++requestIndex;
     }
 
-private:
-    std::string filePath;
-};
+    requests.resize(requestIndex); // Adjust the size to the number of actual requests read
+    return requests;
+}
+
+void FileRequestProvider::parseLine(const std::string& line, Request& request) const {
+    std::istringstream ss(line);
+    std::string process, tokensStr, pidStr, datetime;
+
+    std::getline(ss, process, '=');
+    std::getline(ss, tokensStr, ':');
+    std::getline(ss, pidStr, ':');
+    std::getline(ss, datetime);
+
+    request.process = process;
+    request.requestedTokens = std::stod(tokensStr);
+    request.sleepPid = std::stoi(pidStr);
+    request.requestTimestamp = dateCompactToEpoch(datetime);
+    request.waitTime = std::time(nullptr) - request.requestTimestamp;
+}
