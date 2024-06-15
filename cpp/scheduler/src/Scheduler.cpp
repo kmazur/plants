@@ -7,7 +7,7 @@
 
 const std::string ORCHESTRATOR_REQUESTS_FILE = "/dev/shm/REQUESTS.txt";
 
-Scheduler::Scheduler(const ConfigManager& config, RequestProvider& requestProvider)
+Scheduler::Scheduler(ConfigManager& config, RequestProvider& requestProvider)
     : config(config), tokenManager(config), requestProvider(requestProvider) {
     ensureFileExists(ORCHESTRATOR_REQUESTS_FILE);
 }
