@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <thread>
 #include <iostream>
+#include <sstream>
+#include <iomanip>
 #include "ConfigManager.h"
 
 const std::string ORCHESTRATOR_REQUESTS_FILE = "/dev/shm/REQUESTS.txt";
