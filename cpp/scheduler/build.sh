@@ -48,7 +48,9 @@ for SRC_FILE in "${SRC_FILES[@]}"; do
   OBJ_PATH="$TMP_DIR/${FILENAME%.cpp}.o"
   if has_changed "$SRC_FILE"; then
     echo "Compiling $SRC_FILE"
-    $CXX $CXXFLAGS -c "$SRC_PATH" -o "$OBJ_PATH"
+    COMMAND="$CXX $CXXFLAGS -c $SRC_PATH -o $OBJ_PATH"
+    echo "Compile command: $COMMAND"
+    eval "$COMMAND"
     update_sha "$FILENAME"
   fi
   OBJ_PATHS+=("$OBJ_PATH")
