@@ -120,3 +120,11 @@ function run_periodic_checks() {
 function stop_periodic_checks() {
     "$REPO_DIR/shell/scripts/cron/stop_all_periodics.sh" &>> /home/user/cron.log
 }
+
+function restart_orchestrator() {
+    local PID="$(ps aux | grep run-orchestrator.sh | grep -v grep | tr -s ' ' | cut -d' ' -f 2)"
+    if [ -n "$PID" ]; then
+        kill_tree "$PID"
+    fi
+    "$REPO_DIR/shell/cron/run_periodic_check.sh" "run-orchestrator" &>> /home/user/cron.log
+}

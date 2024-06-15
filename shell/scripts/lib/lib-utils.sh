@@ -205,3 +205,11 @@ function calc() {
   local OPERATION="$1"
   printf "%.4f" "$(echo "$OPERATION" | bc)"
 }
+
+function kill_tree() {
+  local PID="$1"
+  # for children
+  pkill -TERM -P "$PID"
+  # for process
+  kill -TERM "$PID"
+}

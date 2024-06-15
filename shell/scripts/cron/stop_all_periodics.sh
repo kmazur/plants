@@ -19,10 +19,7 @@ for NAME in $PROCESS_NAMES; do
     echo "Pid file exists: $PID_FILE. Checking if the process is running"
     PID=$(cat "$PID_FILE")
     if ps -p "$PID" > /dev/null; then
-      # for children
-      pkill -TERM -P "$PID"
-      # for process
-      kill -TERM "$PID"
+      kill_tree "$PID"
     fi
   fi
 done
