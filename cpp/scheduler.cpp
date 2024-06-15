@@ -70,14 +70,13 @@ public:
     TokenManager(const ConfigManager& config) : config(config) {
         lastReplenishTime = std::chrono::steady_clock::now();
         availableTokens = config.getInitialTokens();
-        maxTokens = config.getMaxTokens();
-        baseReplenishRate = config.getReplenishRate();
-        reserveThreshold = config.getReserveThreshold();
-        minTemp = config.getMinTemp();
-        maxTemp = config.getMaxTemp();
     }
 
     void adjustReplenishRate(double temp) {
+        double minTemp = config.getMinTemp();
+        double maxTemp = config.getMaxTemp();
+        double baseReplenishRate = config.getReplenishRate();
+
         if (temp < minTemp) {
             replenishRate = baseReplenishRate;
         } else if (temp >= maxTemp) {
@@ -97,6 +96,7 @@ public:
             totalAccumulatedTokens += pair.second;
         }
 
+        double maxTokens = config.getMaxTokens();
         double availableCapacity = maxTokens - totalAccumulatedTokens;
         if (tokensToAdd + availableTokens > availableCapacity) {
             tokensToAdd = availableCapacity - availableTokens;
@@ -119,6 +119,7 @@ public:
     }
 
     void accumulateTokens(const std::string& process, double availableTokens, int numProcesses) {
+        double maxTokens = config.getMaxTokens();
         double accumulationFactor = 0.1 + (0.9 * (availableTokens / maxTokens));
         double tokensToAccumulate = availableTokens * accumulationFactor / numProcesses;
         accumulatedTokens[process] += tokensToAccumulate;
@@ -129,22 +130,9 @@ public:
         return availableTokens;
     }
 
-    double getReserveThreshold() const {
-        return reserveThreshold;
-    }
-
-    double getReplenishRate() const {
-        return replenishRate;
-    }
-
 private:
     double availableTokens;
-    double maxTokens;
-    double baseReplenishRate;
     double replenishRate;
-    double reserveThreshold;
-    double minTemp;
-    double maxTemp;
     std::chrono::steady_clock::time_point lastReplenishTime;
     std::map<std::string, double> accumulatedTokens;
     const ConfigManager& config;
@@ -186,18 +174,22 @@ private:
         std::string line;
 
         while (std::getline(infile, line)) {
-            std::smatch match;
-            std::regex regex("^([^=]+)+=([^\:]+)\:([0-9]+)\:([0-9]{8}_[0-9]{6})$");
-            if (std::regex_search(line, match, regex)) {
-                Entry entry;
-                entry.process = match[1];
-                entry.requestedTokens = std::stod(match[2]);
-                entry.sleepPid = std::stoi(match[3]);
-                std::string datetime = match[4];
-                entry.requestTimestamp = dateCompactToEpoch(datetime);
-                entry.waitTime = std::time(nullptr) - entry.requestTimestamp;
-                entries.push_back(entry);
-            }
+            std::istringstream ss(line);
+            std::string process, tokensStr, pidStr, datetime;
+
+            std::getline(ss, process, '=');
+            std::getline(ss, tokensStr, ':');
+            std::getline(ss, pidStr, ':');
+            std::getline(ss, datetime);
+
+            Entry entry;
+            entry.process = process;
+            entry.requestedTokens = std::stod(tokensStr);
+            entry.sleepPid = std::stoi(pidStr);
+            entry.requestTimestamp = dateCompactToEpoch(datetime);
+            entry.waitTime = std::time(nullptr) - entry.requestTimestamp;
+
+            entries.push_back(entry);
         }
     }
 
@@ -215,7 +207,7 @@ private:
                 wakeUpProcess(entry.sleepPid);
                 removeConfig(entry.process, ORCHESTRATOR_REQUESTS_FILE);
             } else {
-                if (entry.waitTime > tokenManager.getReserveThreshold()) {
+                if (entry.waitTime > config.getReserveThreshold()) {
                     tokenManager.accumulateTokens(entry.process, tokenManager.getAvailableTokens(), entries.size());
                 }
             }
