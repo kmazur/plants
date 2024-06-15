@@ -136,15 +136,17 @@ function run_scheduler() {
     done
 }
 
-while true; do
-  MAX_TEMP="$(get_or_set_config "orchestrator.max_temperature" "79")"
-  MIN_TEMP="$(get_or_set_config "orchestrator.min_temperature" "50")"
-  BASE_TOKENS="$(get_or_set_config "orchestrator.initial_tokens" "0")"
-  MAX_TOKENS="$(get_or_set_config "orchestrator.max_tokens" "100")"
-  REPLENISH_RATE="$(get_or_set_config "orchestrator.replenish_rate" "10")"  # tokens per second
-  RESERVE_THRESHOLD="$(get_or_set_config "orchestrator.accumulation_threshold_seconds" "60")"  # Threshold wait time (seconds) to start reserving tokens
-  SLEEP_INTERVAL="$(get_or_set_config "orchestrator.run_interval" "5")"
 
+
+while true; do
+  CONFIG="$(load_config)"
+  MAX_TEMP="$(get_loaded_config "$CONFIG" "orchestrator.max_temperature" "79")"
+  MIN_TEMP="$(get_loaded_config "$CONFIG" "orchestrator.min_temperature" "50")"
+  BASE_TOKENS="$(get_loaded_config "$CONFIG" "orchestrator.initial_tokens" "0")"
+  MAX_TOKENS="$(get_loaded_config "$CONFIG" "orchestrator.max_tokens" "100")"
+  REPLENISH_RATE="$(get_loaded_config "$CONFIG" "orchestrator.replenish_rate" "10")"  # tokens per second
+  RESERVE_THRESHOLD="$(get_loaded_config "$CONFIG" "orchestrator.accumulation_threshold_seconds" "60")"  # Threshold wait time (seconds) to start reserving tokens
+  SLEEP_INTERVAL="$(get_loaded_config "$CONFIG" "orchestrator.run_interval" "5")"
 
   # Adjust replenish rate based on current temperature
   current_temp=$(get_cpu_temp_int)

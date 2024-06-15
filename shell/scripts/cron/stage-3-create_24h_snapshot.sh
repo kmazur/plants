@@ -70,7 +70,7 @@ while true; do
     TMP_OUTPUT="$OUTPUT_STAGE_DIR/${MACHINE_NAME}_24_processing.jpg"
 
     request_cpu_time "${PROCESS}-embedd-image" "30"
-    if ffmpeg -i "$FILE_PATH" -i "$LATEST_NOT_PROCESSED_PATH" -filter_complex \
+    if ffmpeg -threads 1 -i "$FILE_PATH" -i "$LATEST_NOT_PROCESSED_PATH" -filter_complex \
            "[1:v] scale=$NEW_WIDTH:$NEW_HEIGHT [scaled]; [0:v][scaled] overlay=x=$X:y=$Y" -q:v "3" \
            -y "$TMP_OUTPUT" && cp -f "$TMP_OUTPUT" "$FILE_PATH"; then
 

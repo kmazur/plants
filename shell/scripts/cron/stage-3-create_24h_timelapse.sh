@@ -39,7 +39,7 @@ while true; do
 
   if [[ ! -f "$FILE_PATH" ]]; then
     request_cpu_time "${PROCESS}-create-first-frame" "30"
-    if ! ffmpeg -y -framerate "$VIDEO_24_TIMELAPSE_FPS" -i "$LATEST_NOT_PROCESSED_PATH" -c:v libx264 -r "$VIDEO_24_TIMELAPSE_FPS" -pix_fmt yuv420p "$FILE_PATH"; then
+    if ! ffmpeg -threads 1 -y -framerate "$VIDEO_24_TIMELAPSE_FPS" -i "$LATEST_NOT_PROCESSED_PATH" -c:v libx264 -r "$VIDEO_24_TIMELAPSE_FPS" -pix_fmt yuv420p "$FILE_PATH"; then
       continue
     fi
   else
@@ -47,7 +47,7 @@ while true; do
     FRAME_DURATION="0$(echo "scale=4; 1/$VIDEO_24_TIMELAPSE_FPS" | bc)"
 
     request_cpu_time "${PROCESS}-create-next-frame" "20"
-    if ! ffmpeg -y -loop 1 -i "$LATEST_NOT_PROCESSED_PATH" -c:v libx264 -t "$FRAME_DURATION" -pix_fmt yuv420p "$NEW_FRAME_VIDEO_PATH"; then
+    if ! ffmpeg -threads 1 -y -loop 1 -i "$LATEST_NOT_PROCESSED_PATH" -c:v libx264 -t "$FRAME_DURATION" -pix_fmt yuv420p "$NEW_FRAME_VIDEO_PATH"; then
       rm "$NEW_FRAME_VIDEO_PATH" 2> /dev/null
       continue
     fi
@@ -60,7 +60,7 @@ while true; do
     } > "$CONCAT_LIST_PATH"
 
     request_cpu_time "${PROCESS}-join-next-frame" "40"
-    if ffmpeg -y -f concat -safe 0 -i "$CONCAT_LIST_PATH" -c copy "$TMP_OUTPUT_PATH"; then
+    if ffmpeg -threads 1 -y -f concat -safe 0 -i "$CONCAT_LIST_PATH" -c copy "$TMP_OUTPUT_PATH"; then
       if cp -f "$TMP_OUTPUT_PATH" "$FILE_PATH"; then
         echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
       fi

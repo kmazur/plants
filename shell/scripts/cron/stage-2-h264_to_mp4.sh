@@ -37,7 +37,7 @@ while true; do
   request_cpu_time "${PROCESS}-mp4-conversion" "80"
 
   log "Starting h264 -> mp4 conversion"
-  if ffmpeg -y -loglevel error -i "$LATEST_NOT_PROCESSED_PATH" -c:v copy -an "$FILE_PATH"; then
+  if ffmpeg -y -threads 1 -loglevel error -i "$LATEST_NOT_PROCESSED_PATH" -c:v copy -an "$FILE_PATH"; then
     log "Done h264 -> mp4 conversion"
     echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
   fi

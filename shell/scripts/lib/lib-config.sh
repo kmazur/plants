@@ -5,6 +5,23 @@ function load_config() {
   cat "$FILE"
 }
 
+function get_loaded_config() {
+  local CONFIG_CONTENTS="$1"
+  local KEY="$2"
+  local DEFAULT_VALUE="$3"
+
+  local VALUE="$(grep "^$KEY=" <(echo "$CONFIG_CONTENTS") | cut -f 2- -d '=' | head -n 1)"
+  if [ -n "$VALUE" ]; then
+    echo "$VALUE"
+    return 0
+  elif [ -n "$DEFAULT_VALUE" ]; then
+    echo "$DEFAULT_VALUE"
+    return 0
+  else
+    return 1
+  fi
+}
+
 function set_config() {
   local KEY="$1"
   local VAL="$2"
@@ -60,19 +77,6 @@ function has_config_key() {
     return 0
   else
     return 1
-  fi
-}
-
-function get_loaded_config() {
-  local CONFIG_CONTENTS="$1"
-  local KEY="$2"
-  local DEFAULT_VALUE="$3"
-
-  local VALUE="$(grep "^$KEY=" <(echo "$CONFIG_CONTENTS") | cut -f 2- -d '=' | head -n 1)"
-  if [ -n "$VALUE" ]; then
-    echo "$VALUE"
-  elif [ -n "$DEFAULT_VALUE" ]; then
-    echo "$DEFAULT_VALUE"
   fi
 }
 

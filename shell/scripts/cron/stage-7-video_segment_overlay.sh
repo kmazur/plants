@@ -63,7 +63,7 @@ while true; do
   fi
 
   request_cpu_time "${PROCESS}-area-of-interest" "60"
-  command="ffmpeg -y -i \"$LATEST_NOT_PROCESSED_PATH\" -i $polygonImage -filter_complex \"overlay\" -an \"$FILE_PATH\""
+  command="ffmpeg -threads 1 -y -i \"$LATEST_NOT_PROCESSED_PATH\" -i $polygonImage -filter_complex \"overlay\" -an \"$FILE_PATH\""
   log "Overlaying polygon on video: $command"
   eval $command
 

@@ -54,7 +54,7 @@ while true; do
   log "Starting motion segment extraction"
   request_cpu_time "${PROCESS}-motion-segments" "40"
 
-  if ffmpeg -i "$VIDEO_FILE_PATH" -ss "$SEGMENT_START" -t "$DURATION" -c copy -an "$FILE_PATH"; then
+  if ffmpeg -threads 1 -i "$VIDEO_FILE_PATH" -ss "$SEGMENT_START" -t "$DURATION" -c copy -an "$FILE_PATH"; then
     log "Done motion segment extraction"
     echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
   fi

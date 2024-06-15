@@ -80,7 +80,7 @@ while true; do
 
   DRAWTEXT_COMMAND="${DRAWTEXT_COMMAND%,}"
 
-  COMMAND="ffmpeg -y -i \"$LATEST_NOT_PROCESSED_PATH\" -vf \"$DRAWTEXT_COMMAND\" -codec:a copy \"$FILE_PATH\""
+  COMMAND="ffmpeg -threads 1 -y -i \"$LATEST_NOT_PROCESSED_PATH\" -vf \"$DRAWTEXT_COMMAND\" -codec:a copy \"$FILE_PATH\""
   echo "Executing FFmpeg command for annotating: $COMMAND"
 
   request_cpu_time "${PROCESS}-motion-segments-execute" "60"
