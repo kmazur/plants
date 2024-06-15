@@ -49,5 +49,6 @@ time_t dateCompactToEpoch(const std::string& inputDate) {
     if (ss.fail()) {
         return -1; // Error handling, could not parse the date
     }
-    return std::mktime(&tm);
+    tm.tm_isdst = -1; // Not set by get_time, should be set to -1
+    return timegm(&tm); // Use timegm to interpret tm as UTC
 }
