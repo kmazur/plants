@@ -3,6 +3,8 @@
 #include <fstream>
 #include <sstream>
 #include <algorithm>
+#include <sys/file.h>
+#include <unistd.h>
 
 FileRequestProvider::FileRequestProvider(const std::string& filePath, size_t maxRequests)
     : filePath(filePath), maxRequests(maxRequests), requests(maxRequests) {}
@@ -47,19 +49,34 @@ void FileRequestProvider::markRequestFulfilled(const std::string& process) {
 }
 
 void FileRequestProvider::removeRequestLine(const std::string& process) {
+    int fd = open(filePath.c_str(), O_RDWR);
+    if (fd == -1) {
+        return; // Error handling, could not open the file
+    }
+
+    if (flock(fd, LOCK_EX) == -1) {
+        close(fd);
+        return; // Error handling, could not lock the file
+    }
+
+    std::ostringstream tempContent;
     std::ifstream infile(filePath);
-    std::ofstream tempFile(filePath + ".tmp");
     std::string line;
 
     while (std::getline(infile, line)) {
         if (line.substr(0, line.find('=')) != process) {
-            tempFile << line << std::endl;
+            tempContent << line << std::endl;
         }
     }
 
     infile.close();
-    tempFile.close();
 
-    std::remove(filePath.c_str());
-    std::rename((filePath + ".tmp").c_str(), filePath.c_str());
+    // Write the filtered content back to the file
+    lseek(fd, 0, SEEK_SET);
+    ftruncate(fd, 0);
+    std::string tempString = tempContent.str();
+    write(fd, tempString.c_str(), tempString.size());
+
+    flock(fd, LOCK_UN);
+    close(fd);
 }
