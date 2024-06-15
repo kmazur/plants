@@ -21,7 +21,7 @@ void Scheduler::run() {
         tokenManager.replenishTokens();
         runScheduler();
 
-        log("Available tokens: " + std::to_string(config.getAvailableTokens()) +
+        log("Available tokens: " + std::to_string(tokenManager.getAvailableTokens()) +
             ", Replenish rate: " + std::to_string(config.getReplenishRate()));
 
         std::this_thread::sleep_for(std::chrono::seconds(static_cast<int>(config.getRunInterval())));
