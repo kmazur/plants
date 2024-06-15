@@ -62,6 +62,6 @@ echo "COMMAND: $CXX $CXXFLAGS -o $BIN_DIR/scheduler ${OBJ_PATHS[@]}"
 $CXX $CXXFLAGS -o "$BIN_DIR/scheduler" "${OBJ_PATHS[@]}"
 
 # Cleanup object files
-rm -f "${OBJ_PATHS[@]}"
+#rm -f "${OBJ_PATHS[@]}"
 
 echo "Build completed. Executable is located at $BIN_DIR/scheduler"
