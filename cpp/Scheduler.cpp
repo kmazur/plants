@@ -36,7 +36,7 @@ void Scheduler::runScheduler() {
         if (tokenManager.canFulfillRequest(request.process, request.requestedTokens)) {
             tokenManager.fulfillRequest(request.process, request.requestedTokens);
             wakeUpProcess(request.sleepPid);
-            removeConfig(request.process, ORCHESTRATOR_REQUESTS_FILE);
+            requestProvider.markRequestFulfilled(request.process);
         } else {
             if (request.waitTime > config.getReserveThreshold()) {
                 tokenManager.accumulateTokens(request.process, tokenManager.getAvailableTokens(), requests.size());

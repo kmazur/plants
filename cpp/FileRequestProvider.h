@@ -10,6 +10,7 @@ public:
     FileRequestProvider(const std::string& filePath, size_t maxRequests);
 
     const std::vector<Request>& getRequests() const override;
+    void markRequestFulfilled(const std::string& process) override;
 
 private:
     std::string filePath;
@@ -17,6 +18,7 @@ private:
     mutable std::vector<Request> requests;
 
     void parseLine(const std::string& line, Request& request) const;
+    void removeRequestLine(const std::string& process);
 };
 
 #endif // FILEREQUESTPROVIDER_H
