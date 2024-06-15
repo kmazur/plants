@@ -23,8 +23,6 @@ int getCpuTempInt() {
     return temp;
 }
 
-
-extern std::string getOrSetConfig(const std::string& key, const std::string& defaultValue);
 extern void ensureFileExists(const std::string& filename);
 extern double dateCompactToEpoch(const std::string& datetime);
 extern double getCpuTempInt();
@@ -33,75 +31,6 @@ extern void wakeUpProcess(pid_t pid);
 extern void removeConfig(const std::string& process, const std::string& filename);
 
 const std::string ORCHESTRATOR_REQUESTS_FILE = "/dev/shm/REQUESTS.txt";
-
-
-class ConfigManager {
-public:
-    void loadConfig() {
-        maxTemp = std::stod(getOrSetConfig("orchestrator.max_temperature", "79"));
-        minTemp = std::stod(getOrSetConfig("orchestrator.min_temperature", "50"));
-        initialTokens = std::stod(getOrSetConfig("orchestrator.initial_tokens", "0"));
-        maxTokens = std::stod(getOrSetConfig("orchestrator.max_tokens", "100"));
-        replenishRate = std::stod(getOrSetConfig("orchestrator.replenish_rate", "10"));
-        reserveThreshold = std::stod(getOrSetConfig("orchestrator.accumulation_threshold_seconds", "60"));
-        runInterval = std::stod(getOrSetConfig("orchestrator.run_interval", "5"));
-    }
-
-    double getMaxTemp() const { return maxTemp; }
-    double getMinTemp() const { return minTemp; }
-    double getInitialTokens() const { return initialTokens; }
-    double getMaxTokens() const { return maxTokens; }
-    double getReplenishRate() const { return replenishRate; }
-    double getReserveThreshold() const { return reserveThreshold; }
-    double getRunInterval() const { return runInterval; }
-
-private:
-    double maxTemp;
-    double minTemp;
-    double initialTokens;
-    double maxTokens;
-    double replenishRate;
-    double reserveThreshold;
-    double runInterval;
-};
-
-struct Request {
-    std::string process;
-    double requestedTokens;
-    double requestTimestamp;
-    pid_t sleepPid;
-    double waitTime;
-};
-
-class RequestParser {
-public:
-    std::vector<Request> parseRequests(const std::string& filePath) {
-        std::vector<Request> requests;
-        std::ifstream infile(filePath);
-        std::string line;
-
-        while (std::getline(infile, line)) {
-            std::istringstream ss(line);
-            std::string process, tokensStr, pidStr, datetime;
-
-            std::getline(ss, process, '=');
-            std::getline(ss, tokensStr, ':');
-            std::getline(ss, pidStr, ':');
-            std::getline(ss, datetime);
-
-            Request request;
-            request.process = process;
-            request.requestedTokens = std::stod(tokensStr);
-            request.sleepPid = std::stoi(pidStr);
-            request.requestTimestamp = dateCompactToEpoch(datetime);
-            request.waitTime = std::time(nullptr) - request.requestTimestamp;
-
-            requests.push_back(request);
-        }
-
-        return requests;
-    }
-};
 
 class TokenManager {
 public:
@@ -178,7 +107,8 @@ private:
 
 class Scheduler {
 public:
-    Scheduler(const ConfigManager& config) : config(config), tokenManager(config), requestParser() {
+    Scheduler(const ConfigManager& config, RequestProvider& requestProvider)
+        : config(config), tokenManager(config), requestProvider(requestProvider) {
         ensureFileExists(ORCHESTRATOR_REQUESTS_FILE);
     }
 
@@ -200,7 +130,7 @@ public:
 
 private:
     void runScheduler() {
-        std::vector<Request> requests = requestParser.parseRequests(ORCHESTRATOR_REQUESTS_FILE);
+        std::vector<Request> requests = requestProvider.getRequests();
 
         std::sort(requests.begin(), requests.end(), [](const Request& a, const Request& b) {
             return a.waitTime > b.waitTime;
@@ -221,13 +151,14 @@ private:
 
     const ConfigManager& config;
     TokenManager tokenManager;
-    RequestParser requestParser;
+    RequestProvider& requestProvider;
 };
 
 int main() {
     ConfigManager config;
     config.loadConfig();
-    Scheduler scheduler(config);
+    FileRequestProvider fileRequestProvider(ORCHESTRATOR_REQUESTS_FILE);
+    Scheduler scheduler(config, fileRequestProvider);
     scheduler.run();
 
     return 0;
