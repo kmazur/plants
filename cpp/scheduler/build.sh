@@ -56,6 +56,8 @@ done
 
 # Link object files into a single executable
 echo "Linking object files"
+echo "COMMAND: $CXX $CXXFLAGS -o $BIN_DIR/scheduler ${OBJ_PATHS[@]}"
+
 $CXX $CXXFLAGS -o "$BIN_DIR/scheduler" "${OBJ_PATHS[@]}"
 
 # Cleanup object files
