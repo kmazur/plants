@@ -53,10 +53,7 @@ void TokenManager::fulfillRequest(const std::string& process, double requestedTo
     accumulatedTokens.erase(process);
 }
 
-void TokenManager::accumulateTokens(const std::string& process, double availableTokens, int numProcesses) {
-    double maxTokens = config.getMaxTokens();
-    double accumulationFactor = 0.1 + (0.9 * (availableTokens / maxTokens));
-    double tokensToAccumulate = availableTokens * accumulationFactor / numProcesses;
+void TokenManager::accumulateTokens(const std::string& process, double tokensToAccumulate) {
     accumulatedTokens[process] += tokensToAccumulate;
     this->availableTokens -= tokensToAccumulate;
 }

@@ -5,6 +5,7 @@
 #include <iostream>
 #include <sstream>
 #include <iomanip>
+#include <cmath>
 #include "ConfigManager.h"
 
 const std::string ORCHESTRATOR_REQUESTS_FILE = "/dev/shm/REQUESTS.txt";
@@ -36,9 +37,19 @@ void Scheduler::runScheduler() {
     size_t numProcesses = requests.size();
     std::map<std::string, std::string> runPass;
 
-    for (const auto& request : requests) {
-        std::ostringstream logStream;
+    // Calculate total weight
+    double totalWeight = 0.0;
+    for (size_t i = 0; i < numProcesses; ++i) {
+        totalWeight += (numProcesses - i);
+    }
 
+    for (const auto& request : requests) {
+        std::string process = request.process;
+        double tokens = request.requestedTokens;
+        double waitTime = request.waitTime;
+        double estimatedTokens = tokens;
+
+        std::ostringstream logStream;
 
         if (tokenManager.canFulfillRequest(request.process, request.requestedTokens)) {
             logStream << "RUN        (r: " << request.requestedTokens << "/" << tokenManager.getAccumulatedTokens(request.process)
@@ -49,6 +60,10 @@ void Scheduler::runScheduler() {
             requestProvider.markRequestFulfilled(request.process);
         } else {
             if (request.waitTime > config.getReserveThreshold()) {
+                double positionWeight = (numProcesses - &request - &requests[0] + 1);
+                double accumulationFactor = 0.1 + (0.9 * (tokenManager.getAvailableTokens() / config.getMaxTokens()));
+                double tokensToAccumulate = (tokenManager.getAvailableTokens() * accumulationFactor * positionWeight) / totalWeight;
+                tokenManager.accumulateTokens(process, tokensToAccumulate);
                 tokenManager.accumulateTokens(request.process, tokenManager.getAvailableTokens(), requests.size());
                 logStream << "ACCUMULATE (r: " << request.requestedTokens << "/" << tokenManager.getAccumulatedTokens(request.process)
                                           << ", a: " << tokenManager.getAvailableTokens()
