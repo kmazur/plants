@@ -19,7 +19,8 @@ echo "Compiling executables"
 # Function to check if a file has changed
 function has_changed() {
   local FILE="$1"
-  local SHA_FILE="${FILE}.sha256"
+  local FILENAME="$(echo "$FILE" | rev | cut -d'/' -f 1 | rev)"
+  local SHA_FILE="${FILENAME}.sha256"
   if [ ! -f "$TMP_DIR/$SHA_FILE" ] || [[ "$(sha256sum "$FILE" | cut -d ' ' -f 1)" != "$(cat "$TMP_DIR/$SHA_FILE")" ]]; then
     return 0
   else
@@ -30,7 +31,8 @@ function has_changed() {
 # Function to update the SHA256 checksum of a file
 function update_sha() {
   local FILE="$1"
-  local SHA_FILE="${FILE}.sha256"
+  local FILENAME="$(echo "$FILE" | rev | cut -d'/' -f 1 | rev)"
+  local SHA_FILE="${FILENAME}.sha256"
   sha256sum "$FILE" | cut -d ' ' -f 1 > "$TMP_DIR/$SHA_FILE"
 }
 
@@ -46,11 +48,11 @@ for SRC_FILE in "${SRC_FILES[@]}"; do
 
   FILENAME="$(echo "$SRC_FILE" | cut -d'/' -f 2)"
   OBJ_PATH="$TMP_DIR/${FILENAME%.cpp}.o"
-  if has_changed "$SRC_FILE"; then
+  if has_changed "$SRC_PATH"; then
     echo "Compiling $SRC_FILE"
     echo "COMMAND: $CXX $CXXFLAGS -c $SRC_PATH -o $OBJ_PATH"
     $CXX $CXXFLAGS -c "$SRC_PATH" -o "$OBJ_PATH"
-    update_sha "$FILENAME"
+    update_sha "$SRC_PATH"
   fi
   OBJ_PATHS+=("$OBJ_PATH")
 done
