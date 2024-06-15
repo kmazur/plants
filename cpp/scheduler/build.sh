@@ -44,7 +44,8 @@ CXXFLAGS="-std=c++17 -I$INCLUDE_DIR -Wall -Wextra -Ofast -march=native -flto -fi
 for SRC_FILE in "${SRC_FILES[@]}"; do
   SRC_PATH="$SCHEDULER_ROOT_DIR/$SRC_FILE"
 
-  OBJ_PATH="$TMP_DIR/${SRC_FILE%.cpp}.o"
+  FILENAME="$(echo "$SRC_FILE" | cut -d'/' -f 2)"
+  OBJ_PATH="$TMP_DIR/${FILENAME%.cpp}.o"
   if has_changed "$SRC_FILE"; then
     echo "Compiling $SRC_FILE"
     $CXX $CXXFLAGS -c "$SRC_PATH" -o "$OBJ_PATH"
