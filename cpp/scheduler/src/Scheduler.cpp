@@ -35,7 +35,7 @@ void Scheduler::runScheduler() {
     const std::vector<Request>& requests = requestProvider.getRequests();
 
     size_t numProcesses = requests.size();
-    std::vector<std::pair<std::string, std::string>> runPass
+    std::vector<std::pair<std::string, std::string>> runPass;
 
     // Calculate total weight for the first 4 processes with waitTime > reserveThreshold
     double totalWeight = 0.0;
