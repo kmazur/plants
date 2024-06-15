@@ -119,20 +119,10 @@ function run_scheduler() {
                 run_pass[$process]="SKIP (r: $tokens/${accumulated_tokens[$process]:-0}, a: $available_tokens)"
             fi
         fi
-
-        # If process hasn't reached threshold, allocate tokens normally
-        if (( wait_time <= RESERVE_THRESHOLD )); then
-            if (( $(echo "$estimated_tokens <= $available_tokens" | bc -l) )); then
-                available_tokens=$(echo "$available_tokens - $estimated_tokens" | bc)
-                wake_up_process "$pid"
-                remove_config "$process" "$SCHEDULER_FILE"
-            fi
-        fi
     done
 
-    # Log waiting processes and their accumulated tokens
-    for process in "${!accumulated_tokens[@]}"; do
-      printf "%50s: %d" "$process" "${accumulated_tokens[$process]}"
+    for process in "${!run_pass[@]}"; do
+      printf "%50s: %s\n" "$process" "${run_pass[$process]}"
     done
 }
 
