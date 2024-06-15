@@ -54,7 +54,8 @@ if has_changed "motion_scorer.cpp"; then
   update_sha "motion_scorer.cpp"
 fi
 
-
+cd "$REPO_DIR/cpp/scheduler/" || exit 1
+"$REPO_DIR/cpp/scheduler/build.sh"
 
 
 
