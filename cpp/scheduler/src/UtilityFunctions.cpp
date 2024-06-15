@@ -50,5 +50,6 @@ time_t dateCompactToEpoch(const std::string& inputDate) {
         return -1; // Error handling, could not parse the date
     }
     tm.tm_isdst = -1; // Not set by get_time, should be set to -1
-    return timegm(&tm); // Use timegm to interpret tm as UTC
+    time_t epochTime = timegm(&tm); // Use timegm to interpret tm as UTC
+    return epochTime - 7200; // Compensate for CEST +0200
 }
