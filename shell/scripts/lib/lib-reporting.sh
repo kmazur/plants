@@ -1,10 +1,9 @@
 #!/bin/bash
 
-function get_cpu_temp() {
-  vcgencmd measure_temp | cut -f 2 -d '=' | cut -f 1 -d "'"
-}
-
+# Read the temperature and convert from millidegrees to degrees
+# Assume 6 digits for fast processing
 function get_cpu_temp_int() {
-  vcgencmd measure_temp | cut -f 2 -d '=' | cut -f 1 -d "'" | cut -d'.' -f 1
+  TEMP=$(cat /sys/class/thermal/thermal_zone0/temp)
+  echo "${TEMP:0:2}"
 }
 

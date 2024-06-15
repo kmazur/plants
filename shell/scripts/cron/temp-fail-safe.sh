@@ -22,7 +22,7 @@ PUBLISHER="TEMP_FAIL_SAFE"
 
 SCALE=""
 while true; do
-  TEMP="$(get_cpu_temp | cut -d'.' -f 1)"
+  TEMP="$(get_cpu_temp_int)"
 
   publish_measurement_single "$PUBLISHER" "restart" "restart=0"
 

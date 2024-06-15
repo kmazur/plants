@@ -87,6 +87,9 @@ function run_scheduler() {
 
     local num_processes=${#entries[@]}
 
+    unset run_pass
+    declare -A run_pass
+
     for entry in "${entries[@]}"; do
         # entries+=("$process:$tokens:$timestamp:$sleep_pid:$wait_time")
         local process=$(echo "$entry" | cut -d: -f1)
@@ -98,6 +101,7 @@ function run_scheduler() {
 
         # Check if we can immediately fulfill the token request
         if (( $(echo "$available_tokens + ${accumulated_tokens[$process]:-0} >= $estimated_tokens" | bc -l) )); then
+            run_pass[$process]="RUN (r: $tokens/${accumulated_tokens[$process]:-0}, a: $available_tokens)"
             available_tokens=$(echo "$available_tokens - ($estimated_tokens - ${accumulated_tokens[$process]:-0})" | bc)
             wake_up_process "$pid"
             unset accumulated_tokens[$process]
@@ -109,6 +113,10 @@ function run_scheduler() {
                 local tokens_to_accumulate=$(echo "$available_tokens * $accumulation_factor / $num_processes" | bc -l)
                 accumulated_tokens[$process]=$(echo "${accumulated_tokens[$process]:-0} + $tokens_to_accumulate" | bc)
                 available_tokens=$(echo "$available_tokens - $tokens_to_accumulate" | bc)
+
+                run_pass[$process]="ACCUMULATE (r: $tokens/${accumulated_tokens[$process]:-0}, a: $available_tokens)"
+            else
+                run_pass[$process]="SKIP (r: $tokens/${accumulated_tokens[$process]:-0}, a: $available_tokens)"
             fi
         fi
 
@@ -124,7 +132,7 @@ function run_scheduler() {
 
     # Log waiting processes and their accumulated tokens
     for process in "${!accumulated_tokens[@]}"; do
-        log "Process: $process, Accumulated Tokens: ${accumulated_tokens[$process]}"
+      printf "%50s: %d" "$process" "${accumulated_tokens[$process]}"
     done
 }
 
@@ -139,7 +147,7 @@ while true; do
 
 
   # Adjust replenish rate based on current temperature
-  current_temp=$(get_cpu_temp)
+  current_temp=$(get_cpu_temp_int)
   adjust_replenish_rate "$current_temp"
 
   # Replenish tokens based on elapsed time

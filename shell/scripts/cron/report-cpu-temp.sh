@@ -16,7 +16,7 @@ PUBLISHER="CPU_TEMP"
 
 while true; do
   if ! is_scale_suspended; then
-    CPU_TEMPERATURE="$(get_cpu_temp)"
+    CPU_TEMPERATURE="$(get_cpu_temp_int)"
     log "CPU temperature is: $CPU_TEMPERATURE"
 
     publish_measurement_single "$PUBLISHER" "cpu_measurement" "cpu_temperature=$CPU_TEMPERATURE"
