@@ -114,7 +114,7 @@ if [[ "$SHELL" == "/bin/bash" ]]; then
     alias htop="/usr/bin/htop -u user"
 fi
 
-function run_periodic_checks() {
+function start_periodic_checks() {
     "$REPO_DIR/shell/scripts/cron/run_all_periodics.sh" &>> /home/user/cron.log
 }
 
