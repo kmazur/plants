@@ -1,8 +1,7 @@
 #include "FileRequestProvider.h"
+#include "UtilityFunctions.h"
 #include <fstream>
 #include <sstream>
-
-extern double dateCompactToEpoch(const std::string& datetime);
 
 FileRequestProvider::FileRequestProvider(const std::string& filePath, size_t maxRequests)
     : filePath(filePath), maxRequests(maxRequests), requests(maxRequests) {}

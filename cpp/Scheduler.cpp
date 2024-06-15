@@ -1,11 +1,8 @@
 #include "Scheduler.h"
+#include "UtilityFunctions.h"
 #include <algorithm>
 #include <thread>
 #include <iostream>
-
-extern void log(const std::string& message);
-extern void wakeUpProcess(pid_t pid);
-extern void removeConfig(const std::string& process, const std::string& filename);
 
 Scheduler::Scheduler(const ConfigManager& config, RequestProvider& requestProvider)
     : config(config), tokenManager(config), requestProvider(requestProvider) {
