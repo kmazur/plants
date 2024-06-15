@@ -13,7 +13,7 @@ public:
     void run();
 
 private:
-    const ConfigManager& config;
+    ConfigManager& config;
     TokenManager tokenManager;
     RequestProvider& requestProvider;
 
