@@ -65,6 +65,44 @@ private:
     double runInterval;
 };
 
+struct Request {
+    std::string process;
+    double requestedTokens;
+    double requestTimestamp;
+    pid_t sleepPid;
+    double waitTime;
+};
+
+class RequestParser {
+public:
+    std::vector<Request> parseRequests(const std::string& filePath) {
+        std::vector<Request> requests;
+        std::ifstream infile(filePath);
+        std::string line;
+
+        while (std::getline(infile, line)) {
+            std::istringstream ss(line);
+            std::string process, tokensStr, pidStr, datetime;
+
+            std::getline(ss, process, '=');
+            std::getline(ss, tokensStr, ':');
+            std::getline(ss, pidStr, ':');
+            std::getline(ss, datetime);
+
+            Request request;
+            request.process = process;
+            request.requestedTokens = std::stod(tokensStr);
+            request.sleepPid = std::stoi(pidStr);
+            request.requestTimestamp = dateCompactToEpoch(datetime);
+            request.waitTime = std::time(nullptr) - request.requestTimestamp;
+
+            requests.push_back(request);
+        }
+
+        return requests;
+    }
+};
+
 class TokenManager {
 public:
     TokenManager(const ConfigManager& config) : config(config) {
@@ -140,7 +178,7 @@ private:
 
 class Scheduler {
 public:
-    Scheduler(const ConfigManager& config) : config(config), tokenManager(config) {
+    Scheduler(const ConfigManager& config) : config(config), tokenManager(config), requestParser() {
         ensureFileExists(ORCHESTRATOR_REQUESTS_FILE);
     }
 
@@ -161,54 +199,21 @@ public:
     }
 
 private:
-    struct Entry {
-        std::string process;
-        double requestedTokens;
-        double requestTimestamp;
-        pid_t sleepPid;
-        double waitTime;
-    };
-
-    void parseSchedulerFile(std::vector<Entry>& entries) {
-        std::ifstream infile(ORCHESTRATOR_REQUESTS_FILE);
-        std::string line;
-
-        while (std::getline(infile, line)) {
-            std::istringstream ss(line);
-            std::string process, tokensStr, pidStr, datetime;
-
-            std::getline(ss, process, '=');
-            std::getline(ss, tokensStr, ':');
-            std::getline(ss, pidStr, ':');
-            std::getline(ss, datetime);
-
-            Entry entry;
-            entry.process = process;
-            entry.requestedTokens = std::stod(tokensStr);
-            entry.sleepPid = std::stoi(pidStr);
-            entry.requestTimestamp = dateCompactToEpoch(datetime);
-            entry.waitTime = std::time(nullptr) - entry.requestTimestamp;
-
-            entries.push_back(entry);
-        }
-    }
-
     void runScheduler() {
-        std::vector<Entry> entries;
-        parseSchedulerFile(entries);
+        std::vector<Request> requests = requestParser.parseRequests(ORCHESTRATOR_REQUESTS_FILE);
 
-        std::sort(entries.begin(), entries.end(), [](const Entry& a, const Entry& b) {
+        std::sort(requests.begin(), requests.end(), [](const Request& a, const Request& b) {
             return a.waitTime > b.waitTime;
         });
 
-        for (const auto& entry : entries) {
-            if (tokenManager.canFulfillRequest(entry.process, entry.requestedTokens)) {
-                tokenManager.fulfillRequest(entry.process, entry.requestedTokens);
-                wakeUpProcess(entry.sleepPid);
-                removeConfig(entry.process, ORCHESTRATOR_REQUESTS_FILE);
+        for (const auto& request : requests) {
+            if (tokenManager.canFulfillRequest(request.process, request.requestedTokens)) {
+                tokenManager.fulfillRequest(request.process, request.requestedTokens);
+                wakeUpProcess(request.sleepPid);
+                removeConfig(request.process, ORCHESTRATOR_REQUESTS_FILE);
             } else {
-                if (entry.waitTime > config.getReserveThreshold()) {
-                    tokenManager.accumulateTokens(entry.process, tokenManager.getAvailableTokens(), entries.size());
+                if (request.waitTime > config.getReserveThreshold()) {
+                    tokenManager.accumulateTokens(request.process, tokenManager.getAvailableTokens(), requests.size());
                 }
             }
         }
@@ -216,6 +221,7 @@ private:
 
     const ConfigManager& config;
     TokenManager tokenManager;
+    RequestParser requestParser;
 };
 
 int main() {
