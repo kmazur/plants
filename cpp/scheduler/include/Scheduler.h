@@ -8,7 +8,7 @@
 
 class Scheduler {
 public:
-    Scheduler(const ConfigManager& config, RequestProvider& requestProvider);
+    Scheduler(ConfigManager& config, RequestProvider& requestProvider);
 
     void run();
 
