@@ -73,6 +73,7 @@ void Scheduler::runScheduler() {
                 logStream << "ACCUMULATE (r: " << request.requestedTokens << "/" << tokenManager.getAccumulatedTokens(request.process)
                                           << ", a: " << tokenManager.getAvailableTokens()
                                           << ", w: " << request.waitTime << ")";
+                ++count;
             } else {
                  logStream << "SKIP       (r: " << request.requestedTokens << "/" << tokenManager.getAccumulatedTokens(request.process)
                            << ", a: " << tokenManager.getAvailableTokens()
