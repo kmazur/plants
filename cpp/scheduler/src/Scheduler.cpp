@@ -29,11 +29,7 @@ void Scheduler::run() {
 }
 
 void Scheduler::runScheduler() {
-    std::vector<Request>& requests = requestProvider.getRequests();
-
-    std::sort(requests.begin(), requests.end(), [](const Request& a, const Request& b) {
-        return a.waitTime > b.waitTime;
-    });
+    const std::vector<Request>& requests = requestProvider.getRequests();
 
     for (const auto& request : requests) {
         if (tokenManager.canFulfillRequest(request.process, request.requestedTokens)) {

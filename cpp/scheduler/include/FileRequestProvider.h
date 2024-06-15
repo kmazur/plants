@@ -9,7 +9,7 @@ class FileRequestProvider : public RequestProvider {
 public:
     FileRequestProvider(const std::string& filePath, size_t maxRequests);
 
-    std::vector<Request>& getRequests() const override;
+    const std::vector<Request>& getRequests() const override;
     void markRequestFulfilled(const std::string& process) override;
 
 private:

@@ -11,7 +11,7 @@
 FileRequestProvider::FileRequestProvider(const std::string& filePath, size_t maxRequests)
     : filePath(filePath), maxRequests(maxRequests), requests(maxRequests) {}
 
-std::vector<Request>& FileRequestProvider::getRequests() const {
+const std::vector<Request>& FileRequestProvider::getRequests() const {
     requests.clear(); // Clear previous requests
     requests.resize(maxRequests); // Ensure the vector has the capacity for maxRequests
     std::ifstream infile(filePath);
@@ -27,6 +27,11 @@ std::vector<Request>& FileRequestProvider::getRequests() const {
     }
 
     requests.resize(requestIndex); // Adjust the size to the number of actual requests read
+
+    std::sort(requests.begin(), requests.end(), [](const Request& a, const Request& b) {
+        return a.waitTime > b.waitTime;
+    });
+
     return requests;
 }
 

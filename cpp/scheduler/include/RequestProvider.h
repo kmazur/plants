@@ -6,7 +6,7 @@
 
 class RequestProvider {
 public:
-    virtual std::vector<Request>& getRequests() const = 0;
+    virtual const std::vector<Request>& getRequests() const = 0;
     virtual void markRequestFulfilled(const std::string& process) = 0;
     virtual ~RequestProvider() = default;
 };
