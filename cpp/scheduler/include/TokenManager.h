@@ -16,6 +16,7 @@ public:
     void fulfillRequest(const std::string& process, double requestedTokens);
     void accumulateTokens(const std::string& process, double availableTokens, int numProcesses);
     double getAvailableTokens() const;
+    double getAccumulatedTokens(const std::string& process) const;
 
 private:
     double availableTokens;

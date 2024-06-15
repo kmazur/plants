@@ -64,3 +64,8 @@ void TokenManager::accumulateTokens(const std::string& process, double available
 double TokenManager::getAvailableTokens() const {
     return availableTokens;
 }
+
+double TokenManager::getAccumulatedTokens(const std::string& process) const {
+    auto it = accumulatedTokens.find(process);
+    return it != accumulatedTokens.end() ? it->second : 0.0;
+}

@@ -31,15 +31,35 @@ void Scheduler::run() {
 void Scheduler::runScheduler() {
     const std::vector<Request>& requests = requestProvider.getRequests();
 
+    size_t numProcesses = requests.size();
+    std::map<std::string, std::string> runPass;
+
     for (const auto& request : requests) {
+        std::ostringstream logStream;
+
+
         if (tokenManager.canFulfillRequest(request.process, request.requestedTokens)) {
+            logStream << "RUN (r: " << tokens << "/" << tokenManager.getAccumulatedTokens(process)
+                                      << ", a: " << tokenManager.getAvailableTokens() << ")";
             tokenManager.fulfillRequest(request.process, request.requestedTokens);
             wakeUpProcess(request.sleepPid);
             requestProvider.markRequestFulfilled(request.process);
+
         } else {
             if (request.waitTime > config.getReserveThreshold()) {
                 tokenManager.accumulateTokens(request.process, tokenManager.getAvailableTokens(), requests.size());
-            }
+                logStream << "ACCUMULATE (r: " << tokens << "/" << tokenManager.getAccumulatedTokens(process)
+                                          << ", a: " << tokenManager.getAvailableTokens() << ")";
+            } else {
+                 logStream << "SKIP (r: " << tokens << "/" << tokenManager.getAccumulatedTokens(process)
+                           << ", a: " << tokenManager.getAvailableTokens() << ")";
+             }
         }
+
+        runPass[process] = logStream.str();
+    }
+
+    for (const auto& entry : runPass) {
+        std::cout << std::setw(50) << std::left << entry.first << ": " << entry.second << std::endl;
     }
 }
