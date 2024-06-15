@@ -41,19 +41,18 @@ void Scheduler::runScheduler() {
 
 
         if (tokenManager.canFulfillRequest(request.process, request.requestedTokens)) {
-            logStream << "RUN (r: " << request.requestedTokens << "/" << tokenManager.getAccumulatedTokens(request.process)
+            logStream << "RUN        (r: " << request.requestedTokens << "/" << tokenManager.getAccumulatedTokens(request.process)
                                       << ", a: " << tokenManager.getAvailableTokens() << ")";
             tokenManager.fulfillRequest(request.process, request.requestedTokens);
             wakeUpProcess(request.sleepPid);
             requestProvider.markRequestFulfilled(request.process);
-
         } else {
             if (request.waitTime > config.getReserveThreshold()) {
                 tokenManager.accumulateTokens(request.process, tokenManager.getAvailableTokens(), requests.size());
                 logStream << "ACCUMULATE (r: " << request.requestedTokens << "/" << tokenManager.getAccumulatedTokens(request.process)
                                           << ", a: " << tokenManager.getAvailableTokens() << ")";
             } else {
-                 logStream << "SKIP (r: " << request.requestedTokens << "/" << tokenManager.getAccumulatedTokens(request.process)
+                 logStream << "SKIP       (r: " << request.requestedTokens << "/" << tokenManager.getAccumulatedTokens(request.process)
                            << ", a: " << tokenManager.getAvailableTokens() << ")";
              }
         }
