@@ -88,7 +88,9 @@ function run_scheduler() {
     local num_processes=${#entries[@]}
 
     unset run_pass
+    unset run_pass_processes
     declare -A run_pass
+    run_pass_processes=""
 
     for entry in "${entries[@]}"; do
         # entries+=("$process:$tokens:$timestamp:$sleep_pid:$wait_time")
@@ -98,6 +100,8 @@ function run_scheduler() {
         local pid=$(echo "$entry" | cut -d: -f4)
         local wait_time=$(echo "$entry" | cut -d: -f5)
         local estimated_tokens="$tokens"
+
+        run_pass_processes+="${process}"$'\n'
 
         # Check if we can immediately fulfill the token request
         if (( $(echo "$available_tokens + ${accumulated_tokens[$process]:-0} >= $estimated_tokens" | bc -l) )); then
@@ -121,7 +125,7 @@ function run_scheduler() {
         fi
     done
 
-    for process in "${!run_pass[@]}"; do
+    for process in $run_pass_processes; do
       printf "%50s: %s\n" "$process" "${run_pass[$process]}"
     done
 }
