@@ -48,9 +48,7 @@ for SRC_FILE in "${SRC_FILES[@]}"; do
   OBJ_PATH="$TMP_DIR/${FILENAME%.cpp}.o"
   if has_changed "$SRC_FILE"; then
     echo "Compiling $SRC_FILE"
-    COMMAND="$CXX $CXXFLAGS -c $SRC_PATH -o $OBJ_PATH"
-    echo "Compile command: $COMMAND"
-    eval "$COMMAND"
+    $CXX $CXXFLAGS -c "$SRC_PATH" -o "$OBJ_PATH"
     update_sha "$FILENAME"
   fi
   OBJ_PATHS+=("$OBJ_PATH")
@@ -58,7 +56,7 @@ done
 
 # Link object files into a single executable
 echo "Linking object files"
-$CXX "$CXXFLAGS" -o "$BIN_DIR/scheduler" "${OBJ_PATHS[@]}"
+$CXX $CXXFLAGS -o "$BIN_DIR/scheduler" "${OBJ_PATHS[@]}"
 
 # Cleanup object files
 rm -f "${OBJ_PATHS[@]}"
