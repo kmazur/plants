@@ -11,3 +11,6 @@
 - buy microphone & record video & audio
   - https://forums.raspberrypi.com/viewtopic.php?t=207697
   - https://community.element14.com/products/raspberry-pi/f/forum/1748/high-quality-hd-audio-and-video-recorder-using-the-raspberry-pi
+
+Temperature Aware Scheduling for Embedded Processors
+https://www.comp.nus.edu.sg/~tulika/papers/VLSI09.pdf

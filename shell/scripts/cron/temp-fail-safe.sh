@@ -24,6 +24,8 @@ SCALE=""
 while true; do
   TEMP="$(get_cpu_temp | cut -d'.' -f 1)"
 
+  publish_measurement_single "$PUBLISHER" "restart" "restart=0"
+
   PREV_SCALE="$SCALE"
   if [[ "$TEMP" -le "$NORMAL_THRESHOLD" ]]; then
     log "${TEMP} ºC is ok -> NORMAL operation"
@@ -39,6 +41,7 @@ while true; do
     log "Setting cpu frequency to: 'powersave'"
     sudo cpufreq-set -g powersave
     log_error "${TEMP} ºC is too hot! -> CRITICAL (action: reboot)"
+    publish_measurement_single "$PUBLISHER" "restart" "restart=1"
     sudo reboot -h now
   else
     SCALE="$(( 100 * (MAX_THRESHOLD - TEMP) / (MAX_THRESHOLD - NORMAL_THRESHOLD) ))"

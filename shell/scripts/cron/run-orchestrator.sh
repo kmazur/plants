@@ -69,7 +69,9 @@ function replenish_tokens() {
         tokens_to_add=$(echo "$available_capacity - $available_tokens" | bc)
     fi
 
-    available_tokens=$(echo "$available_tokens + $tokens_to_add" | bc)
+    if (( $(echo "$tokens_to_add > 0" | bc -l) )); then
+        available_tokens=$(echo "$available_tokens + $tokens_to_add" | bc)
+    fi
 
     last_replenish_time=$current_time
 }
