@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Set the directories
-# <taken from env>
+# below are taken from env
 #REPO_DIR=
 #TMP_DIR="$REPO_DIR/tmp"
 #BIN_DIR="$REPO_DIR/bin"
@@ -10,6 +10,9 @@
 mkdir -p "$TMP_DIR"
 mkdir -p "$BIN_DIR"
 SCHEDULER_ROOT_DIR="$REPO_DIR/cpp/scheduler"
+
+INCLUDE_DIR="$SCHEDULER_ROOT_DIR/include"
+SRC_DIR="$SCHEDULER_ROOT_DIR/src"
 
 echo "Compiling executables"
 
@@ -35,7 +38,7 @@ function update_sha() {
 SRC_FILES=("src/ConfigManager.cpp" "src/FileRequestProvider.cpp" "src/Scheduler.cpp" "src/UtilityFunctions.cpp" "src/TokenManager.cpp" "main.cpp")
 OBJ_PATHS=()
 CXX=g++
-CXXFLAGS="-std=c++17 -Wall -Wextra -Ofast -march=native -flto -finline-functions -funroll-loops -ffast-math"
+CXXFLAGS="-std=c++17 -I$INCLUDE_DIR -Wall -Wextra -Ofast -march=native -flto -finline-functions -funroll-loops -ffast-math"
 
 # Check each source file for changes and compile if necessary
 for SRC_FILE in "${SRC_FILES[@]}"; do
