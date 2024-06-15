@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <thread>
 #include <iostream>
+#include "ConfigManager.h"
 
 Scheduler::Scheduler(const ConfigManager& config, RequestProvider& requestProvider)
     : config(config), tokenManager(config), requestProvider(requestProvider) {

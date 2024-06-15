@@ -1,5 +1,6 @@
 #include "FileRequestProvider.h"
 #include "UtilityFunctions.h"
+#include "ConfigManager.h"
 #include <fstream>
 #include <sstream>
 #include <algorithm>
