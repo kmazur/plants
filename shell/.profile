@@ -116,3 +116,7 @@ fi
 function run_periodic_checks() {
     "$REPO_DIR/shell/scripts/cron/run_all_periodics.sh" &>> /home/user/cron.log
 }
+
+function stop_periodic_checks() {
+    "$REPO_DIR/shell/scripts/cron/stop_all_periodics.sh" &>> /home/user/cron.log
+}

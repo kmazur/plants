@@ -47,8 +47,8 @@ shift
 CRON_SCRIPTS_DIR="$REPO_DIR/shell/scripts/cron"
 PROGRAM_AND_ARGS="$CRON_SCRIPTS_DIR/$PROCESS_NAME.sh $* &>> $LOG_FILE"
 CMD='echo $$>'$PID_FILE' && exec '$PROGRAM_AND_ARGS
-echo "# Running command: '$CMD'" >> "$LOG_FILE"
-/usr/bin/env bash -c "$CMD" &
+echo "# Running command: setsid bash -c '$CMD'" >> "$LOG_FILE"
+/usr/bin/env bash -c "setsid bash -c '$CMD'" &
 
 echo "# PROCESS: '$PROCESS_NAME' is running on PID: $(cat "$PID_FILE")" >> "$LOG_FILE"
 
