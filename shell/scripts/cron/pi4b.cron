@@ -18,4 +18,4 @@
 */10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-6-video_segment_annotate" &>> /home/user/cron.log
 */10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-7-video_segment_overlay" &>> /home/user/cron.log
 */10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-8-upload_video_segment_overlay" &>> /home/user/cron.log
-*/10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "run-orchestrator" &>> /home/user/cron.log
+#*/10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "run-orchestrator" &>> /home/user/cron.log
