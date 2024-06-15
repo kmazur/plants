@@ -42,6 +42,7 @@ OBJ_PATHS=()
 CXX=g++
 CXXFLAGS="-std=c++17 -w -I$INCLUDE_DIR -Ofast -march=native -flto -finline-functions -funroll-loops -ffast-math"
 
+ANY_CHANGED=false
 # Check each source file for changes and compile if necessary
 for SRC_FILE in "${SRC_FILES[@]}"; do
   SRC_PATH="$SCHEDULER_ROOT_DIR/$SRC_FILE"
@@ -49,6 +50,7 @@ for SRC_FILE in "${SRC_FILES[@]}"; do
   FILENAME="$(echo "$SRC_FILE" | cut -d'/' -f 2)"
   OBJ_PATH="$TMP_DIR/${FILENAME%.cpp}.o"
   if has_changed "$SRC_PATH"; then
+    ANY_CHANGED=true
     echo "Compiling $SRC_FILE"
     echo "COMMAND: $CXX $CXXFLAGS -c $SRC_PATH -o $OBJ_PATH"
     $CXX $CXXFLAGS -c "$SRC_PATH" -o "$OBJ_PATH"
@@ -57,13 +59,13 @@ for SRC_FILE in "${SRC_FILES[@]}"; do
   OBJ_PATHS+=("$OBJ_PATH")
 done
 
-# Link object files into a single executable
-echo "Linking object files"
-echo "COMMAND: $CXX $CXXFLAGS -o $BIN_DIR/scheduler ${OBJ_PATHS[@]}"
+if [[ "$ANY_CHANGED" == "true" ]]; then
+  # Link object files into a single executable
+  echo "Linking object files"
+  echo "COMMAND: $CXX $CXXFLAGS -o $BIN_DIR/scheduler ${OBJ_PATHS[@]}"
 
-$CXX $CXXFLAGS -o "$BIN_DIR/scheduler" "${OBJ_PATHS[@]}"
-
-# Cleanup object files
-#rm -f "${OBJ_PATHS[@]}"
-
+  $CXX $CXXFLAGS -o "$BIN_DIR/scheduler" "${OBJ_PATHS[@]}"
+else
+  echo "Nothing changed"
+fi
 echo "Build completed. Executable is located at $BIN_DIR/scheduler"
