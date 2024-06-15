@@ -38,7 +38,7 @@ function update_sha() {
 SRC_FILES=("src/ConfigManager.cpp" "src/FileRequestProvider.cpp" "src/Scheduler.cpp" "src/UtilityFunctions.cpp" "src/TokenManager.cpp" "main.cpp")
 OBJ_PATHS=()
 CXX=g++
-CXXFLAGS="-std=c++17 -I$INCLUDE_DIR -Wall -Wextra -Ofast -march=native -flto -finline-functions -funroll-loops -ffast-math"
+CXXFLAGS="-std=c++17 -I$INCLUDE_DIR -Ofast -march=native -flto -finline-functions -funroll-loops -ffast-math"
 
 # Check each source file for changes and compile if necessary
 for SRC_FILE in "${SRC_FILES[@]}"; do
