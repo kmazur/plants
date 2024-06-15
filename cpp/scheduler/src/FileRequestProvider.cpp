@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <sys/file.h>
 #include <unistd.h>
+#include <ctime>
 
 FileRequestProvider::FileRequestProvider(const std::string& filePath, size_t maxRequests)
     : filePath(filePath), maxRequests(maxRequests), requests(maxRequests) {}
