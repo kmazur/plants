@@ -65,7 +65,6 @@ void Scheduler::runScheduler() {
                 double accumulationFactor = 0.1 + (0.9 * (tokenManager.getAvailableTokens() / config.getMaxTokens()));
                 double tokensToAccumulate = (tokenManager.getAvailableTokens() * accumulationFactor * positionWeight) / totalWeight;
                 tokenManager.accumulateTokens(process, tokensToAccumulate);
-                tokenManager.accumulateTokens(request.process, tokenManager.getAvailableTokens(), requests.size());
                 logStream << "ACCUMULATE (r: " << request.requestedTokens << "/" << tokenManager.getAccumulatedTokens(request.process)
                                           << ", a: " << tokenManager.getAvailableTokens()
                                           << ", w: " << request.waitTime << ")";
