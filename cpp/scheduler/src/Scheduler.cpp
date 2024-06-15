@@ -40,7 +40,7 @@ void Scheduler::runScheduler() {
     // Calculate total weight for the first 4 processes with waitTime > reserveThreshold
     double totalWeight = 0.0;
     size_t count = 0;
-    for (size_t i = 0; i < numProcesses && count < 2; ++i) {
+    for (size_t i = 0; i < numProcesses && count < 1; ++i) {
         if (requests[i].waitTime > config.getReserveThreshold()) {
             totalWeight += (numProcesses - i);
             ++count;
@@ -65,7 +65,7 @@ void Scheduler::runScheduler() {
             wakeUpProcess(request.sleepPid);
             requestProvider.markRequestFulfilled(request.process);
         } else {
-            if (request.waitTime > config.getReserveThreshold() && count < 2) {
+            if (request.waitTime > config.getReserveThreshold() && count < 1) {
                 double positionWeight = (numProcesses - i);
                 double accumulationFactor = 0.1 + (0.9 * (tokenManager.getAvailableTokens() / config.getMaxTokens()));
                 double tokensToAccumulate = (tokenManager.getAvailableTokens() * accumulationFactor * positionWeight) / totalWeight;
