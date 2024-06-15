@@ -29,7 +29,7 @@ void Scheduler::run() {
 }
 
 void Scheduler::runScheduler() {
-    const std::vector<Request>& requests = requestProvider.getRequests();
+    std::vector<Request>& requests = requestProvider.getRequests();
 
     std::sort(requests.begin(), requests.end(), [](const Request& a, const Request& b) {
         return a.waitTime > b.waitTime;
