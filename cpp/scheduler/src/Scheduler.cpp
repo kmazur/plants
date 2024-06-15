@@ -35,7 +35,7 @@ void Scheduler::runScheduler() {
     const std::vector<Request>& requests = requestProvider.getRequests();
 
     size_t numProcesses = requests.size();
-    std::map<std::string, std::string> runPass;
+    std::vector<std::pair<std::string, std::string>> runPass
 
     // Calculate total weight for the first 4 processes with waitTime > reserveThreshold
     double totalWeight = 0.0;
@@ -65,7 +65,7 @@ void Scheduler::runScheduler() {
             wakeUpProcess(request.sleepPid);
             requestProvider.markRequestFulfilled(request.process);
         } else {
-            if (request.waitTime > config.getReserveThreshold() && count < 4) {
+            if (request.waitTime > config.getReserveThreshold() && count < 2) {
                 double positionWeight = (numProcesses - i);
                 double accumulationFactor = 0.1 + (0.9 * (tokenManager.getAvailableTokens() / config.getMaxTokens()));
                 double tokensToAccumulate = (tokenManager.getAvailableTokens() * accumulationFactor * positionWeight) / totalWeight;
@@ -81,7 +81,7 @@ void Scheduler::runScheduler() {
              }
         }
 
-        runPass[request.process] = logStream.str();
+        runPass.emplace_back(process, logStream.str());
     }
 
     for (const auto& entry : runPass) {
