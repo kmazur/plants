@@ -82,16 +82,16 @@ void Scheduler::runScheduler() {
                 double positionWeight = (numProcesses - i);
                 double accumulationFactor = 0.1 + (0.9 * (tokenManager.getAvailableTokens() / config.getMaxTokens()));
                 double tokensToAccumulate = (tokenManager.getAvailableTokens() * accumulationFactor * positionWeight) / totalWeight;
-                tokenManager.accumulateTokens(process, tokensToAccumulate);
                 logStream << "ACCUMULATE (r: "
-                          << formatDouble << request.requestedTokens << "/"
-                          << formatDouble << tokenManager.getAccumulatedTokens(request.process)
-                          << ", a: "
-                          << formatDouble << tokenManager.getAvailableTokens()
-                          << " - "
-                          << formatDouble << tokensToAccumulate
-                          << ", w: "
-                          << formatDouble << request.waitTime << ")";
+                                          << formatDouble << request.requestedTokens << "/"
+                                          << formatDouble << tokenManager.getAccumulatedTokens(request.process)
+                                          << ", a: "
+                                          << formatDouble << tokenManager.getAvailableTokens()
+                                          << " - "
+                                          << formatDouble << tokensToAccumulate
+                                          << ", w: "
+                                          << formatDouble << request.waitTime << ")";
+                tokenManager.accumulateTokens(process, tokensToAccumulate);
                 ++count;
             } else {
                  logStream << "SKIP       (r: "

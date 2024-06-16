@@ -55,7 +55,7 @@ void TokenManager::fulfillRequest(const std::string& process, double requestedTo
 
 void TokenManager::accumulateTokens(const std::string& process, double tokensToAccumulate) {
     accumulatedTokens[process] += tokensToAccumulate;
-    this->availableTokens -= tokensToAccumulate;
+    availableTokens -= tokensToAccumulate;
 }
 
 double TokenManager::getAvailableTokens() const {
