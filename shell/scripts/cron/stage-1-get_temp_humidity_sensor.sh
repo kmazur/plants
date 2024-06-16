@@ -25,5 +25,5 @@ while true; do
   FILE_PATH="$OUTPUT_STAGE_DIR/$FILE_NAME"
 
   VALUES="$(python "$REPO_DIR/python/scripts/read_temp.py")"
-  cat "$VALUES" > "$FILE_PATH"
+  echo "$VALUES" > "$FILE_PATH"
 done
