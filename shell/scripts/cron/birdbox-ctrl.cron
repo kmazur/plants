@@ -4,7 +4,7 @@
 */5 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "process-influx-queue" 10 500 &>> /home/user/cron.log
 #*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "report-audio" 20 300 &>> /home/user/cron.log
 */5 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "report-cpu-temp" 20 120 &>> /home/user/cron.log
-*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "report-external-temp-humidity" 30 300 &>> /home/user/cron.log
+#*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "report-external-temp-humidity" 30 300 &>> /home/user/cron.log
 */10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "temp-fail-safe" 20 60 &>> /home/user/cron.log
 */10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-1-record_video" &>> /home/user/cron.log
 */10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-1-get_temp_humidity_sensor" &>> /home/user/cron.log
