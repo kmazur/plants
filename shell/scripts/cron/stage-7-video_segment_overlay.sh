@@ -15,7 +15,7 @@ PROCESS="$OUTPUT_STAGE"
 
 while true; do
 
-  request_cpu_time "${PROCESS}-scan" "1"
+  request_cpu_time "${PROCESS}-scan" "0.2"
 
   CAMERA_CONFIG_DIR="$REPO_DIR/shell/scripts/video/config"
   MOTION_DETECTION_CONFIG_FILE="$CAMERA_CONFIG_DIR/motion-config-$MACHINE_NAME.txt"
@@ -44,7 +44,7 @@ while true; do
   FILE_PATH="$OUTPUT_STAGE_DIR/$FILE_NAME"
 
   log "Starting video segment area of interest overlying"
-  request_cpu_time "${PROCESS}-area-of-interest" "20"
+  request_cpu_time "${PROCESS}-area-of-interest" "3"
 
   polygon="$(get_config "polygon" "" "$MOTION_DETECTION_CONFIG_FILE")"
   coords="$(echo "$polygon" | tr ';' ' ')"
@@ -62,7 +62,7 @@ while true; do
       continue
   fi
 
-  request_cpu_time "${PROCESS}-area-of-interest" "60"
+  request_cpu_time "${PROCESS}-area-of-interest" "6"
   command="ffmpeg -threads 1 -y -i \"$LATEST_NOT_PROCESSED_PATH\" -i $polygonImage -filter_complex \"overlay\" -an \"$FILE_PATH\""
   log "Overlaying polygon on video: $command"
   eval $command

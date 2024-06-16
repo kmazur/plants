@@ -15,7 +15,7 @@ PROCESS="$OUTPUT_STAGE"
 
 while true; do
 
-  request_cpu_time "${PROCESS}-scan" "1"
+  request_cpu_time "${PROCESS}-scan" "0.2"
 
   IMAGE_CONFIG_FILE="$(get_required_config "image-config-file")"
   IMAGE_WIDTH="$(get_required_config "width" "$IMAGE_CONFIG_FILE")"
@@ -37,7 +37,7 @@ while true; do
   FILE_NAME="snapshot_annotated_${FILE_DATETIME}.jpg"
   FILE_PATH="$OUTPUT_STAGE_DIR/$FILE_NAME"
 
-  request_cpu_time "${PROCESS}-draw-text" "5"
+  request_cpu_time "${PROCESS}-draw-text" "2"
 
   FONT_SIZE="$(( IMAGE_WIDTH / 35))"
   if draw_text_bl "$LATEST_NOT_PROCESSED_PATH" "$FILE_PATH" "$(date_compact_to_dashed "$FILE_DATETIME")" "$FONT_SIZE" "yellow" "3"; then

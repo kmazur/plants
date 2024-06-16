@@ -23,8 +23,7 @@ void Scheduler::run() {
     while (true) {
         config.loadConfig();
 
-        double currentTemp = getCpuTempInt();
-        tokenManager.adjustReplenishRate(currentTemp);
+        tokenManager.adjustReplenishRate();
         tokenManager.replenishTokens();
         runScheduler();
 

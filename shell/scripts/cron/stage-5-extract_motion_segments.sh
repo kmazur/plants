@@ -17,7 +17,7 @@ PROCESS="$OUTPUT_STAGE"
 
 while true; do
 
-  request_cpu_time "${PROCESS}-scan" "1"
+  request_cpu_time "${PROCESS}-scan" "0.2"
 
   INPUT_STAGE_DIR="$(ensure_stage_dir "$INPUT_STAGE")"
   INPUT2_STAGE_DIR="$(ensure_stage_dir "$INPUT2_STAGE")"
@@ -52,7 +52,7 @@ while true; do
   fi
 
   log "Starting motion segment extraction"
-  request_cpu_time "${PROCESS}-motion-segments" "40"
+  request_cpu_time "${PROCESS}-motion-segments" "4"
 
   if ffmpeg -threads 1 -i "$VIDEO_FILE_PATH" -ss "$SEGMENT_START" -t "$DURATION" -c copy -an "$FILE_PATH"; then
     log "Done motion segment extraction"

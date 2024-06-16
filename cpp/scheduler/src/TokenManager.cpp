@@ -1,4 +1,5 @@
 #include "TokenManager.h"
+#include "UtilityFunctions.h"
 #include <cmath>
 #include <ctime>
 
@@ -7,7 +8,10 @@ TokenManager::TokenManager(const ConfigManager& config) : config(config) {
     availableTokens = config.getInitialTokens();
 }
 
-void TokenManager::adjustReplenishRate(double temp) {
+void TokenManager::adjustReplenishRate() {
+    this->cpuTemp = getCpuTempInt();
+    this->cpuTempEstimate = this->cpuTemp;
+    double temp = this->cpuTemp;
     double minTemp = config.getMinTemp();
     double maxTemp = config.getMaxTemp();
     double baseReplenishRate = config.getReplenishRate();
@@ -45,21 +49,20 @@ void TokenManager::replenishTokens() {
 }
 
 bool TokenManager::canFulfillRequest(const std::string& process, double requestedTokens) {
-    return availableTokens + accumulatedTokens[process] >= requestedTokens;
+    double maxTemp = config.getMaxTemp();
+    return cpuTempEstimate + requestedTokens <= maxTemp;
 }
 
 void TokenManager::fulfillRequest(const std::string& process, double requestedTokens) {
-    availableTokens -= (requestedTokens - accumulatedTokens[process]);
-    accumulatedTokens.erase(process);
+    this->cpuTempEstimate += requestedTokens;
 }
 
 void TokenManager::accumulateTokens(const std::string& process, double tokensToAccumulate) {
-    accumulatedTokens[process] += tokensToAccumulate;
-    availableTokens -= tokensToAccumulate;
 }
 
 double TokenManager::getAvailableTokens() const {
-    return availableTokens;
+    double maxTemp = config.getMaxTemp();
+    return maxTemp - cpuTempEstimate;
 }
 
 double TokenManager::getAccumulatedTokens(const std::string& process) const {

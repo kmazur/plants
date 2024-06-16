@@ -17,7 +17,7 @@ PROCESS="$OUTPUT_STAGE"
 
 while true; do
 
-  request_cpu_time "${PROCESS}-scan" "1"
+  request_cpu_time "${PROCESS}-scan" "0.2"
 
   INPUT_STAGE_DIR="$(ensure_stage_dir "$INPUT_STAGE")"
   INPUT2_STAGE_DIR="$(ensure_stage_dir "$INPUT2_STAGE")"
@@ -52,7 +52,7 @@ while true; do
   fi
 
   log "Starting video segment annotation"
-  request_cpu_time "${PROCESS}-motion-segments-build" "10"
+  request_cpu_time "${PROCESS}-motion-segments-build" "4"
 
   MOTION_DATA_LIST=()
   while IFS= read -r LINE; do
@@ -83,7 +83,7 @@ while true; do
   COMMAND="ffmpeg -threads 1 -y -i \"$LATEST_NOT_PROCESSED_PATH\" -vf \"$DRAWTEXT_COMMAND\" -codec:a copy \"$FILE_PATH\""
   echo "Executing FFmpeg command for annotating: $COMMAND"
 
-  request_cpu_time "${PROCESS}-motion-segments-execute" "60"
+  request_cpu_time "${PROCESS}-motion-segments-execute" "8"
   eval "$COMMAND"
 
   if [ $? -ne 0 ]; then

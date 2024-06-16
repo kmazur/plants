@@ -16,7 +16,7 @@ PROCESS="$OUTPUT_STAGE"
 
 while true; do
 
-  request_cpu_time "${PROCESS}-scan" "1"
+  request_cpu_time "${PROCESS}-scan" "0.2"
 
   MACHINE_NAME="$(get_required_config "name")"
 
@@ -46,7 +46,7 @@ while true; do
     log "Processing: $LATEST_NOT_PROCESSED_PATH"
     if cp -f "$LATEST_NOT_PROCESSED_PATH" "$FILE_PATH"; then
       if [ -f "$FILE_PATH" ]; then
-        request_cpu_time "${PROCESS}-upload" "5"
+        request_cpu_time "${PROCESS}-upload" "3"
         if upload_file "$FILE_PATH" "image/jpg"; then
           echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
         fi

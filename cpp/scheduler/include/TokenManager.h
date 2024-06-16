@@ -10,7 +10,7 @@ class TokenManager {
 public:
     TokenManager(const ConfigManager& config);
 
-    void adjustReplenishRate(double temp);
+    void adjustReplenishRate();
     void replenishTokens();
     bool canFulfillRequest(const std::string& process, double requestedTokens);
     void fulfillRequest(const std::string& process, double requestedTokens);
@@ -21,6 +21,8 @@ public:
 private:
     double availableTokens;
     double replenishRate;
+    double cpuTemp;
+    double cpuTempEstimate;
     std::chrono::steady_clock::time_point lastReplenishTime;
     std::map<std::string, double> accumulatedTokens;
     const ConfigManager& config;

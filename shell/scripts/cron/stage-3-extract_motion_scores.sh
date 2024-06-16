@@ -15,7 +15,7 @@ PROCESS="$OUTPUT_STAGE"
 
 while true; do
 
-  request_cpu_time "${PROCESS}-scan" "1"
+  request_cpu_time "${PROCESS}-scan" "0.2"
 
   CAMERA_CONFIG_DIR="$REPO_DIR/shell/scripts/video/config"
   MOTION_DETECTION_CONFIG_FILE="$CAMERA_CONFIG_DIR/motion-config-$MACHINE_NAME.txt"
@@ -39,7 +39,7 @@ while true; do
 
   log "Starting motion score detection"
 
-  request_cpu_time "${PROCESS}-motion-score" "60"
+  request_cpu_time "${PROCESS}-motion-score" "8"
   if "$BIN_DIR/motion_scorer" "$LATEST_NOT_PROCESSED_PATH" "$FILE_PATH" "$MOTION_DETECTION_CONFIG_FILE"; then
     if [ -f "$FILE_PATH" ]; then
       log "Done motion score detection"
