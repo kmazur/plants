@@ -42,6 +42,9 @@ while true; do
     if publish_measurement_single "$PUBLISHER" "image_analysis" "light_level=$LIGHT_LEVEL" "$(date_compact_to_epoch "$FILE_DATETIME")"; then
       echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
     fi
+  else
+    log_warn "Light level ($LIGHT_LEVEL) empty or file dateTime ($FILE_DATETIME) empty"
+    echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
   fi
 
 done
