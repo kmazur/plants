@@ -51,6 +51,8 @@ void Scheduler::runScheduler() {
         }
     }
 
+    size_t maxRun = 4;
+    size_t maxRunCount = 0;
     count = 0;
     for (size_t i = 0; i < requests.size(); ++i) {
         const auto& request = requests[i];
@@ -61,7 +63,7 @@ void Scheduler::runScheduler() {
 
         std::ostringstream logStream;
 
-        if (tokenManager.canFulfillRequest(request.process, request.requestedTokens)) {
+        if (tokenManager.canFulfillRequest(request.process, request.requestedTokens) && maxRunCount < maxRun) {
             logStream << "RUN        (r: "
                       << formatDouble << request.requestedTokens << "/"
                       << formatDouble << tokenManager.getAccumulatedTokens(request.process)
@@ -74,23 +76,25 @@ void Scheduler::runScheduler() {
             tokenManager.fulfillRequest(request.process, request.requestedTokens);
             wakeUpProcess(request.sleepPid);
             requestProvider.markRequestFulfilled(request.process);
+            ++maxRunCount;
         } else {
-            if (request.waitTime > config.getReserveThreshold() && count < maxCount) {
-                double positionWeight = (numProcesses - i);
-                double accumulationFactor = 0.1 + (0.9 * (tokenManager.getAvailableTokens() / config.getMaxTokens()));
-                double tokensToAccumulate = (tokenManager.getAvailableTokens() * accumulationFactor * positionWeight) / totalWeight;
-                logStream << "SKIP       (r: "
-                                          << formatDouble << request.requestedTokens << "/"
-                                          << formatDouble << tokenManager.getAccumulatedTokens(request.process)
-                                          << ", a: "
-                                          << formatDouble << tokenManager.getAvailableTokens()
-                                          << " - "
-                                          << formatDouble << tokensToAccumulate
-                                          << ", w: "
-                                          << formatDouble << request.waitTime << ")";
-                tokenManager.accumulateTokens(process, tokensToAccumulate);
-                ++count;
-            } else {
+
+//            if (request.waitTime > config.getReserveThreshold() && count < maxCount) {
+//                double positionWeight = (numProcesses - i);
+//                double accumulationFactor = 0.1 + (0.9 * (tokenManager.getAvailableTokens() / config.getMaxTokens()));
+//                double tokensToAccumulate = (tokenManager.getAvailableTokens() * accumulationFactor * positionWeight) / totalWeight;
+//                logStream << "SKIP       (r: "
+//                                          << formatDouble << request.requestedTokens << "/"
+//                                          << formatDouble << tokenManager.getAccumulatedTokens(request.process)
+//                                          << ", a: "
+//                                          << formatDouble << tokenManager.getAvailableTokens()
+//                                          << " - "
+//                                          << formatDouble << tokensToAccumulate
+//                                          << ", w: "
+//                                          << formatDouble << request.waitTime << ")";
+//                tokenManager.accumulateTokens(process, tokensToAccumulate);
+//                ++count;
+//            } else {
                  logStream << "SKIP       (r: "
                            << formatDouble << request.requestedTokens << "/"
                            << formatDouble << tokenManager.getAccumulatedTokens(request.process)
@@ -98,7 +102,7 @@ void Scheduler::runScheduler() {
                            << formatDouble << tokenManager.getAvailableTokens()
                            << ", w: "
                            << formatDouble << request.waitTime << ")";
-             }
+//             }
         }
 
         runPass.emplace_back(process, logStream.str());
