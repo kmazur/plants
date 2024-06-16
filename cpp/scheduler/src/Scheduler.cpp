@@ -10,6 +10,10 @@
 
 const std::string ORCHESTRATOR_REQUESTS_FILE = "/dev/shm/REQUESTS.txt";
 
+std::ostream& formatDouble(std::ostream& os) {
+    return os << std::fixed << std::setw(8) << std::setprecision(4);
+}
+
 Scheduler::Scheduler(ConfigManager& config, RequestProvider& requestProvider)
     : config(config), tokenManager(config), requestProvider(requestProvider) {
     ensureFileExists(ORCHESTRATOR_REQUESTS_FILE);
@@ -37,15 +41,18 @@ void Scheduler::runScheduler() {
     size_t numProcesses = requests.size();
     std::vector<std::pair<std::string, std::string>> runPass;
 
-    // Calculate total weight for the first 4 processes with waitTime > reserveThreshold
+    // Calculate total weight for the first processes with waitTime > reserveThreshold
     double totalWeight = 0.0;
     size_t count = 0;
-    for (size_t i = 0; i < numProcesses && count < 1; ++i) {
+    size_t maxCount = 0;
+    for (size_t i = 0; i < numProcesses && count < maxCount; ++i) {
         if (requests[i].waitTime > config.getReserveThreshold()) {
             totalWeight += (numProcesses - i);
             ++count;
         }
     }
+
+    log("Available tokens: " + std::to_string(tokenManager.getAvailableTokens()));
 
     count = 0;
     for (size_t i = 0; i < requests.size(); ++i) {
@@ -58,26 +65,42 @@ void Scheduler::runScheduler() {
         std::ostringstream logStream;
 
         if (tokenManager.canFulfillRequest(request.process, request.requestedTokens)) {
-            logStream << "RUN        (r: " << request.requestedTokens << "/" << tokenManager.getAccumulatedTokens(request.process)
-                                      << ", a: " << tokenManager.getAvailableTokens()
-                                      << ", w: " << request.waitTime << ")";
+            logStream << "RUN        (r: "
+                      << formatDouble << request.requestedTokens << "/"
+                      << formatDouble << tokenManager.getAccumulatedTokens(request.process)
+                      << ", a: "
+                      << formatDouble << tokenManager.getAvailableTokens()
+                      << " - "
+                      << formatDouble << (request.requestedTokens - tokenManager.getAccumulatedTokens(request.process))
+                      << ", w: "
+                      << formatDouble << request.waitTime << ")";
             tokenManager.fulfillRequest(request.process, request.requestedTokens);
             wakeUpProcess(request.sleepPid);
             requestProvider.markRequestFulfilled(request.process);
         } else {
-            if (request.waitTime > config.getReserveThreshold() && count < 1) {
+            if (request.waitTime > config.getReserveThreshold() && count < maxCount) {
                 double positionWeight = (numProcesses - i);
                 double accumulationFactor = 0.1 + (0.9 * (tokenManager.getAvailableTokens() / config.getMaxTokens()));
                 double tokensToAccumulate = (tokenManager.getAvailableTokens() * accumulationFactor * positionWeight) / totalWeight;
                 tokenManager.accumulateTokens(process, tokensToAccumulate);
-                logStream << "ACCUMULATE (r: " << request.requestedTokens << "/" << tokenManager.getAccumulatedTokens(request.process)
-                                          << ", a: " << tokenManager.getAvailableTokens()
-                                          << ", w: " << request.waitTime << ")";
+                logStream << "ACCUMULATE (r: "
+                          << formatDouble << request.requestedTokens << "/"
+                          << formatDouble << tokenManager.getAccumulatedTokens(request.process)
+                          << ", a: "
+                          << formatDouble << tokenManager.getAvailableTokens()
+                          << " - "
+                          << formatDouble << tokensToAccumulate
+                          << ", w: "
+                          << formatDouble << request.waitTime << ")";
                 ++count;
             } else {
-                 logStream << "SKIP       (r: " << request.requestedTokens << "/" << tokenManager.getAccumulatedTokens(request.process)
-                           << ", a: " << tokenManager.getAvailableTokens()
-                           << ", w: " << request.waitTime << ")";
+                 logStream << "SKIP       (r: "
+                           << formatDouble << request.requestedTokens << "/"
+                           << formatDouble << tokenManager.getAccumulatedTokens(request.process)
+                           << ", a: "
+                           << formatDouble << tokenManager.getAvailableTokens()
+                           << ", w: "
+                           << formatDouble << request.waitTime << ")";
              }
         }
 
