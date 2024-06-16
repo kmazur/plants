@@ -108,6 +108,6 @@ void Scheduler::runScheduler() {
     }
 
     for (const auto& entry : runPass) {
-        std::cout << std::setw(50) << std::left << entry.first << ": " << entry.second << std::endl;
+        std::cout << std::setw(60) << std::right << entry.first << ": " << entry.second << std::endl;
     }
 }
