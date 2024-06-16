@@ -17,7 +17,7 @@ PROCESS="$OUTPUT_STAGE"
 
 while true; do
 
-  request_cpu_time "${PROCESS}-scan" "0.2"
+  request_cpu_time "${PROCESS}-scan" "1"
 
   INPUT_STAGE_DIR="$(ensure_stage_dir "$INPUT_STAGE")"
   INPUT2_STAGE_DIR="$(ensure_stage_dir "$INPUT2_STAGE")"

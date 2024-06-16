@@ -15,7 +15,7 @@ PROCESS="$OUTPUT_STAGE"
 
 while true; do
 
-  request_cpu_time "${PROCESS}-scan" "0.2"
+  request_cpu_time "${PROCESS}-scan" "1"
 
   VIDEO_24_TIMELAPSE_FPS="$(get_or_set_config "video.24_timelapse.fps" "4")"
 

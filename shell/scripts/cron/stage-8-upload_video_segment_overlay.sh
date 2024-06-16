@@ -15,7 +15,7 @@ PROCESS="$OUTPUT_STAGE"
 
 while true; do
 
-  request_cpu_time "${PROCESS}-scan" "0.2"
+  request_cpu_time "${PROCESS}-scan" "1"
 
   MACHINE_NAME="$(get_required_config "name")"
 

@@ -15,7 +15,7 @@ PROCESS="$OUTPUT_STAGE"
 
 while true; do
 
-  request_cpu_time "${PROCESS}-scan" "0.2"
+  request_cpu_time "${PROCESS}-scan" "1"
 
   CAMERA_CONFIG_DIR="$REPO_DIR/shell/scripts/video/config"
   MOTION_DETECTION_CONFIG_FILE="$CAMERA_CONFIG_DIR/motion-config-$MACHINE_NAME.txt"

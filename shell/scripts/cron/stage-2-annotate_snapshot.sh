@@ -15,7 +15,7 @@ PROCESS="$OUTPUT_STAGE"
 
 while true; do
 
-  request_cpu_time "${PROCESS}-scan" "0.2"
+  request_cpu_time "${PROCESS}-scan" "1"
 
   IMAGE_CONFIG_FILE="$(get_required_config "image-config-file")"
   IMAGE_WIDTH="$(get_required_config "width" "$IMAGE_CONFIG_FILE")"
