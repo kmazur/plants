@@ -36,8 +36,8 @@ while true; do
   if [ -n "$VALUES" ] && [ -n "$FILE_DATETIME" ]; then
     request_cpu_time "${PROCESS}-publish" "4"
 
-    TEMPERATURE="$(cat "$VALUES" | head -n 1)"
-    HUMIDITY="$(cat "$VALUES" | tail -n 1)"
+    TEMPERATURE="$(echo "$VALUES" | head -n 1)"
+    HUMIDITY="$(echo "$VALUES" | tail -n 1)"
 
     if publish_measurement_single "$PUBLISHER" "temp_measurement" "temperature=$TEMPERATURE" "$(date_compact_to_epoch "$FILE_DATETIME")"; then
       if publish_measurement_single "$PUBLISHER" "humidity_measurement" "humidity=$HUMIDITY" "$(date_compact_to_epoch "$FILE_DATETIME")"; then
