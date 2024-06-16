@@ -7,7 +7,9 @@
 */5 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "report-external-temp-humidity" 30 300 &>> /home/user/cron.log
 */10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "temp-fail-safe" 20 60 &>> /home/user/cron.log
 */10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-1-record_video" &>> /home/user/cron.log
+*/10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-1-get_temp_humidity_sensor" &>> /home/user/cron.log
 */10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-2-upload_light_level" &>> /home/user/cron.log
+*/10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-2-upload_temp_humidity_sensor" &>> /home/user/cron.log
 */10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-2-annotate_snapshot" &>> /home/user/cron.log
 */10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-3-upload_annotated_snapshot" &>> /home/user/cron.log
 */10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-3-create_24h_snapshot" &>> /home/user/cron.log

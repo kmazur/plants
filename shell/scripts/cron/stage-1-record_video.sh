@@ -13,6 +13,8 @@ OUTPUT_STAGE="video/raw"
 # - video/raw/light_level_20240505_101501.txt
 # - video/raw/video_20240505_101501.h264
 
+PROCESS="$OUTPUT_STAGE"
+
 while true; do
   SEGMENT_DURATION_SECONDS="$(get_or_set_config "video.segment_duration_seconds" "300")"
   VID_CONFIG_FILE="$(get_required_config "video-config-file")"
