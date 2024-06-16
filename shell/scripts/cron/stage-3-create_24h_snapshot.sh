@@ -30,57 +30,56 @@ while true; do
   PROCESSED_PATH="$OUTPUT_STAGE_DIR/processed.txt"
 
   NOT_PROCESSED_FILES="$(get_not_processed_files "$INPUT_STAGE_DIR" "$OUTPUT_STAGE_DIR" "snapshot_annotated_")"
-  LATEST_NOT_PROCESSED_FILE="$(echo "$NOT_PROCESSED_FILES" | head -n 1)"
-  LATEST_NOT_PROCESSED_PATH="$INPUT_STAGE_DIR/$LATEST_NOT_PROCESSED_FILE"
-
-  if [ -z "$LATEST_NOT_PROCESSED_FILE" ]; then
+  if [ -z "$NOT_PROCESSED_FILES" ]; then
     continue
   fi
-  log "Processing: $LATEST_NOT_PROCESSED_PATH"
 
-  FILE_DATETIME="$(strip "$LATEST_NOT_PROCESSED_FILE" "snapshot_annotated_" ".jpg")"
+  echo "$NOT_PROCESSED_FILES" | while IFS= read -r LATEST_NOT_PROCESSED_FILE; do
+    LATEST_NOT_PROCESSED_PATH="$INPUT_STAGE_DIR/$LATEST_NOT_PROCESSED_FILE"
+    log "Processing: $LATEST_NOT_PROCESSED_PATH"
 
-  HOUR="${FILE_DATETIME:9:2}"
-  HOUR="$((10#$HOUR))"
+    FILE_DATETIME="$(strip "$LATEST_NOT_PROCESSED_FILE" "snapshot_annotated_" ".jpg")"
 
-  if [[ -z "$PREV_HOUR" || "$PREV_HOUR" != "$HOUR" ]]; then
-    FILE_NAME="${MACHINE_NAME}_24.jpg"
-    FILE_PATH="$OUTPUT_STAGE_DIR/$FILE_NAME"
+    HOUR="${FILE_DATETIME:9:2}"
+    HOUR="$((10#$HOUR))"
 
-    if (( TIMELAPSE_IMAGE_WIDTH > MAX_WIDTH )); then
-        NEW_WIDTH=$MAX_WIDTH
-        NEW_HEIGHT=$(( TIMELAPSE_IMAGE_HEIGHT * MAX_WIDTH / TIMELAPSE_IMAGE_WIDTH ))
-    else
-        NEW_WIDTH=$TIMELAPSE_IMAGE_WIDTH
-        NEW_HEIGHT=$TIMELAPSE_IMAGE_HEIGHT
-    fi
+    if [[ -z "$PREV_HOUR" || "$PREV_HOUR" != "$HOUR" ]]; then
+      FILE_NAME="${MACHINE_NAME}_24.jpg"
+      FILE_PATH="$OUTPUT_STAGE_DIR/$FILE_NAME"
 
-
-    if [[ ! -f "$FILE_PATH" || "$(stat --printf="%s" "$FILE_PATH")" == "0" ]]; then
-
-      request_cpu_time "${PROCESS}-create-blank-image" "4"
-      if ! create_blank_image "$FILE_PATH" "$((NEW_WIDTH * 5))" "$((NEW_HEIGHT * 5))"; then
-        continue
+      if (( TIMELAPSE_IMAGE_WIDTH > MAX_WIDTH )); then
+          NEW_WIDTH=$MAX_WIDTH
+          NEW_HEIGHT=$(( TIMELAPSE_IMAGE_HEIGHT * MAX_WIDTH / TIMELAPSE_IMAGE_WIDTH ))
+      else
+          NEW_WIDTH=$TIMELAPSE_IMAGE_WIDTH
+          NEW_HEIGHT=$TIMELAPSE_IMAGE_HEIGHT
       fi
-    fi
 
-    X="$(( (HOUR % 5) * NEW_WIDTH ))"
-    Y="$(( (HOUR / 5) * NEW_HEIGHT ))"
+      if [[ ! -f "$FILE_PATH" || "$(stat --printf="%s" "$FILE_PATH")" == "0" ]]; then
+        request_cpu_time "${PROCESS}-create-blank-image" "4"
+        if ! create_blank_image "$FILE_PATH" "$((NEW_WIDTH * 5))" "$((NEW_HEIGHT * 5))"; then
+          continue
+        fi
+      fi
 
-    TMP_OUTPUT="$OUTPUT_STAGE_DIR/${MACHINE_NAME}_24_processing.jpg"
+      X="$(( (HOUR % 5) * NEW_WIDTH ))"
+      Y="$(( (HOUR / 5) * NEW_HEIGHT ))"
 
-    request_cpu_time "${PROCESS}-embedd-image" "3"
-    if ffmpeg -threads 1 -i "$FILE_PATH" -i "$LATEST_NOT_PROCESSED_PATH" -filter_complex \
-           "[1:v] scale=$NEW_WIDTH:$NEW_HEIGHT [scaled]; [0:v][scaled] overlay=x=$X:y=$Y" -q:v "3" \
-           -y "$TMP_OUTPUT" && cp -f "$TMP_OUTPUT" "$FILE_PATH"; then
+      TMP_OUTPUT="$OUTPUT_STAGE_DIR/${MACHINE_NAME}_24_processing.jpg"
 
-      PREV_HOUR="$HOUR"
+      request_cpu_time "${PROCESS}-embedd-image" "3"
+      if ffmpeg -threads 1 -i "$FILE_PATH" -i "$LATEST_NOT_PROCESSED_PATH" -filter_complex \
+             "[1:v] scale=$NEW_WIDTH:$NEW_HEIGHT [scaled]; [0:v][scaled] overlay=x=$X:y=$Y" -q:v "3" \
+             -y "$TMP_OUTPUT" && cp -f "$TMP_OUTPUT" "$FILE_PATH"; then
+
+        PREV_HOUR="$HOUR"
+        echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
+      fi
+
+      rm -f "$TMP_OUTPUT" 2> /dev/null
+    else
       echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
     fi
-
-    rm -f "$TMP_OUTPUT" 2> /dev/null
-  else
-    echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
-  fi
+  done
 
 done

@@ -24,38 +24,39 @@ while true; do
   OUTPUT_STAGE_DIR="$(ensure_stage_dir "$OUTPUT_STAGE")"
   PROCESSED_PATH="$OUTPUT_STAGE_DIR/processed.txt"
 
-  NOT_PROCESSED_FILES="$(get_second_not_processed_file "$INPUT_STAGE_DIR" "$OUTPUT_STAGE_DIR" "scores_")"
-  LATEST_NOT_PROCESSED_FILE="$(echo "$NOT_PROCESSED_FILES" | head -n 1)"
-  LATEST_NOT_PROCESSED_PATH="$INPUT_STAGE_DIR/$LATEST_NOT_PROCESSED_FILE"
-
-  if [ -z "$LATEST_NOT_PROCESSED_FILE" ]; then
-    continue
-  fi
-  log "Processing: $LATEST_NOT_PROCESSED_PATH"
-
-  FILE_DATETIME_AND_SEGMENT="$(strip "$LATEST_NOT_PROCESSED_FILE" "scores_" ".txt")"
-  FILE_DATETIME="$(echo "$FILE_DATETIME_AND_SEGMENT" | cut -d '_' -f 1,2)"
-  SEGMENT_START="$(echo "$FILE_DATETIME_AND_SEGMENT" | cut -d '_' -f 3)"
-  SEGMENT_END="$(echo "$FILE_DATETIME_AND_SEGMENT" | cut -d '_' -f 4)"
-  DURATION=$(calc "$SEGMENT_END - $SEGMENT_START")
-
-  FILE_NAME="video_segment_${FILE_DATETIME_AND_SEGMENT}.mp4"
-  FILE_PATH="$OUTPUT_STAGE_DIR/$FILE_NAME"
-
-  VIDEO_FILE_NAME="video_${FILE_DATETIME}.mp4"
-  VIDEO_FILE_PATH="$INPUT2_STAGE_DIR/$VIDEO_FILE_NAME"
-
-  if [ ! -f "$VIDEO_FILE_PATH" ]; then
-    echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
-    log "Video file: $VIDEO_FILE_PATH does not exist! Skipping"
+  NOT_PROCESSED_FILES="$(get_not_processed_files "$INPUT_STAGE_DIR" "$OUTPUT_STAGE_DIR" "scores_")"
+  if [ -z "$NOT_PROCESSED_FILES" ]; then
     continue
   fi
 
-  log "Starting motion segment extraction"
-  request_cpu_time "${PROCESS}-motion-segments" "8"
+  echo "$NOT_PROCESSED_FILES" | while IFS= read -r LATEST_NOT_PROCESSED_FILE; do
+    LATEST_NOT_PROCESSED_PATH="$INPUT_STAGE_DIR/$LATEST_NOT_PROCESSED_FILE"
+    log "Processing: $LATEST_NOT_PROCESSED_PATH"
 
-  if ffmpeg -threads 1 -i "$VIDEO_FILE_PATH" -ss "$SEGMENT_START" -t "$DURATION" -c copy -an "$FILE_PATH"; then
-    log "Done motion segment extraction"
-    echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
-  fi
+    FILE_DATETIME_AND_SEGMENT="$(strip "$LATEST_NOT_PROCESSED_FILE" "scores_" ".txt")"
+    FILE_DATETIME="$(echo "$FILE_DATETIME_AND_SEGMENT" | cut -d '_' -f 1,2)"
+    SEGMENT_START="$(echo "$FILE_DATETIME_AND_SEGMENT" | cut -d '_' -f 3)"
+    SEGMENT_END="$(echo "$FILE_DATETIME_AND_SEGMENT" | cut -d '_' -f 4)"
+    DURATION=$(calc "$SEGMENT_END - $SEGMENT_START")
+
+    FILE_NAME="video_segment_${FILE_DATETIME_AND_SEGMENT}.mp4"
+    FILE_PATH="$OUTPUT_STAGE_DIR/$FILE_NAME"
+
+    VIDEO_FILE_NAME="video_${FILE_DATETIME}.mp4"
+    VIDEO_FILE_PATH="$INPUT2_STAGE_DIR/$VIDEO_FILE_NAME"
+
+    if [ ! -f "$VIDEO_FILE_PATH" ]; then
+      echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
+      log "Video file: $VIDEO_FILE_PATH does not exist! Skipping"
+      continue
+    fi
+
+    log "Starting motion segment extraction"
+    request_cpu_time "${PROCESS}-motion-segments" "8"
+
+    if ffmpeg -nostdin -threads 1 -i "$VIDEO_FILE_PATH" -ss "$SEGMENT_START" -t "$DURATION" -c copy -an "$FILE_PATH"; then
+      log "Done motion segment extraction"
+      echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
+    fi
+  done
 done

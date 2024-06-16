@@ -22,32 +22,31 @@ while true; do
   PROCESSED_PATH="$OUTPUT_STAGE_DIR/processed.txt"
 
   NOT_PROCESSED_FILES="$(get_not_processed_files "$INPUT_STAGE_DIR" "$OUTPUT_STAGE_DIR" "temp_hum_level_")"
-  LATEST_NOT_PROCESSED_FILE="$(echo "$NOT_PROCESSED_FILES" | head -n 1)"
-  LATEST_NOT_PROCESSED_PATH="$INPUT_STAGE_DIR/$LATEST_NOT_PROCESSED_FILE"
-
-  if [ -z "$LATEST_NOT_PROCESSED_FILE" ]; then
+  if [ -z "$NOT_PROCESSED_FILES" ]; then
     continue
   fi
 
-  log "Processing: $LATEST_NOT_PROCESSED_PATH"
+  echo "$NOT_PROCESSED_FILES" | while IFS= read -r LATEST_NOT_PROCESSED_FILE; do
+    LATEST_NOT_PROCESSED_PATH="$INPUT_STAGE_DIR/$LATEST_NOT_PROCESSED_FILE"
+    log "Processing: $LATEST_NOT_PROCESSED_PATH"
 
-  FILE_DATETIME="$(strip "$LATEST_NOT_PROCESSED_FILE" "temp_hum_level_" ".txt")"
-  VALUES="$(cat "$LATEST_NOT_PROCESSED_PATH")"
-  if [ -n "$VALUES" ] && [ -n "$FILE_DATETIME" ]; then
+    FILE_DATETIME="$(strip "$LATEST_NOT_PROCESSED_FILE" "temp_hum_level_" ".txt")"
+    VALUES="$(cat "$LATEST_NOT_PROCESSED_PATH")"
+    if [ -n "$VALUES" ] && [ -n "$FILE_DATETIME" ]; then
 
-    TEMPERATURE="$(echo "$VALUES" | head -n 1)"
-    HUMIDITY="$(echo "$VALUES" | tail -n 1)"
+      TEMPERATURE="$(echo "$VALUES" | head -n 1)"
+      HUMIDITY="$(echo "$VALUES" | tail -n 1)"
 
-    if [[ -n "$TEMPERATURE" && -n "$HUMIDITY" ]]; then
-      request_cpu_time "${PROCESS}-publish" "4"
-
-      if publish_measurement_single "$PUBLISHER" "temp_measurement" "temperature=$TEMPERATURE" "$(date_compact_to_epoch "$FILE_DATETIME")"; then
-        if publish_measurement_single "$PUBLISHER" "humidity_measurement" "humidity=$HUMIDITY" "$(date_compact_to_epoch "$FILE_DATETIME")"; then
-          echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
+      if [[ -n "$TEMPERATURE" && -n "$HUMIDITY" ]]; then
+        request_cpu_time "${PROCESS}-publish" "4"
+        if publish_measurement_single "$PUBLISHER" "temp_measurement" "temperature=$TEMPERATURE" "$(date_compact_to_epoch "$FILE_DATETIME")"; then
+          if publish_measurement_single "$PUBLISHER" "humidity_measurement" "humidity=$HUMIDITY" "$(date_compact_to_epoch "$FILE_DATETIME")"; then
+            echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
+          fi
         fi
+      else
+        echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
       fi
-    else
-      echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
     fi
-  fi
+  done
 done

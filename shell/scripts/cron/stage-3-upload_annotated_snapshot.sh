@@ -30,6 +30,7 @@ while true; do
   if [ -z "$LATEST_NOT_PROCESSED_FILE" ]; then
     continue
   fi
+
   # Skip earlier files
   FILES_TO_SKIP="$(echo "$NOT_PROCESSED_FILES" | grep -v "$LATEST_NOT_PROCESSED_FILE")"
   if [ -n "$FILES_TO_SKIP" ]; then

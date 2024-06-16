@@ -48,7 +48,8 @@ while true; do
       if [ -f "$FILE_PATH" ]; then
         request_cpu_time "${PROCESS}-upload" "3"
         if upload_file "$FILE_PATH" "image/jpg"; then
-          echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
+#          echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
+          true
         fi
       fi
     fi

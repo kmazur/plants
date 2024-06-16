@@ -24,92 +24,93 @@ while true; do
   OUTPUT_STAGE_DIR="$(ensure_stage_dir "$OUTPUT_STAGE")"
   PROCESSED_PATH="$OUTPUT_STAGE_DIR/processed.txt"
 
-  NOT_PROCESSED_FILES="$(get_not_processed_files "$INPUT_STAGE_DIR" "$OUTPUT_STAGE_DIR" "scores_")"
-  LATEST_NOT_PROCESSED_FILE="$(echo "$NOT_PROCESSED_FILES" | tail -n 1)"
-  LATEST_NOT_PROCESSED_PATH="$INPUT_STAGE_DIR/$LATEST_NOT_PROCESSED_FILE"
 
-  if [ -z "$LATEST_NOT_PROCESSED_FILE" ]; then
+  NOT_PROCESSED_FILES="$(get_not_processed_files "$INPUT_STAGE_DIR" "$OUTPUT_STAGE_DIR" "scores_")"
+  if [ -z "$NOT_PROCESSED_FILES" ]; then
     continue
   fi
-  log "Processing: $LATEST_NOT_PROCESSED_PATH"
 
-  FILE_DATETIME="$(strip "$LATEST_NOT_PROCESSED_FILE" "scores_" ".txt")"
-  FILE_NAME="scores_${FILE_DATETIME}.txt"
-  FILE_PATH="$OUTPUT_STAGE_DIR/$FILE_NAME"
+  echo "$NOT_PROCESSED_FILES" | while IFS= read -r LATEST_NOT_PROCESSED_FILE; do
+    LATEST_NOT_PROCESSED_PATH="$INPUT_STAGE_DIR/$LATEST_NOT_PROCESSED_FILE"
+    log "Processing: $LATEST_NOT_PROCESSED_PATH"
 
-  log "Starting motion segment detection"
+    FILE_DATETIME="$(strip "$LATEST_NOT_PROCESSED_FILE" "scores_" ".txt")"
+    FILE_NAME="scores_${FILE_DATETIME}.txt"
+    FILE_PATH="$OUTPUT_STAGE_DIR/$FILE_NAME"
 
-  request_cpu_time "${PROCESS}-motion-segments" "8"
+    log "Starting motion segment detection"
 
+    request_cpu_time "${PROCESS}-motion-segments" "10"
 
-  input_file="$LATEST_NOT_PROCESSED_PATH"
-  # Configuration variables
-  motion_threshold="$(get_config "motion_threshold" "2.5" "$MOTION_DETECTION_CONFIG_FILE")"
-  pre_motion_time="$(get_config "seconds_before" "1" "$MOTION_DETECTION_CONFIG_FILE")"
-  post_motion_time="$(get_config "seconds_after" "1" "$MOTION_DETECTION_CONFIG_FILE")"
-  motion_end_buffer_time="$(get_or_set_config "motion_end_buffer_time" "5")"
-  motion_video_start_seconds_ignore="$(get_or_set_config "start_seconds_ignore" "1")"
+    input_file="$LATEST_NOT_PROCESSED_PATH"
+    # Configuration variables
+    motion_threshold="$(get_config "motion_threshold" "2.5" "$MOTION_DETECTION_CONFIG_FILE")"
+    pre_motion_time="$(get_config "seconds_before" "1" "$MOTION_DETECTION_CONFIG_FILE")"
+    post_motion_time="$(get_config "seconds_after" "1" "$MOTION_DETECTION_CONFIG_FILE")"
+    motion_end_buffer_time="$(get_or_set_config "motion_end_buffer_time" "5")"
+    motion_video_start_seconds_ignore="$(get_or_set_config "start_seconds_ignore" "1")"
 
-  # Initialize variables
-  prefix="scores_"
-  in_motion=false
-  motion_start_time=0
-  motion_end_time=0
-  last_motion_time=0
+    # Initialize variables
+    prefix="scores_"
+    in_motion=false
+    motion_start_time=0
+    motion_end_time=0
+    last_motion_time=0
 
-  # Read the maximum seconds value from the last line of the file
-  max_seconds=$(tail -n 1 "$input_file" | awk '{print $2}')
+    # Read the maximum seconds value from the last line of the file
+    max_seconds=$(tail -n 1 "$input_file" | awk '{print $2}')
 
-  # Process the input file line by line
-  while read -r line; do
-    frame_index=$(echo "$line" | cut -d ' ' -f 1)
-    seconds=$(echo "$line" | cut -d ' ' -f 2)
-    motion_score=$(echo "$line" | cut -d ' ' -f 3)
+    # Process the input file line by line
+    while read -r line; do
+      frame_index=$(echo "$line" | cut -d ' ' -f 1)
+      seconds=$(echo "$line" | cut -d ' ' -f 2)
+      motion_score=$(echo "$line" | cut -d ' ' -f 3)
 
-    if [ "$in_motion" = true ]; then
-      echo "$line" >> "$segment_file"
-    fi
-
-    if (( $(echo "$seconds < $motion_video_start_seconds_ignore" | bc -l) )); then
-      continue
-    fi
-
-    if (( $(echo "$motion_score >= $motion_threshold" | bc -l) )); then
-      if [ "$in_motion" = false ]; then
-        in_motion=true
-        motion_start_time=$(calc "$seconds - $pre_motion_time")
-        if (( $(echo "$motion_start_time < 0" | bc -l) )); then
-          motion_start_time=0.0
-        fi
-        segment_file="$OUTPUT_STAGE_DIR/${prefix}${FILE_DATETIME}_${motion_start_time}_${motion_end_time}.txt"
+      if [ "$in_motion" = true ]; then
         echo "$line" >> "$segment_file"
       fi
-      last_motion_time=$seconds
-    else
-      if [ "$in_motion" = true ]; then
-        elapsed_since_last_motion=$(calc "$seconds - $last_motion_time")
-        if (( $(echo "$elapsed_since_last_motion >= $motion_end_buffer_time" | bc -l) )); then
-          in_motion=false
-          motion_end_time=$(calc "$last_motion_time + $post_motion_time")
-          if (( $(echo "$motion_end_time > $max_seconds" | bc -l) )); then
-            motion_end_time=$max_seconds
+
+      if (( $(echo "$seconds < $motion_video_start_seconds_ignore" | bc -l) )); then
+        continue
+      fi
+
+      if (( $(echo "$motion_score >= $motion_threshold" | bc -l) )); then
+        if [ "$in_motion" = false ]; then
+          in_motion=true
+          motion_start_time=$(calc "$seconds - $pre_motion_time")
+          if (( $(echo "$motion_start_time < 0" | bc -l) )); then
+            motion_start_time=0.0
           fi
-          mv "$segment_file" "$OUTPUT_STAGE_DIR/${prefix}${FILE_DATETIME}_${motion_start_time}_${motion_end_time}.txt"
+          segment_file="$OUTPUT_STAGE_DIR/${prefix}${FILE_DATETIME}_${motion_start_time}_${motion_end_time}.txt"
+          echo "$line" >> "$segment_file"
+        fi
+        last_motion_time=$seconds
+      else
+        if [ "$in_motion" = true ]; then
+          elapsed_since_last_motion=$(calc "$seconds - $last_motion_time")
+          if (( $(echo "$elapsed_since_last_motion >= $motion_end_buffer_time" | bc -l) )); then
+            in_motion=false
+            motion_end_time=$(calc "$last_motion_time + $post_motion_time")
+            if (( $(echo "$motion_end_time > $max_seconds" | bc -l) )); then
+              motion_end_time=$max_seconds
+            fi
+            mv "$segment_file" "$OUTPUT_STAGE_DIR/${prefix}${FILE_DATETIME}_${motion_start_time}_${motion_end_time}.txt"
+          fi
         fi
       fi
-    fi
-  done < "$input_file"
+    done < "$input_file"
 
-  # Handle case where motion is still in progress at the end of the file
-  if [ "$in_motion" = true ]; then
-    motion_end_time=$(echo "$last_motion_time + $post_motion_time" | bc)
-    if (( $(echo "$motion_end_time > $max_seconds" | bc -l) )); then
-      motion_end_time=$max_seconds
+    # Handle case where motion is still in progress at the end of the file
+    if [ "$in_motion" = true ]; then
+      motion_end_time=$(echo "$last_motion_time + $post_motion_time" | bc)
+      if (( $(echo "$motion_end_time > $max_seconds" | bc -l) )); then
+        motion_end_time=$max_seconds
+      fi
+      mv "$segment_file" "$OUTPUT_STAGE_DIR/${prefix}${FILE_DATETIME}_${motion_start_time}_${motion_end_time}.txt"
     fi
-    mv "$segment_file" "$OUTPUT_STAGE_DIR/${prefix}${FILE_DATETIME}_${motion_start_time}_${motion_end_time}.txt"
-  fi
 
-  log "Done motion score detection"
-  echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
+    log "Done motion score detection"
+    echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
+  done
 
 done
