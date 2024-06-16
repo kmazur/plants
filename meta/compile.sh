@@ -2,6 +2,14 @@
 
 echo "Compiling executables"
 
+REBUILD="false"
+if [[ "$1" == "rebuild" ]]; then
+  REBUILD="true"
+  rm "$TMP_DIR/"*.o
+  rm "$TMP_DIR/"*.sha256
+fi
+
+
 function has_changed() {
   local FILE="$1"
   local SHA_FILE="${FILE}.sha256"

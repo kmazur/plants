@@ -92,7 +92,7 @@ function update_repo() {
 }
 
 function compile_native() {
-    "$REPO_DIR/meta/compile.sh"
+    "$REPO_DIR/meta/compile.sh" "$1"
 }
 
 source "$LIB_INIT_FILE"
