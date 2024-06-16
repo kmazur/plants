@@ -25,10 +25,10 @@ void Scheduler::run() {
 
         tokenManager.adjustReplenishRate();
         tokenManager.replenishTokens();
-        runScheduler();
 
-        log("Available tokens: " + std::to_string(tokenManager.getAvailableTokens()) +
-            ", Replenish rate: " + std::to_string(config.getReplenishRate()));
+        log("Available tokens: " + std::to_string(tokenManager.getAvailableTokens()) + ", cpu temperature: " + std::to_string(getCpuTempInt()));
+        runScheduler();
+        log("Available tokens: " + std::to_string(tokenManager.getAvailableTokens()) + ", cpu temperature: " + std::to_string(getCpuTempInt()));
 
         std::this_thread::sleep_for(std::chrono::seconds(static_cast<int>(config.getRunInterval())));
     }
@@ -50,8 +50,6 @@ void Scheduler::runScheduler() {
             ++count;
         }
     }
-
-    log("Available tokens: " + std::to_string(tokenManager.getAvailableTokens()));
 
     count = 0;
     for (size_t i = 0; i < requests.size(); ++i) {
@@ -81,7 +79,7 @@ void Scheduler::runScheduler() {
                 double positionWeight = (numProcesses - i);
                 double accumulationFactor = 0.1 + (0.9 * (tokenManager.getAvailableTokens() / config.getMaxTokens()));
                 double tokensToAccumulate = (tokenManager.getAvailableTokens() * accumulationFactor * positionWeight) / totalWeight;
-                logStream << "ACCUMULATE (r: "
+                logStream << "SKIP       (r: "
                                           << formatDouble << request.requestedTokens << "/"
                                           << formatDouble << tokenManager.getAccumulatedTokens(request.process)
                                           << ", a: "
