@@ -23,3 +23,9 @@ for NAME in $PROCESS_NAMES; do
     fi
   fi
 done
+
+PIDS="$(ps aux | grep "^user" | grep -v "\-bash$" | grep -v "grep" | grep -v "ps aux" | grep -v "sshd:" | grep -v "sd-pam" | grep -v "systemd")"
+for PID in $PIDS; do
+  echo "Killing additional process: pid=$PID, ps='$(ps aux | grep $PID)'"
+  kill "$PID"
+done
