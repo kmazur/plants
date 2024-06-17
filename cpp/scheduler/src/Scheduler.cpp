@@ -40,20 +40,8 @@ void Scheduler::runScheduler() {
     size_t numProcesses = requests.size();
     std::vector<std::pair<std::string, std::string>> runPass;
 
-    // Calculate total weight for the first processes with waitTime > reserveThreshold
-    double totalWeight = 0.0;
-    size_t count = 0;
-    size_t maxCount = 1;
-    for (size_t i = 0; i < numProcesses && count < maxCount; ++i) {
-        if (requests[i].waitTime > config.getReserveThreshold()) {
-            totalWeight += (numProcesses - i);
-            ++count;
-        }
-    }
-
-    size_t maxRun = 4;
-    size_t maxRunCount = 0;
-    count = 0;
+    int maxRun = 4;
+    int maxRunCount = 0;
     for (size_t i = 0; i < requests.size(); ++i) {
         const auto& request = requests[i];
         std::string process = request.process;
@@ -78,31 +66,13 @@ void Scheduler::runScheduler() {
             requestProvider.markRequestFulfilled(request.process);
             ++maxRunCount;
         } else {
-
-//            if (request.waitTime > config.getReserveThreshold() && count < maxCount) {
-//                double positionWeight = (numProcesses - i);
-//                double accumulationFactor = 0.1 + (0.9 * (tokenManager.getAvailableTokens() / config.getMaxTokens()));
-//                double tokensToAccumulate = (tokenManager.getAvailableTokens() * accumulationFactor * positionWeight) / totalWeight;
-//                logStream << "SKIP       (r: "
-//                                          << formatDouble << request.requestedTokens << "/"
-//                                          << formatDouble << tokenManager.getAccumulatedTokens(request.process)
-//                                          << ", a: "
-//                                          << formatDouble << tokenManager.getAvailableTokens()
-//                                          << " - "
-//                                          << formatDouble << tokensToAccumulate
-//                                          << ", w: "
-//                                          << formatDouble << request.waitTime << ")";
-//                tokenManager.accumulateTokens(process, tokensToAccumulate);
-//                ++count;
-//            } else {
-                 logStream << "SKIP       (r: "
-                           << formatDouble << request.requestedTokens << "/"
-                           << formatDouble << tokenManager.getAccumulatedTokens(request.process)
-                           << ", a: "
-                           << formatDouble << tokenManager.getAvailableTokens()
-                           << ", w: "
-                           << formatDouble << request.waitTime << ")";
-//             }
+             logStream << "SKIP       (r: "
+                       << formatDouble << request.requestedTokens << "/"
+                       << formatDouble << tokenManager.getAccumulatedTokens(request.process)
+                       << ", a: "
+                       << formatDouble << tokenManager.getAvailableTokens()
+                       << ", w: "
+                       << formatDouble << request.waitTime << ")";
         }
 
         runPass.emplace_back(process, logStream.str());
