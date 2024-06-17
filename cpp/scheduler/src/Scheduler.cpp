@@ -51,7 +51,7 @@ void Scheduler::runScheduler() {
         }
     }
 
-    size_t maxRun = 2;
+    size_t maxRun = 4;
     size_t maxRunCount = 0;
     count = 0;
     for (size_t i = 0; i < requests.size(); ++i) {
