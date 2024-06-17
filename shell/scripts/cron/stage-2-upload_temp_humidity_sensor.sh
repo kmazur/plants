@@ -38,12 +38,12 @@ while true; do
       HUMIDITY="$(echo "$VALUES" | tail -n 1)"
 
       if [[ -n "$TEMPERATURE" ]]; then
-        request_cpu_time "${PROCESS}-publish" "2"
+        request_cpu_time "${PROCESS}-publish" "1"
         publish_measurement_single "$PUBLISHER" "temp_measurement" "temperature=$TEMPERATURE" "$(date_compact_to_epoch "$FILE_DATETIME")"
       fi
 
       if [[ -n "$HUMIDITY" ]]; then
-        request_cpu_time "${PROCESS}-publish" "2"
+        request_cpu_time "${PROCESS}-publish" "1"
         publish_measurement_single "$PUBLISHER" "humidity_measurement" "humidity=$HUMIDITY" "$(date_compact_to_epoch "$FILE_DATETIME")"
       fi
       echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
