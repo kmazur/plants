@@ -96,6 +96,7 @@ bool Scheduler::processRequest(const Request& request)
 {
 	if (isEvaluationRequired(request))
 	{
+		log("Evaluation for process required: " + request.process);
 		waitForAllProcessesToComplete();
 		coolOff();
 		performProcessLoadDiscovery(request);
@@ -216,12 +217,13 @@ void Scheduler::performProcessLoadDiscovery(const Request& request)
 
 void Scheduler::coolOff()
 {
-	log("Cooling off for 60s");
+	log("Cooling off for " + std::to_string(config.getCoolOffTime()));
 	sleep(config.getCoolOffTime());
 }
 
 void Scheduler::waitForAllProcessesToComplete()
 {
+	log("Wait for all processes to complete");
 	while (!runningProcesses.empty())
 	{
 		std::vector<std::string> keys = getKeys(runningProcesses);

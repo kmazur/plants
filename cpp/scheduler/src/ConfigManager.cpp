@@ -18,7 +18,7 @@ void ConfigManager::loadConfig()
 	maxTemp = std::stof(getOrSetConfig("orchestrator.max_temperature", "79"));
 	runInterval = std::stof(getOrSetConfig("orchestrator.run_interval", "5"));
 	reevaluationInterval = std::stof(getOrSetConfig("orchestrator.reevaluation_interval", "7200"));
-	coolOffTime = std::stof(getOrSetConfig("orchestrator.reevaluation_interval", "60"));
+	coolOffTime = std::stof(getOrSetConfig("orchestrator.cool_off_seconds", "60"));
 	requiredEvaluationCount = std::stof(getOrSetConfig("orchestrator.required_evaluation_count", "4"));
 }
 
