@@ -10,7 +10,7 @@ target_include_directories(scheduler PUBLIC
 )
 
 # Create the executable
-add_executable(scheduler_app src/main.cpp)
+add_executable(scheduler_app main.cpp)
 
 # Link the scheduler library to the executable
 target_link_libraries(scheduler_app PRIVATE scheduler)
