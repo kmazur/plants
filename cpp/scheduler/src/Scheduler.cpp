@@ -169,7 +169,7 @@ bool Scheduler::hasProcessCompleted(const Request& request, const std::vector<Re
 {
 	const std::string& targetProcess = request.getName();
 	for (const auto& r : requests) {
-		if (r.getName() == targetProcess) {
+		if (r.getName() == targetProcess && r.isCompleted()) {
 			return true;
 		}
 	}
