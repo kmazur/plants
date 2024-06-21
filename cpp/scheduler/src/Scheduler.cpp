@@ -167,9 +167,9 @@ void Scheduler::runProcess(const Request& request)
 
 bool Scheduler::hasProcessCompleted(const Request& request, const std::vector<Request>& requests)
 {
-	const std::string& targetProcess = request.process;
+	const std::string& targetProcess = request.getName();
 	for (const auto& r : requests) {
-		if (r.process == targetProcess) {
+		if (r.getName() == targetProcess) {
 			return true;
 		}
 	}
@@ -202,6 +202,10 @@ void Scheduler::performProcessLoadDiscovery(const Request& request)
 		if (hasProcessCompleted(request, requests))
 		{
 			break;
+		}
+		else {
+			std::vector<std::string> keys = getKeys(runningProcesses);
+			log(name + " has not finished yet, still running: " + vectorToString(keys));
 		}
 	}
 
