@@ -76,9 +76,12 @@ float getCpuTempFloat()
     char buffer[5];
     ssize_t bytesRead = pread(fd, buffer, 5, 0);
     close(fd);
-    int d = (buffer[0] - '0') * 10 + (buffer[1] - '0');
-    int f = (buffer[2] - '0') * 100 + (buffer[2] - '0') * 10 + (buffer[3] - '0');
-    return static_cast<float>(d) + (static_cast<float>(f) / 100);
+    int temp = (buffer[0] - '0') * 10000 +
+        (buffer[1] - '0') * 1000 +
+        (buffer[2] - '0') * 100 +
+        (buffer[3] - '0') * 10 +
+        (buffer[4] - '0');
+    return static_cast<float>(temp) / 1000.0f;
 }
 
 time_t dateCompactToEpoch(const std::string &inputDate)
