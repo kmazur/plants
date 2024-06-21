@@ -30,6 +30,7 @@ while true; do
   PROCESSED_PATH="$OUTPUT_STAGE_DIR/processed.txt"
 
   NOT_PROCESSED_FILES="$(get_not_processed_files "$INPUT_STAGE_DIR" "$OUTPUT_STAGE_DIR" "snapshot_annotated_")"
+  notify_work_completed "${PROCESS}-scan"
   if [ -z "$NOT_PROCESSED_FILES" ]; then
     continue
   fi
@@ -58,7 +59,10 @@ while true; do
       if [[ ! -f "$FILE_PATH" || "$(stat --printf="%s" "$FILE_PATH")" == "0" ]]; then
         request_cpu_time "${PROCESS}-create-blank-image" "4"
         if ! create_blank_image "$FILE_PATH" "$((NEW_WIDTH * 5))" "$((NEW_HEIGHT * 5))"; then
+          notify_work_completed "${PROCESS}-create-blank-image"
           continue
+        else
+          notify_work_completed "${PROCESS}-create-blank-image"
         fi
       fi
 
@@ -75,6 +79,8 @@ while true; do
         PREV_HOUR="$HOUR"
         echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
       fi
+
+      notify_work_completed "${PROCESS}-embedd-image"
 
       rm -f "$TMP_OUTPUT" 2> /dev/null
     else

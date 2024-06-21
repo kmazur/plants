@@ -26,6 +26,7 @@ while true; do
   PROCESSED_PATH="$OUTPUT_STAGE_DIR/processed.txt"
 
   NOT_PROCESSED_FILES="$(get_not_processed_files "$INPUT_STAGE_DIR" "$OUTPUT_STAGE_DIR" "snapshot_annotated_")"
+  notify_work_completed "${PROCESS}-scan"
   if [ -z "$NOT_PROCESSED_FILES" ]; then
     continue
   fi
@@ -38,20 +39,28 @@ while true; do
     FILE_PATH="$OUTPUT_STAGE_DIR/$FILE_NAME"
 
     if [[ ! -f "$FILE_PATH" ]]; then
-      request_cpu_time "${PROCESS}-create-first-frame" "5"
+      request_cpu_time "${PROCESS}-create-first-frame"
       if ! ffmpeg -threads 1 -y -framerate "$VIDEO_24_TIMELAPSE_FPS" -i "$LATEST_NOT_PROCESSED_PATH" -c:v libx264 -r "$VIDEO_24_TIMELAPSE_FPS" -pix_fmt yuv420p "$FILE_PATH"; then
+        notify_work_completed "${PROCESS}-create-first-frame"
         continue
+      else
+        notify_work_completed "${PROCESS}-create-first-frame"
       fi
     else
       NEW_FRAME_VIDEO_PATH="$OUTPUT_STAGE_DIR/${MACHINE_NAME}_24_timelapse_processing_new_vid.mp4"
       FRAME_DURATION="0$(echo "scale=4; 1/$VIDEO_24_TIMELAPSE_FPS" | bc)"
 
       request_cpu_time "${PROCESS}-create-next-frame" "5"
-      if ! ffmpeg -threads 1 -y -loop 1 -i "$LATEST_NOT_PROCESSED_PATH" -c:v libx264 -t "$FRAME_DURATION" -pix_fmt yuv420p "$NEW_FRAME_VIDEO_PATH"; then
+      if ! ffmpeg -nostdin -threads 1 -y -loop 1 -i "$LATEST_NOT_PROCESSED_PATH" -c:v libx264 -t "$FRAME_DURATION" -pix_fmt yuv420p "$NEW_FRAME_VIDEO_PATH"; then
         rm "$NEW_FRAME_VIDEO_PATH" 2> /dev/null
+        notify_work_completed "${PROCESS}-create-next-frame"
         continue
+      else
+        notify_work_completed "${PROCESS}-create-next-frame"
       fi
 
+
+      request_cpu_time "${PROCESS}-join-next-frame" "10"
       TMP_OUTPUT_PATH="$OUTPUT_STAGE_DIR/${MACHINE_NAME}_24_timelapse_processing_tmp_output.mp4"
       CONCAT_LIST_PATH="$OUTPUT_STAGE_DIR/concat_list.txt"
       {
@@ -59,8 +68,7 @@ while true; do
         echo "file '$NEW_FRAME_VIDEO_PATH'"
       } > "$CONCAT_LIST_PATH"
 
-      request_cpu_time "${PROCESS}-join-next-frame" "10"
-      if ffmpeg -threads 1 -y -f concat -safe 0 -i "$CONCAT_LIST_PATH" -c copy "$TMP_OUTPUT_PATH"; then
+      if ffmpeg -nostdin -threads 1 -y -f concat -safe 0 -i "$CONCAT_LIST_PATH" -c copy "$TMP_OUTPUT_PATH"; then
         if cp -f "$TMP_OUTPUT_PATH" "$FILE_PATH"; then
           echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
         fi
@@ -69,6 +77,8 @@ while true; do
       rm "$NEW_FRAME_VIDEO_PATH" 2> /dev/null
       rm "$TMP_OUTPUT_PATH" 2> /dev/null
       rm "$CONCAT_LIST_PATH" 2> /dev/null
+
+      notify_work_completed "${PROCESS}-join-next-frame"
     fi
   done
 

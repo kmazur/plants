@@ -25,6 +25,8 @@ while true; do
   PROCESSED_PATH="$OUTPUT_STAGE_DIR/processed.txt"
 
   NOT_PROCESSED_FILES="$(get_not_processed_files "$INPUT_STAGE_DIR" "$OUTPUT_STAGE_DIR" "scores_")"
+
+  notify_work_completed "${PROCESS}-scan"
   if [ -z "$NOT_PROCESSED_FILES" ]; then
     continue
   fi
@@ -58,5 +60,6 @@ while true; do
       log "Done motion segment extraction"
       echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
     fi
+    notify_work_completed "${PROCESS}-motion-segments"
   done
 done

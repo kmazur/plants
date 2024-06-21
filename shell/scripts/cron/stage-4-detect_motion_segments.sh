@@ -24,13 +24,16 @@ while true; do
   OUTPUT_STAGE_DIR="$(ensure_stage_dir "$OUTPUT_STAGE")"
   PROCESSED_PATH="$OUTPUT_STAGE_DIR/processed.txt"
 
-
   NOT_PROCESSED_FILES="$(get_not_processed_files "$INPUT_STAGE_DIR" "$OUTPUT_STAGE_DIR" "scores_")"
+
+  notify_work_completed "${PROCESS}-scan"
   if [ -z "$NOT_PROCESSED_FILES" ]; then
     continue
   fi
 
   echo "$NOT_PROCESSED_FILES" | while IFS= read -r LATEST_NOT_PROCESSED_FILE; do
+    request_cpu_time "${PROCESS}-motion-segments" "10"
+
     LATEST_NOT_PROCESSED_PATH="$INPUT_STAGE_DIR/$LATEST_NOT_PROCESSED_FILE"
     log "Processing: $LATEST_NOT_PROCESSED_PATH"
 
@@ -39,8 +42,6 @@ while true; do
     FILE_PATH="$OUTPUT_STAGE_DIR/$FILE_NAME"
 
     log "Starting motion segment detection"
-
-    request_cpu_time "${PROCESS}-motion-segments" "10"
 
     input_file="$LATEST_NOT_PROCESSED_PATH"
     # Configuration variables
@@ -111,6 +112,8 @@ while true; do
 
     log "Done motion score detection"
     echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
+
+    notify_work_completed "${PROCESS}-motion-segments"
   done
 
 done

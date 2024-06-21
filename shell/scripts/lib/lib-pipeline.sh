@@ -51,6 +51,21 @@ function request_cpu_time() {
   unset SLEEP_PID
 }
 
+function notify_work_completed() {
+  local PROCESS="$1"
+  local TIMEOUT="${2:-60m}"
+
+  local DATETIME="$(get_current_date_time_compact)"
+  local REQUESTS_FILE="$(get_orchestrator_requests_file)"
+
+  sleep "$TIMEOUT" &
+  SLEEP_PID="$!"
+
+  set_config "${PROCESS}-completed" "0:${SLEEP_PID}:${DATETIME}" "$REQUESTS_FILE"
+  wait "$SLEEP_PID" 2> /dev/null
+  unset SLEEP_PID
+}
+
 function init_sleep() {
   function handle_wakeup() {
       if [ -n "$SLEEP_PID" ]; then

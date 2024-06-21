@@ -25,13 +25,16 @@ while true; do
   OUTPUT_STAGE_DIR="$(ensure_stage_dir "$OUTPUT_STAGE")"
   PROCESSED_PATH="$OUTPUT_STAGE_DIR/processed.txt"
 
-
   NOT_PROCESSED_FILES="$(get_not_processed_files "$INPUT_STAGE_DIR" "$OUTPUT_STAGE_DIR" "video_segment_")"
+
+  notify_work_completed "${PROCESS}-scan"
   if [ -z "$NOT_PROCESSED_FILES" ]; then
     continue
   fi
 
   echo "$NOT_PROCESSED_FILES" | while IFS= read -r LATEST_NOT_PROCESSED_FILE; do
+    request_cpu_time "${PROCESS}-area-of-interest-polygon" "3"
+
     LATEST_NOT_PROCESSED_PATH="$INPUT_STAGE_DIR/$LATEST_NOT_PROCESSED_FILE"
     log "Processing: $LATEST_NOT_PROCESSED_PATH"
 
@@ -45,7 +48,6 @@ while true; do
     FILE_PATH="$OUTPUT_STAGE_DIR/$FILE_NAME"
 
     log "Starting video segment area of interest overlying"
-    request_cpu_time "${PROCESS}-area-of-interest" "3"
 
     polygon="$(get_config "polygon" "" "$MOTION_DETECTION_CONFIG_FILE")"
     coords="$(echo "$polygon" | tr ';' ' ')"
@@ -58,12 +60,14 @@ while true; do
     log "Creating polygon image: $command"
     eval $command
 
+    notify_work_completed "${PROCESS}-area-of-interest-polygon"
+
     if [ $? -ne 0 ]; then
         log "Error creating polygon image."
         continue
     fi
 
-    request_cpu_time "${PROCESS}-area-of-interest" "6"
+    request_cpu_time "${PROCESS}-area-of-interest-overlay" "6"
     command="ffmpeg -nostdin -threads 1 -y -i \"$LATEST_NOT_PROCESSED_PATH\" -i $polygonImage -filter_complex \"overlay\" -an \"$FILE_PATH\""
     log "Overlaying polygon on video: $command"
     eval $command
@@ -77,6 +81,8 @@ while true; do
     fi
 
     rm -f "$polygonImage"
+
+    notify_work_completed "${PROCESS}-area-of-interest-overlay"
   done
 
 done

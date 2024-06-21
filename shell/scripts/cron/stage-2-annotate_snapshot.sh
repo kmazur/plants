@@ -25,11 +25,14 @@ while true; do
   PROCESSED_PATH="$OUTPUT_STAGE_DIR/processed.txt"
 
   NOT_PROCESSED_FILES="$(get_not_processed_files "$INPUT_STAGE_DIR" "$OUTPUT_STAGE_DIR" "snapshot_")"
+  notify_work_completed "${PROCESS}-scan"
   if [ -z "$NOT_PROCESSED_FILES" ]; then
     continue
   fi
 
   echo "$NOT_PROCESSED_FILES" | while IFS= read -r LATEST_NOT_PROCESSED_FILE; do
+    request_cpu_time "${PROCESS}-draw-text" "2"
+
     LATEST_NOT_PROCESSED_PATH="$INPUT_STAGE_DIR/$LATEST_NOT_PROCESSED_FILE"
     log "Processing: $LATEST_NOT_PROCESSED_PATH"
 
@@ -37,7 +40,6 @@ while true; do
     FILE_NAME="snapshot_annotated_${FILE_DATETIME}.jpg"
     FILE_PATH="$OUTPUT_STAGE_DIR/$FILE_NAME"
 
-    request_cpu_time "${PROCESS}-draw-text" "2"
 
     FONT_SIZE="$(( IMAGE_WIDTH / 35))"
     if draw_text_bl "$LATEST_NOT_PROCESSED_PATH" "$FILE_PATH" "$(date_compact_to_dashed "$FILE_DATETIME")" "$FONT_SIZE" "yellow" "3"; then
@@ -45,6 +47,7 @@ while true; do
         echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
       fi
     fi
+    notify_work_completed "${PROCESS}-draw-text"
   done
 
 done

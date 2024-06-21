@@ -22,6 +22,8 @@ while true; do
   PROCESSED_PATH="$OUTPUT_STAGE_DIR/processed.txt"
 
   NOT_PROCESSED_FILES="$(get_not_processed_files "$INPUT_STAGE_DIR" "$OUTPUT_STAGE_DIR" "temp_hum_level_")"
+
+  notify_work_completed  "${PROCESS}-scan"
   if [ -z "$NOT_PROCESSED_FILES" ]; then
     continue
   fi
@@ -40,11 +42,13 @@ while true; do
       if [[ -n "$TEMPERATURE" ]]; then
         request_cpu_time "${PROCESS}-publish" "1"
         publish_measurement_single "$PUBLISHER" "temp_measurement" "temperature=$TEMPERATURE" "$(date_compact_to_epoch "$FILE_DATETIME")"
+        notify_work_completed "${PROCESS}-publish"
       fi
 
       if [[ -n "$HUMIDITY" ]]; then
         request_cpu_time "${PROCESS}-publish" "1"
         publish_measurement_single "$PUBLISHER" "humidity_measurement" "humidity=$HUMIDITY" "$(date_compact_to_epoch "$FILE_DATETIME")"
+        notify_work_completed "${PROCESS}-publish"
       fi
       echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
     fi

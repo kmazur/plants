@@ -26,4 +26,5 @@ while true; do
 
   VALUES="$(python "$REPO_DIR/python/scripts/read_temp.py")"
   echo "$VALUES" > "$FILE_PATH"
+  notify_work_completed "${PROCESS}-temp_hum_read"
 done

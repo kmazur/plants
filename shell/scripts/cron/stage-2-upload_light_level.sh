@@ -25,6 +25,8 @@ while true; do
   PROCESSED_PATH="$OUTPUT_STAGE_DIR/processed.txt"
 
   NOT_PROCESSED_FILES="$(get_not_processed_files "$INPUT_STAGE_DIR" "$OUTPUT_STAGE_DIR" "light_level_")"
+
+  notify_work_completed "${PROCESS}-scan"
   if [ -z "$NOT_PROCESSED_FILES" ]; then
     continue
   fi
@@ -41,6 +43,8 @@ while true; do
       if publish_measurement_single "$PUBLISHER" "image_analysis" "light_level=$LIGHT_LEVEL" "$(date_compact_to_epoch "$FILE_DATETIME")"; then
         echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
       fi
+
+      notify_work_completed "${PROCESS}-publish"
     else
       log_warn "Light level ($LIGHT_LEVEL) empty or file dateTime ($FILE_DATETIME) empty"
       echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"

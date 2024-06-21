@@ -25,6 +25,7 @@ while true; do
   PROCESSED_PATH="$OUTPUT_STAGE_DIR/processed.txt"
 
   NOT_PROCESSED_FILES="$(get_not_processed_files "$INPUT_STAGE_DIR" "$OUTPUT_STAGE_DIR" "video_segment_")"
+  notify_work_completed "${PROCESS}-scan"
   if [ -z "$NOT_PROCESSED_FILES" ]; then
     continue
   fi
@@ -83,6 +84,8 @@ while true; do
     COMMAND="ffmpeg -nostdin -threads 1 -y -i \"$LATEST_NOT_PROCESSED_PATH\" -vf \"$DRAWTEXT_COMMAND\" -codec:a copy \"$FILE_PATH\""
     echo "Executing FFmpeg command for annotating: $COMMAND"
 
+    notify_work_completed "${PROCESS}-motion-segments-build"
+
     request_cpu_time "${PROCESS}-motion-segments-execute" "8"
     eval "$COMMAND"
 
@@ -92,6 +95,7 @@ while true; do
         log "Done video segment annotating"
         echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
     fi
+    notify_work_completed "${PROCESS}-motion-segments-execute"
   done
 
 done

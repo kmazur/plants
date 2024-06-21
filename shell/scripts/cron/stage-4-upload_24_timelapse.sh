@@ -28,6 +28,7 @@ while true; do
   LATEST_NOT_PROCESSED_FILE="$(echo "$NOT_PROCESSED_FILES" | tail -n 1)"
   LATEST_NOT_PROCESSED_PATH="$INPUT_STAGE_DIR/$LATEST_NOT_PROCESSED_FILE"
 
+  notify_work_completed "${PROCESS}-scan"
   if [ -z "$LATEST_NOT_PROCESSED_FILE" ]; then
     continue
   fi
@@ -51,6 +52,7 @@ while true; do
 #          echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
           true
         fi
+        notify_work_completed "${PROCESS}-upload"
       fi
     fi
   fi
