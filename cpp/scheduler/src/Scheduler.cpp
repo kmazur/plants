@@ -121,7 +121,7 @@ bool Scheduler::canRunProcess(const Request& request) {
 
 float Scheduler::getCpuTempEstimate()
 {
-	int currentTemp = getCpuTempInt();
+	float currentTemp = getCpuTempFloat();
 	float estimatedTempIncrease = 0.0f;
 	std::time_t now = std::time(nullptr);
 	for (const auto& entry : runningProcesses)
@@ -140,7 +140,7 @@ float Scheduler::getCpuTempEstimate()
 		float stillCpuToIncrease = multiplier * estimatedTotalCpuTempIncrease;
 		estimatedTempIncrease += stillCpuToIncrease;
 	}
-	return static_cast<float>(currentTemp) + estimatedTempIncrease;
+	return currentTemp + estimatedTempIncrease;
 }
 
 void Scheduler::handleCompletedRequest(const Request& request)
@@ -190,7 +190,7 @@ void Scheduler::performProcessLoadDiscovery(const Request& request)
 
 	auto workUnit = workStats[name];
 
-	int initialTemp = getCpuTempInt();
+	float initialTemp = getCpuTempFloat();
 	std::time_t startEpoch = std::time(nullptr);
 	log(name + " -> initial cpu temp: " + std::to_string(initialTemp));
 
@@ -210,8 +210,8 @@ void Scheduler::performProcessLoadDiscovery(const Request& request)
 	}
 
 	std::time_t endEpoch = std::time(nullptr);
-	int finalTemp = getCpuTempInt();
-	int cpuIncrease = std::max(0, finalTemp - initialTemp);
+	float finalTemp = getCpuTempFloat();
+	float cpuIncrease = std::max(0.0f, finalTemp - initialTemp);
 	int duration = endEpoch - startEpoch;
 
 	log(name + " -> completed with cpu temp: " + std::to_string(finalTemp) + ", increased: " + std::to_string(cpuIncrease) + " took: " + std::to_string(duration) + " sec");

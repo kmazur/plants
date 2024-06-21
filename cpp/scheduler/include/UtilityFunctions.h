@@ -13,6 +13,7 @@ void wakeUpProcess(const Request& request);
 void wakeUpProcess(int pid);
 void ensureFileExists(const std::string &filePath);
 int getCpuTempInt();
+float getCpuTempFloat();
 time_t dateCompactToEpoch(const std::string &inputDate);
 std::string vectorToString(const std::vector<std::string>& vec);
 

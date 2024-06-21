@@ -69,6 +69,18 @@ int getCpuTempInt()
     return (buffer[0] - '0') * 10 + (buffer[1] - '0');
 }
 
+float getCpuTempFloat()
+{
+    const char *path = "/sys/class/thermal/thermal_zone0/temp";
+    int fd = open(path, O_RDONLY);
+    char buffer[5];
+    ssize_t bytesRead = pread(fd, buffer, 5, 0);
+    close(fd);
+    int d = (buffer[0] - '0') * 10 + (buffer[1] - '0');
+    int f = (buffer[2] - '0') * 100 + (buffer[2] - '0') * 10 + (buffer[3] - '0');
+    return static_cast<float>(d) + (static_cast<float>(f) / 100);
+}
+
 time_t dateCompactToEpoch(const std::string &inputDate)
 {
     std::tm tm = {};
