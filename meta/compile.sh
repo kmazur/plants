@@ -1,6 +1,7 @@
 #!/bin/bash
 
 echo "Compiling executables"
+echo "REBUILD: $1"
 
 REBUILD="false"
 if [[ "$1" == "rebuild" ]]; then
