@@ -1,84 +1,249 @@
 #include "Scheduler.h"
 #include "UtilityFunctions.h"
+#include "RequestSource.h"
 #include <algorithm>
 #include <thread>
 #include <iostream>
 #include <sstream>
 #include <iomanip>
 #include <cmath>
-#include "ConfigManager.h"
+#include <fstream>
+#include <algorithm>
+#include <memory>
 
 const std::string ORCHESTRATOR_REQUESTS_FILE = "/dev/shm/REQUESTS.txt";
+const int COOL_OFF_DURATION = 60;
 
-std::ostream& formatDouble(std::ostream& os) {
-    return os << std::fixed << std::setw(8) << std::setprecision(4);
+std::ostream& formatDouble(std::ostream& os)
+{
+	return os << std::fixed << std::setw(8) << std::setprecision(4);
 }
 
-Scheduler::Scheduler(ConfigManager& config, RequestProvider& requestProvider)
-    : config(config), tokenManager(config), requestProvider(requestProvider) {
-    ensureFileExists(ORCHESTRATOR_REQUESTS_FILE);
+Scheduler::Scheduler(ConfigManager& config, RequestSource& requestSource)
+	: config(config), requestSource(requestSource)
+{
+	ensureFileExists(ORCHESTRATOR_REQUESTS_FILE);
 }
 
-void Scheduler::run() {
-    while (true) {
-        config.loadConfig();
-
-        tokenManager.adjustReplenishRate();
-        tokenManager.replenishTokens();
-
-        log("Available tokens: " + std::to_string(tokenManager.getAvailableTokens()) + ", cpu temperature: " + std::to_string(getCpuTempInt()));
-        runScheduler();
-        log("Available tokens: " + std::to_string(tokenManager.getAvailableTokens()) + ", cpu temperature: " + std::to_string(getCpuTempInt()));
-
-        std::this_thread::sleep_for(std::chrono::seconds(static_cast<int>(config.getRunInterval())));
-    }
+void Scheduler::run()
+{
+	while (true)
+	{
+		log("Scheduler pass started");
+		if (!isCpuTempCritical())
+		{
+			config.loadConfig();
+			runScheduler();
+		}
+		else {
+			log("Temperature critical");
+		}
+		sleepForInterval();
+	}
 }
 
-void Scheduler::runScheduler() {
-    const std::vector<Request>& requests = requestProvider.getRequests();
+void Scheduler::runScheduler()
+{
+	std::vector<Request> processedRequests = requestSource.getRequests();
+	processCompletedRequests(processedRequests);
+	processNormalRequests(processedRequests);
+}
 
-    size_t numProcesses = requests.size();
-    std::vector<std::pair<std::string, std::string>> runPass;
+void Scheduler::processNormalRequests(std::vector<Request>& processedRequests)
+{
+	for (const auto& request : processedRequests)
+	{
+		if (!processRequest(request))
+		{
+			return;
+		}
+	}
+}
 
-    int maxRun = 4;
-    int maxRunCount = 0;
-    for (size_t i = 0; i < requests.size(); ++i) {
-        const auto& request = requests[i];
-        std::string process = request.process;
-        double tokens = request.requestedTokens;
-        double waitTime = request.waitTime;
-        double estimatedTokens = tokens;
+void Scheduler::processCompletedRequests(std::vector<Request>& requests)
+{
+	for (auto it = requests.begin(); it != requests.end();)
+	{
+		if (it->isCompleted())
+		{
+			handleCompletedRequest(*it);
+			it = requests.erase(it);
+		}
+		else
+		{
+			++it;
+		}
+	}
+}
 
-        std::ostringstream logStream;
+bool Scheduler::isEvaluationRequired(const Request& request) {
+	const std::string name = request.getName();
+	if (workStats.count(name) == 0) {
+		return true;
+	}
 
-        if (tokenManager.canFulfillRequest(request.process, request.requestedTokens) && maxRunCount < maxRun) {
-            logStream << "RUN        (r: "
-                      << formatDouble << request.requestedTokens << "/"
-                      << formatDouble << tokenManager.getAccumulatedTokens(request.process)
-                      << ", a: "
-                      << formatDouble << tokenManager.getAvailableTokens()
-                      << " - "
-                      << formatDouble << (request.requestedTokens - tokenManager.getAccumulatedTokens(request.process))
-                      << ", w: "
-                      << formatDouble << request.waitTime << ")";
-            tokenManager.fulfillRequest(request.process, request.requestedTokens);
-            wakeUpProcess(request.sleepPid);
-            requestProvider.markRequestFulfilled(request.process);
-            ++maxRunCount;
-        } else {
-             logStream << "SKIP       (r: "
-                       << formatDouble << request.requestedTokens << "/"
-                       << formatDouble << tokenManager.getAccumulatedTokens(request.process)
-                       << ", a: "
-                       << formatDouble << tokenManager.getAvailableTokens()
-                       << ", w: "
-                       << formatDouble << request.waitTime << ")";
-        }
+	const std::shared_ptr<WorkUnit> unit = workStats[name];
+	if (unit->getEvaluationCount() < config.getRequiredEvaluationCount()) {
+		return true;
+	}
 
-        runPass.emplace_back(process, logStream.str());
-    }
+	std::time_t now = std::time(nullptr);
+	const int reevaluationSeconds = config.getProcessReevaluationInterval();
+	return now - unit->lastEvaluationEpoch > reevaluationSeconds;
+}
 
-    for (const auto& entry : runPass) {
-        std::cout << std::setw(60) << std::right << entry.first << ": " << entry.second << std::endl;
-    }
+bool Scheduler::processRequest(const Request& request)
+{
+	if (isEvaluationRequired(request))
+	{
+		waitForAllProcessesToComplete();
+		coolOff();
+		performProcessLoadDiscovery(request);
+		return false;
+	}
+
+	if (canRunProcess(request)) {
+		runProcess(request);
+		return true;
+	}
+	return true;
+}
+
+bool Scheduler::canRunProcess(const Request& request) {
+	float estimatedTemp = getCpuTempEstimate();
+	float maxTemp = config.getMaxTemp();
+
+	std::shared_ptr<WorkUnit>& workUnit = workStats[request.process];
+	float estimateCpuTempIncrease = workUnit->cpuTempIncreasePerToken * request.requestedTokens;
+	return estimatedTemp + estimateCpuTempIncrease <= maxTemp;
+}
+
+float Scheduler::getCpuTempEstimate()
+{
+	int currentTemp = getCpuTempInt();
+	float estimatedTempIncrease = 0.0f;
+	std::time_t now = std::time(nullptr);
+	for (const auto& entry : runningProcesses)
+	{
+		std::shared_ptr<WorkUnit> workUnit = entry.second;
+		int requestedTokens = workUnit->lastRequestedTokens;
+
+		std::time_t startTime = workUnit->startTime;
+		std::time_t elapsed = now - startTime;
+
+		float estimatedTotalDuration = workUnit->secondsPerToken * requestedTokens;
+		float stillToGo = std::max(0.0f, estimatedTotalDuration - elapsed);
+		float multiplier = stillToGo / estimatedTotalDuration;
+
+		float estimatedTotalCpuTempIncrease = workUnit->cpuTempIncreasePerToken * requestedTokens;
+		float stillCpuToIncrease = multiplier * estimatedTotalCpuTempIncrease;
+		estimatedTempIncrease += stillCpuToIncrease;
+	}
+	return static_cast<float>(currentTemp) + estimatedTempIncrease;
+}
+
+void Scheduler::handleCompletedRequest(const Request& request)
+{
+	runningProcesses.erase(request.getName());
+	requestSource.markRequestFulfilled(request);
+	wakeUpProcess(request);
+}
+
+void Scheduler::runProcess(const Request& request)
+{
+	std::string processName = request.getName();
+	if (runningProcesses.count(processName) != 0) {
+		log("Trying to run process that has already been running: " + processName);
+	}
+
+	auto& workUnit = workStats[processName];
+	runningProcesses[processName] = workUnit;
+	workUnit->startTime = std::time(nullptr);
+	workUnit->lastRequestedTokens = request.requestedTokens;
+	requestSource.markRequestFulfilled(request);
+	wakeUpProcess(request);
+}
+
+bool Scheduler::hasProcessCompleted(const Request& request, const std::vector<Request>& requests)
+{
+	const std::string& targetProcess = request.process;
+	for (const auto& r : requests) {
+		if (r.process == targetProcess) {
+			return true;
+		}
+	}
+	return false;
+}
+
+void Scheduler::performProcessLoadDiscovery(const Request& request)
+{
+	const std::string name = request.getName();
+	if (workStats.count(name) == 0) {
+		log("Found new work unit: " + name + " performing load evaluation");
+		auto unit = std::make_shared<WorkUnit>(name);
+		workStats[name] = unit;
+	}
+	else {
+		log("Evaluating load for work unit: " + name);
+	}
+
+	auto workUnit = workStats[name];
+
+	double initialTemp = getCpuTempInt();
+	std::time_t startEpoch = std::time(nullptr);
+	log(name + " -> initial cpu temp: " + std::to_string(initialTemp));
+
+	runProcess(request);
+	while (true)
+	{
+		sleep(1);
+		const std::vector<Request>& requests = requestSource.getRequests();
+		if (hasProcessCompleted(request, requests))
+		{
+			break;
+		}
+	}
+
+	std::time_t endEpoch = std::time(nullptr);
+	double finalTemp = getCpuTempInt();
+	double cpuIncrease = finalTemp - initialTemp;
+	int duration = endEpoch - startEpoch;
+
+	log(name + " -> completed with cpu temp: " + std::to_string(finalTemp) + ", increased: " + std::to_string(cpuIncrease) + " took: " + std::to_string(duration) + " sec");
+	workUnit->addEvaluation(request.requestedTokens, duration, cpuIncrease);
+	log(name + " updated stats: [secondsPerToken: " + std::to_string(workUnit->secondsPerToken) + ", tempPerToken: " + std::to_string(workUnit->cpuTempIncreasePerToken));
+}
+
+void Scheduler::coolOff()
+{
+	log("Cooling off for 60s");
+	sleep(config.getCoolOffTime());
+}
+
+void Scheduler::waitForAllProcessesToComplete()
+{
+	while (!runningProcesses.empty())
+	{
+		std::vector<std::string> keys = getKeys(runningProcesses);
+		log("Waiting for all processes to complete: " + vectorToString(keys));
+
+		std::vector<Request> copy = requestSource.getRequests();
+		processCompletedRequests(copy);
+		sleepForInterval();
+	}
+}
+
+bool Scheduler::isCpuTempCritical()
+{
+	return getCpuTempInt() >= config.getMaxTemp();
+}
+
+void Scheduler::sleep(const int seconds)
+{
+	std::this_thread::sleep_for(std::chrono::seconds(seconds));
+}
+
+void Scheduler::sleepForInterval()
+{
+	sleep(config.getRunInterval());
 }

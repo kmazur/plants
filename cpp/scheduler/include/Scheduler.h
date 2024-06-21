@@ -2,22 +2,49 @@
 #define SCHEDULER_H
 
 #include <vector>
-#include "ConfigManager.h"  // Assume ConfigManager is defined in this file
-#include "TokenManager.h"
-#include "RequestProvider.h"
+#include <map>
+#include <chrono>
+#include "ConfigManager.h"
+#include "RequestSource.h"
+#include "WorkUnit.h"
+#include <memory>
 
-class Scheduler {
+class Scheduler
+{
 public:
-    Scheduler(ConfigManager& config, RequestProvider& requestProvider);
+	Scheduler(ConfigManager& config, RequestSource& requestSource);
 
-    void run();
+	void run();
+
 
 private:
-    ConfigManager& config;
-    TokenManager tokenManager;
-    RequestProvider& requestProvider;
+	ConfigManager& config;
+	RequestSource& requestSource;
 
-    void runScheduler();
+	std::map<std::string, std::shared_ptr<WorkUnit>> workStats;
+	std::map<std::string, std::shared_ptr<WorkUnit>> runningProcesses;
+
+	void runScheduler();
+	void processCompletedRequests(std::vector<Request>& requests);
+	void processNormalRequests(std::vector<Request>& requests);
+
+	void handleCompletedRequest(const Request& request);
+	void runProcess(const Request& request);
+
+	bool isEvaluationRequired(const Request& request);
+
+	bool processRequest(const Request& request);
+	void performProcessLoadDiscovery(const Request& request);
+	float getCpuTempEstimate();
+	bool canRunProcess(const Request& request);
+
+	void coolOff();
+	void waitForAllProcessesToComplete();
+	bool hasProcessCompleted(const Request& request, const std::vector<Request>& requests);
+
+	bool isCpuTempCritical();
+	void sleep(const int seconds);
+	void sleepForInterval();
 };
 
 #endif // SCHEDULER_H

@@ -4,21 +4,20 @@
 #include <string>
 #include <map>
 
-class ConfigManager {
+class ConfigManager
+{
 public:
-    ConfigManager(const std::string& configFilePath);
+    ConfigManager(const std::string &configFilePath);
 
     void loadConfig();
-    void setConfig(const std::string& key, const std::string& value);
-    std::string getOrSetConfig(const std::string& key, const std::string& defaultValue);
+    void setConfig(const std::string &key, const std::string &value);
+    std::string getOrSetConfig(const std::string &key, const std::string &defaultValue);
 
-    double getMaxTemp() const;
-    double getMinTemp() const;
-    double getInitialTokens() const;
-    double getMaxTokens() const;
-    double getReplenishRate() const;
-    double getReserveThreshold() const;
-    double getRunInterval() const;
+    float getMaxTemp() const;
+    float getRunInterval() const;
+    float getProcessReevaluationInterval() const;
+    float getCoolOffTime() const;
+    float getRequiredEvaluationCount() const;
 
 private:
     std::string configFilePath;
@@ -27,13 +26,11 @@ private:
     void readConfigFile();
     void writeConfigFile();
 
-    int maxTemp;
-    int minTemp;
-    int initialTokens;
-    int maxTokens;
-    int replenishRate;
-    int reserveThreshold;
-    int runInterval;
+    float maxTemp;
+    float runInterval;
+    float reevaluationInterval;
+    float coolOffTime;
+    float requiredEvaluationCount;
 };
 
 #endif // CONFIGMANAGER_H
