@@ -38,8 +38,8 @@ public:
 
 	void addEvaluation(int requestedTokens, int durationSeconds, float cpuTempIncrease) {
 		evaluations.emplace_back(std::make_shared<Evaluation>(requestedTokens, durationSeconds, cpuTempIncrease));
-		calculate();
 		lastEvaluationEpoch = std::time(nullptr);
+		calculate();
 	}
 
 	int getEvaluationCount() const {
@@ -52,8 +52,8 @@ private:
 
 	void calculate() {
 		int totalTokensRequested = 0;
-		int totalCpuIncreased = 0;
-		int totalDuration = 0;
+		float totalCpuIncreased = 0;
+		float totalDuration = 0;
 		for (const auto& ev : evaluations) {
 			totalTokensRequested += ev->requestedTokens;
 			totalCpuIncreased += ev->cpuTempIncrease;
