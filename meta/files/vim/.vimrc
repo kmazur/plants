@@ -22,6 +22,8 @@ set softtabstop=4
 map <C-X> :Bclose<CR>
 map <C-S> :w<CR>
 
+set hlsearch
+
 
 if has("gui_running")
 	:set guioptions-=T
