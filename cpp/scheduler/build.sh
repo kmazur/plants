@@ -16,6 +16,15 @@ SRC_DIR="$SCHEDULER_ROOT_DIR/src"
 
 echo "Compiling executables"
 
+function cleanup_file() {
+  local FILE="$1"
+  local FILENAME="$(echo "$FILE" | rev | cut -d'/' -f 1 | rev)"
+  local SHA_FILE="${FILENAME}.sha256"
+  local O_FILE="${FILENAME}.o"
+  rm "$TMP_DIR/$SHA_FILE" &> /dev/null
+  rm "$TMP_DIR/$O_FILE" &> /dev/null
+}
+
 # Function to check if a file has changed
 function has_changed() {
   local FILE="$1"
@@ -35,6 +44,12 @@ function update_sha() {
   local SHA_FILE="${FILENAME}.sha256"
   sha256sum "$FILE" | cut -d ' ' -f 1 > "$TMP_DIR/$SHA_FILE"
 }
+
+if [[ "$1" == "rebuild" ]]; then
+  for F in "ConfigManager.cpp" "FileRequestSource.cpp" "Scheduler.cpp" "UtilityFunctions.cpp" "main.cpp"; do
+    cleanup_file "$F"
+  done
+fi
 
 # List of source files
 SRC_FILES=("src/ConfigManager.cpp" "src/FileRequestSource.cpp" "src/Scheduler.cpp" "src/UtilityFunctions.cpp" "main.cpp")
@@ -69,3 +84,5 @@ else
   echo "Nothing changed"
 fi
 echo "Build completed. Executable is located at $BIN_DIR/scheduler"
+
+}
