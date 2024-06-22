@@ -17,7 +17,6 @@ while true; do
   OUTPUT_STAGE_DIR="$(ensure_stage_dir "$OUTPUT_STAGE")"
 
   request_cpu_time "${PROCESS}-temp_hum_read" "2"
-  OUTPUT_STAGE_DIR="$(ensure_stage_dir "$OUTPUT_STAGE")"
 
   log "Reading temp & humidity sensor"
   START_DATE_TIME="$(get_current_date_time_compact)"
