@@ -1,5 +1,6 @@
 #include "ConfigManager.h"
 #include "UtilityFunctions.h"
+#include "WorkUnit.h"
 #include <fstream>
 #include <sstream>
 #include <sys/file.h>
@@ -96,3 +97,22 @@ float ConfigManager::getRunInterval() const { return runInterval; }
 float ConfigManager::getProcessReevaluationInterval() const { return reevaluationInterval; }
 float ConfigManager::getCoolOffTime() const { return coolOffTime; }
 float ConfigManager::getRequiredEvaluationCount() const { return requiredEvaluationCount; }
+
+void ConfigManager::saveWorkUnit(const WorkUnit& workUnit) {
+	setConfig(workUnit.name, workUnit.serialize());
+}
+
+WorkUnit ConfigManager::loadWorkUnit(const std::string& name) {
+	std::string serializedData = getOrSetConfig(name, "");
+	return WorkUnit::deserialize(serializedData);
+}
+
+std::vector<WorkUnit> ConfigManager::loadAllWorkUnits() {
+	std::vector<WorkUnit> workUnits;
+	for (const auto& pair : configValues) {
+		if (pair.first.find("workunit") != std::string::npos) {
+			workUnits.push_back(WorkUnit::deserialize(pair.second));
+		}
+	}
+	return workUnits;
+}

@@ -19,10 +19,11 @@ std::ostream& formatDouble(std::ostream& os)
 	return os << std::fixed << std::setw(8) << std::setprecision(4);
 }
 
-Scheduler::Scheduler(ConfigManager& config, RequestSource& requestSource)
-	: config(config), requestSource(requestSource)
+Scheduler::Scheduler(ConfigManager& config, ConfigManager& workUnitStatsConfig, RequestSource& requestSource)
+	: config(config), workUnitStatsConfig(workUnitStatsConfig), requestSource(requestSource)
 {
 	ensureFileExists(ORCHESTRATOR_REQUESTS_FILE);
+	loadWorkUnits();
 }
 
 void Scheduler::run()
@@ -37,8 +38,16 @@ void Scheduler::run()
 		}
 		else {
 			log("Temperature critical");
+			sleep(2 * config.getRunInterval());
 		}
 		sleepForInterval();
+	}
+}
+
+void Scheduler::loadWorkUnits() {
+	std::vector<WorkUnit> workUnits = workUnitStatsConfig.loadAllWorkUnits();
+	for (const auto& workUnit : workUnits) {
+		workStats[workUnit.name] = std::make_shared<WorkUnit>(workUnit);
 	}
 }
 
@@ -217,6 +226,8 @@ void Scheduler::performProcessLoadDiscovery(const Request& request)
 	log(name + " -> completed with cpu temp: " + std::to_string(finalTemp) + ", increased: " + std::to_string(cpuIncrease) + " took: " + std::to_string(duration) + " sec");
 	workUnit->addEvaluation(request.requestedTokens, duration, cpuIncrease);
 	log(name + " updated stats: [secondsPerToken: " + std::to_string(workUnit->secondsPerToken) + ", tempPerToken: " + std::to_string(workUnit->cpuTempIncreasePerToken));
+
+	workUnitStatsConfig.saveWorkUnit(*workUnit);
 }
 
 void Scheduler::coolOff()

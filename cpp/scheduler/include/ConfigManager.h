@@ -3,6 +3,8 @@
 
 #include <string>
 #include <map>
+#include <iostream>
+#include "WorkUnit.h"
 
 class ConfigManager
 {
@@ -18,6 +20,10 @@ public:
     float getProcessReevaluationInterval() const;
     float getCoolOffTime() const;
     float getRequiredEvaluationCount() const;
+
+    void saveWorkUnit(const WorkUnit& workUnit);
+    WorkUnit loadWorkUnit(const std::string& name);
+    std::vector<WorkUnit> loadAllWorkUnits();
 
 private:
     std::string configFilePath;

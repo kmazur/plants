@@ -12,18 +12,20 @@
 class Scheduler
 {
 public:
-	Scheduler(ConfigManager& config, RequestSource& requestSource);
+	Scheduler(ConfigManager& config, ConfigManager& workUnitStatsConfig, RequestSource& requestSource);
 
 	void run();
 
 
 private:
 	ConfigManager& config;
+	ConfigManager& workUnitStatsConfig;
 	RequestSource& requestSource;
 
 	std::map<std::string, std::shared_ptr<WorkUnit>> workStats;
 	std::map<std::string, std::shared_ptr<WorkUnit>> runningProcesses;
 
+	void loadWorkUnits();
 	void runScheduler();
 	void processCompletedRequests(std::vector<Request>& requests);
 	void processNormalRequests(std::vector<Request>& requests);
