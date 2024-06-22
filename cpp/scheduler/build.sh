@@ -84,5 +84,3 @@ else
   echo "Nothing changed"
 fi
 echo "Build completed. Executable is located at $BIN_DIR/scheduler"
-
-}
