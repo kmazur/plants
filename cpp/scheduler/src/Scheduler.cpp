@@ -88,24 +88,28 @@ void Scheduler::processCompletedRequests(std::vector<Request>& requests)
 bool Scheduler::isEvaluationRequired(const Request& request) {
 	const std::string name = request.getName();
 	if (workStats.count(name) == 0) {
+		log("Evaluation for process required (0): " + request.process);
 		return true;
 	}
 
 	const std::shared_ptr<WorkUnit> unit = workStats[name];
 	if (unit->getEvaluationCount() < config.getRequiredEvaluationCount()) {
+		log("Evaluation for process required (" + std::to_string(unit->getEvaluationCount()) + "): " + request.process);
 		return true;
 	}
 
 	std::time_t now = std::time(nullptr);
 	const int reevaluationSeconds = config.getProcessReevaluationInterval();
-	return now - unit->lastEvaluationEpoch > reevaluationSeconds;
+	bool required = now - unit->lastEvaluationEpoch > reevaluationSeconds;
+	if (required) {
+		log("Evaluation for process required (timeout " + std::to_string(now - unit->lastEvaluationEpoch) + "s): " + request.process);
+	}
 }
 
 bool Scheduler::processRequest(const Request& request)
 {
 	if (isEvaluationRequired(request))
 	{
-		log("Evaluation for process required: " + request.process);
 		waitForAllProcessesToComplete();
 		coolOff();
 		performProcessLoadDiscovery(request);
@@ -165,6 +169,7 @@ void Scheduler::runProcess(const Request& request)
 	if (runningProcesses.count(processName) != 0) {
 		log("Trying to run process that has already been running: " + processName);
 	}
+	log("Running process: " + processName);
 
 	auto& workUnit = workStats[processName];
 	runningProcesses[processName] = workUnit;
@@ -232,8 +237,15 @@ void Scheduler::performProcessLoadDiscovery(const Request& request)
 
 void Scheduler::coolOff()
 {
-	log("Cooling off for " + std::to_string(config.getCoolOffTime()));
-	sleep(config.getCoolOffTime());
+	int temp = getCpuTempInt();
+	float minTemp = config.getMinTemp();
+	if (temp <= config.getMinTemp()) {
+		log("No need to cool off - currentTemp(" + std::to_string(temp) + ") < " + std::to_string(minTemp));
+	}
+	else {
+		log("Cooling off for " + std::to_string(config.getCoolOffTime()));
+		sleep(config.getCoolOffTime());
+	}
 }
 
 void Scheduler::waitForAllProcessesToComplete()

@@ -134,8 +134,7 @@ private:
     }
 
     void detectMotion() {
-        cv::Mat prevFrame, currFrame, frameDiff;
-        cv::Mat prevFrameGray;
+        cv::Mat currFrame, frameDiff;
         double fps = cap.get(cv::CAP_PROP_FPS);
 
         videoFps = fps;
@@ -209,7 +208,7 @@ private:
 
             cv::cvtColor(currFrame(boundingRect), currRoi, cv::COLOR_BGR2GRAY);
 
-            if (!prevFrame.empty()) {
+            if (!prevRoi.empty()) {
                 cv::absdiff(prevRoi, currRoi, frameDiff);
                 frameDiff.copyTo(maskedDiff, mask);
                 double motionScore = cv::sum(maskedDiff)[0] / cv::countNonZero(mask);
@@ -218,7 +217,6 @@ private:
                 motionDataList.push_back({frameTimeSecond, frameIndex, motionScore});
             }
 
-            std::swap(prevFrame, currFrame);
             std::swap(prevRoi, currRoi);
             frameIndex += frameIndexStep;
 

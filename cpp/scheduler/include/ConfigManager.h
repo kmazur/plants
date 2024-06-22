@@ -15,6 +15,7 @@ public:
     void setConfig(const std::string &key, const std::string &value);
     std::string getOrSetConfig(const std::string &key, const std::string &defaultValue);
 
+    float getMinTemp() const;
     float getMaxTemp() const;
     float getRunInterval() const;
     float getProcessReevaluationInterval() const;
@@ -32,6 +33,7 @@ private:
     void readConfigFile();
     void writeConfigFile();
 
+    float minTemp;
     float maxTemp;
     float runInterval;
     float reevaluationInterval;

@@ -16,11 +16,12 @@ ConfigManager::ConfigManager(const std::string& configFilePath)
 void ConfigManager::loadConfig()
 {
 	readConfigFile();
-	maxTemp = std::stof(getOrSetConfig("orchestrator.max_temperature", "79"));
+	minTemp = std::stof(getOrSetConfig("orchestrator.min_temperature", "60"));
+	maxTemp = std::stof(getOrSetConfig("orchestrator.max_temperature", "80"));
 	runInterval = std::stof(getOrSetConfig("orchestrator.run_interval", "5"));
-	reevaluationInterval = std::stof(getOrSetConfig("orchestrator.reevaluation_interval", "7200"));
+	reevaluationInterval = std::stof(getOrSetConfig("orchestrator.reevaluation_interval", "1800"));
 	coolOffTime = std::stof(getOrSetConfig("orchestrator.cool_off_seconds", "60"));
-	requiredEvaluationCount = std::stof(getOrSetConfig("orchestrator.required_evaluation_count", "4"));
+	requiredEvaluationCount = std::stof(getOrSetConfig("orchestrator.required_evaluation_count", "3"));
 }
 
 std::string ConfigManager::getOrSetConfig(const std::string& key, const std::string& defaultValue)
@@ -92,6 +93,7 @@ void ConfigManager::writeConfigFile()
 	close(fd);
 }
 
+float ConfigManager::getMinTemp() const { return minTemp; }
 float ConfigManager::getMaxTemp() const { return maxTemp; }
 float ConfigManager::getRunInterval() const { return runInterval; }
 float ConfigManager::getProcessReevaluationInterval() const { return reevaluationInterval; }
