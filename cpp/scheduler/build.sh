@@ -55,7 +55,7 @@ fi
 SRC_FILES=("src/ConfigManager.cpp" "src/FileRequestSource.cpp" "src/Scheduler.cpp" "src/UtilityFunctions.cpp" "main.cpp")
 OBJ_PATHS=()
 CXX=g++
-CXXFLAGS="-std=c++23 -w -I$INCLUDE_DIR -Ofast -march=native -flto -finline-functions -funroll-loops -ffast-math"
+CXXFLAGS="-std=c++20 -w -I$INCLUDE_DIR -Ofast -march=native -flto -finline-functions -funroll-loops -ffast-math"
 
 ANY_CHANGED=false
 # Check each source file for changes and compile if necessary
