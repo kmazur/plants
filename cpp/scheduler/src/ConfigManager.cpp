@@ -111,7 +111,9 @@ std::vector<WorkUnit> ConfigManager::loadAllWorkUnits() {
 	std::vector<WorkUnit> workUnits;
 	for (const auto& pair : configValues) {
 		if (pair.first.find("workunit_") == 0) {
-			workUnits.push_back(WorkUnit::deserialize(pair.second));
+			auto workUnit = WorkUnit::deserialize(pair.second);
+			log("Loaded saved work unit " + workUnit.name + ", with stats: [secondsPerToken: " + std::to_string(workUnit.secondsPerToken) + ", tempPerToken: " + std::to_string(workUnit.cpuTempIncreasePerToken) + "]");
+			workUnits.push_back(workUnit);
 		}
 	}
 	return workUnits;
