@@ -200,7 +200,18 @@ private:
         ensureSizeAndType(frameDiff, boundingRect.size(), CV_8UC1);
         ensureSizeAndType(maskedDiff, boundingRect.size(), CV_8UC1);
 
-        while (true) {
+       // Read the first frame into currFrame
+        if (!cap.read(currFrame)) {
+            std::cerr << "Error reading the first frame." << std::endl;
+            return;
+        }
+        cv::cvtColor(currFrame(boundingRect), prevRoi, cv::COLOR_BGR2GRAY);
+
+        // skip on the first iteration to the next frame immediately
+        frameIndex += frameIndexStep;
+        frameTimeSecond += stepTimeIncrement;
+
+        while (frameIndex < frameCount) {
             cap.set(cv::CAP_PROP_POS_FRAMES, frameIndex);
             if (!cap.read(currFrame)) {
                 break;
@@ -208,18 +219,15 @@ private:
 
             cv::cvtColor(currFrame(boundingRect), currRoi, cv::COLOR_BGR2GRAY);
 
-            if (!prevRoi.empty()) {
-                cv::absdiff(prevRoi, currRoi, frameDiff);
-                frameDiff.copyTo(maskedDiff, mask);
-                float motionScore = static_cast<float>(cv::sum(maskedDiff)[0]) / cv::countNonZero(mask);
-                std::cout << "Frame: " << frameIndex << " (" << (100 * frameIndex / frameCount) << "%), frame score: " << motionScore << std::endl;
+            cv::absdiff(prevRoi, currRoi, frameDiff);
+            frameDiff.copyTo(maskedDiff, mask);
+            float motionScore = static_cast<float>(cv::sum(maskedDiff)[0]) / cv::countNonZero(mask);
+            std::cout << "Frame: " << frameIndex << " (" << (100 * frameIndex / frameCount) << "%), frame score: " << motionScore << "\n";
 
-                motionDataList.push_back({frameTimeSecond, frameIndex, motionScore});
-            }
+            motionDataList.push_back({frameTimeSecond, frameIndex, motionScore});
 
             std::swap(prevRoi, currRoi);
             frameIndex += frameIndexStep;
-
             frameTimeSecond += stepTimeIncrement;
         }
 
