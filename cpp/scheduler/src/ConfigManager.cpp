@@ -10,6 +10,7 @@
 ConfigManager::ConfigManager(const std::string& configFilePath)
 	: configFilePath(configFilePath)
 {
+	ensureFileExists(configFilePath);
 	loadConfig();
 }
 
