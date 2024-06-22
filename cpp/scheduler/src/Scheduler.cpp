@@ -211,10 +211,17 @@ void Scheduler::performProcessLoadDiscovery(const Request& request)
 	log(name + " -> initial cpu temp: " + std::to_string(initialTemp));
 
 	runProcess(request);
+	bool prematureFinish = false;
 	while (true)
 	{
 		sleep(1);
 		const std::vector<Request>& requests = requestSource.getRequests();
+		if (isCpuTempCritical()) {
+			// reached fast the cpu maximum temperature before job was finished!
+			prematureFinish = true;
+			break;
+		}
+
 		if (hasProcessCompleted(request, requests))
 		{
 			break;
@@ -230,9 +237,17 @@ void Scheduler::performProcessLoadDiscovery(const Request& request)
 	float cpuIncrease = std::max(0.0f, finalTemp - initialTemp);
 	int duration = endEpoch - startEpoch;
 
-	log(name + " -> completed with cpu temp: " + std::to_string(finalTemp) + ", increased: " + std::to_string(cpuIncrease) + " took: " + std::to_string(duration) + " sec");
-	workUnit->addEvaluation(request.requestedTokens, duration, cpuIncrease);
-	log(name + " updated stats: [secondsPerToken: " + std::to_string(workUnit->secondsPerToken) + ", tempPerToken: " + std::to_string(workUnit->cpuTempIncreasePerToken));
+	if (prematureFinish) {
+		log(name + " -> reached critical cpu temp during evaluation: " + std::to_string(finalTemp) + ", increased: " + std::to_string(cpuIncrease) + " elapsed: " + std::to_string(duration));
+		int fakeEstimateDuration = 5 * duration;
+		workUnit->addEvaluation(request.requestedTokens, fakeEstimateDuration, cpuIncrease);
+		log(name + " updated stats: [secondsPerToken: " + std::to_string(workUnit->secondsPerToken) + ", tempPerToken: " + std::to_string(workUnit->cpuTempIncreasePerToken));
+	}
+	else {
+		log(name + " -> completed with cpu temp: " + std::to_string(finalTemp) + ", increased: " + std::to_string(cpuIncrease) + " took: " + std::to_string(duration) + " sec");
+		workUnit->addEvaluation(request.requestedTokens, duration, cpuIncrease);
+		log(name + " updated stats: [secondsPerToken: " + std::to_string(workUnit->secondsPerToken) + ", tempPerToken: " + std::to_string(workUnit->cpuTempIncreasePerToken));
+	}
 
 	workUnitStatsConfig.saveWorkUnit(*workUnit);
 }
