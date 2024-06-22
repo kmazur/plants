@@ -2,7 +2,7 @@
 
 #include <string>
 #include <ctime>
-#include <vector>
+#include <deque>
 #include <memory>
 #include <numeric>
 #include <algorithm>
@@ -38,6 +38,9 @@ public:
 	float secondsPerToken;
 
 	void addEvaluation(int requestedTokens, int durationSeconds, float cpuTempIncrease) {
+		if (evaluations.size() == 10) {
+			evaluations.pop_front();
+		}
 		evaluations.emplace_back(std::make_shared<Evaluation>(requestedTokens, durationSeconds, cpuTempIncrease));
 		lastEvaluationEpoch = std::time(nullptr);
 		calculate();
@@ -110,7 +113,7 @@ public:
 
 private:
 
-	std::vector<std::shared_ptr<Evaluation>> evaluations;
+	std::deque<std::shared_ptr<Evaluation>> evaluations;
 
 	void calculate() {
 		int totalTokensRequested = 0;
