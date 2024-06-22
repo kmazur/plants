@@ -99,7 +99,7 @@ float ConfigManager::getCoolOffTime() const { return coolOffTime; }
 float ConfigManager::getRequiredEvaluationCount() const { return requiredEvaluationCount; }
 
 void ConfigManager::saveWorkUnit(const WorkUnit& workUnit) {
-	setConfig(workUnit.name, workUnit.serialize());
+	setConfig("workunit_" + workUnit.name, workUnit.serialize());
 }
 
 WorkUnit ConfigManager::loadWorkUnit(const std::string& name) {
@@ -110,7 +110,7 @@ WorkUnit ConfigManager::loadWorkUnit(const std::string& name) {
 std::vector<WorkUnit> ConfigManager::loadAllWorkUnits() {
 	std::vector<WorkUnit> workUnits;
 	for (const auto& pair : configValues) {
-		if (pair.first.find("workunit") != std::string::npos) {
+		if (pair.first.find("workunit_") == 0) {
 			workUnits.push_back(WorkUnit::deserialize(pair.second));
 		}
 	}
