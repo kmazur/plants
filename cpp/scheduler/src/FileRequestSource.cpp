@@ -60,6 +60,11 @@ void FileRequestSource::markRequestFulfilled(const Request& request)
 	removeRequestLine(request.process);
 }
 
+void FileRequestSource::markRequestFulfilled(const std::string& processName)
+{
+	removeRequestLine(processName);
+}
+
 void FileRequestSource::removeRequestLine(const std::string& process)
 {
 	int fd = open(filePath.c_str(), O_RDWR);

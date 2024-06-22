@@ -22,6 +22,7 @@ public:
 	WorkUnit(const std::string& name) :
 		name(name),
 		lastEvaluationEpoch(0),
+		lastGroupId(0),
 		cpuTempIncreasePerToken(0.0f),
 		secondsPerToken(1.0f),
 		startTime(0),
@@ -30,6 +31,7 @@ public:
 
 	std::string name;
 	time_t lastEvaluationEpoch;
+	pid_t lastGroupId;
 
 	time_t startTime;
 	int lastRequestedTokens;
@@ -37,12 +39,13 @@ public:
 	float cpuTempIncreasePerToken;
 	float secondsPerToken;
 
-	void addEvaluation(int requestedTokens, int durationSeconds, float cpuTempIncrease) {
+	void addEvaluation(int requestedTokens, int durationSeconds, float cpuTempIncrease, pid_t pgid) {
 		if (evaluations.size() == 10) {
 			evaluations.pop_front();
 		}
 		evaluations.emplace_back(std::make_shared<Evaluation>(requestedTokens, durationSeconds, cpuTempIncrease));
 		lastEvaluationEpoch = std::time(nullptr);
+		lastGroupId = pgid;
 		calculate();
 	}
 
@@ -55,6 +58,7 @@ public:
 		std::ostringstream oss;
 		oss << name << ";"
 			<< lastEvaluationEpoch << ";"
+			<< lastGroupId << ";"
 			<< startTime << ";"
 			<< lastRequestedTokens << ";"
 			<< cpuTempIncreasePerToken << ";"
@@ -69,6 +73,20 @@ public:
 		return oss.str();
 	}
 
+	static int getCharCount(const std::string& data, const char c) {
+		std::istringstream iss(data);
+
+		char ch;
+		int count = 0;
+
+		while (iss.get(ch)) {
+			if (ch == c) {
+				++count;
+			}
+		}
+		return c;
+	}
+
 
 	static WorkUnit deserialize(const std::string& data) {
 		std::istringstream iss(data);
@@ -79,6 +97,11 @@ public:
 
 		std::getline(iss, token, ';');
 		wu.lastEvaluationEpoch = std::stol(token);
+
+		if (getCharCount(data, ';') == 7) {
+			std::getline(iss, token, ';');
+			wu.lastGroupId = std::stoi(token);
+		}
 
 		std::getline(iss, token, ';');
 		wu.startTime = std::stol(token);

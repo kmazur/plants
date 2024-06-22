@@ -15,7 +15,9 @@ function update_measurement_raw() {
   curl -XPOST "$INFLUX_URL/api/v2/write?org=$INFLUX_ORG&bucket=$INFLUX_BUCKET&precision=s" \
     --header "Authorization: Token $INFLUX_TOKEN" \
     --header "Content-Type: text/plain" \
-    --data-binary "@$TMP_FILE"
+    --data-binary "@$TMP_FILE" \
+    --connect-timeout 10 \
+    --max-time 30
 
   local EXIT_CODE="$?"
 

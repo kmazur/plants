@@ -10,7 +10,8 @@
 
 void log(const std::string &message);
 void wakeUpProcess(const Request& request);
-void wakeUpProcess(int pid);
+void wakeUpProcess(const int pid);
+void killGroup(const int pgid);
 void ensureFileExists(const std::string &filePath);
 int getCpuTempInt();
 float getCpuTempFloat();

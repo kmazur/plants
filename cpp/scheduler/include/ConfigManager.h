@@ -21,6 +21,7 @@ public:
     float getProcessReevaluationInterval() const;
     float getCoolOffTime() const;
     float getRequiredEvaluationCount() const;
+    float getProcessRunTimeout() const;
 
     void saveWorkUnit(const WorkUnit& workUnit);
     WorkUnit loadWorkUnit(const std::string& name);
@@ -39,6 +40,7 @@ private:
     float reevaluationInterval;
     float coolOffTime;
     float requiredEvaluationCount;
+    float processRunTimeout;
 };
 
 #endif // CONFIGMANAGER_H

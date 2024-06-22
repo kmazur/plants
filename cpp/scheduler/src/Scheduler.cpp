@@ -192,9 +192,50 @@ bool Scheduler::hasProcessCompleted(const Request& request, const std::vector<Re
 	return false;
 }
 
+
+bool Scheduler::waitForProcessToComplete(const Request& request, const int waitInterval, const bool failFast) {
+	std::time_t startTime = std::time(nullptr);
+	const std::string name = request.getName();
+	while (true)
+	{
+		sleep(waitInterval);
+		const std::vector<Request>& requests = requestSource.getRequests();
+		if (isCpuTempCritical() && failFast) {
+			// reached fast the cpu maximum temperature before job was finished!
+			return true;
+		}
+
+		std::time_t elapsed = std::time(nullptr) - startTime;
+		if (hasProcessCompleted(request, requests))
+		{
+			break;
+		}
+		else if (elapsed >= config.getProcessRunTimeout()) {
+			log("Timed out waiting for " + name + " to complete -> killing");
+			if (runningProcesses.count(name) == 0) {
+				log("Can't timeout wait because " + name + " is not in the running processes set");
+				continue;
+			}
+			auto& w = runningProcesses[name];
+			killGroup(w->lastGroupId);
+			requestSource.markRequestFulfilled(w->name);
+			requestSource.markRequestFulfilled(w->name + "-completed");
+			return false;
+		}
+		else {
+			std::vector<std::string> keys = getKeys(runningProcesses);
+			log(name + " has not finished yet, still running: " + vectorToString(keys));
+		}
+	}
+	return false;
+}
+
+
 void Scheduler::performProcessLoadDiscovery(const Request& request)
 {
 	const std::string name = request.getName();
+	pid_t groupId = getpgid(request.sleepPid);
+
 	if (workStats.count(name) == 0) {
 		log("Found new work unit: " + name + " performing load evaluation");
 		auto unit = std::make_shared<WorkUnit>(name);
@@ -211,26 +252,7 @@ void Scheduler::performProcessLoadDiscovery(const Request& request)
 	log(name + " -> initial cpu temp: " + std::to_string(initialTemp));
 
 	runProcess(request);
-	bool prematureFinish = false;
-	while (true)
-	{
-		sleep(1);
-		const std::vector<Request>& requests = requestSource.getRequests();
-		if (isCpuTempCritical()) {
-			// reached fast the cpu maximum temperature before job was finished!
-			prematureFinish = true;
-			break;
-		}
-
-		if (hasProcessCompleted(request, requests))
-		{
-			break;
-		}
-		else {
-			std::vector<std::string> keys = getKeys(runningProcesses);
-			log(name + " has not finished yet, still running: " + vectorToString(keys));
-		}
-	}
+	bool prematureFinish = waitForProcessToComplete(request, 1, true);
 
 	std::time_t endEpoch = std::time(nullptr);
 	float finalTemp = getCpuTempFloat();
@@ -239,13 +261,15 @@ void Scheduler::performProcessLoadDiscovery(const Request& request)
 
 	if (prematureFinish) {
 		log(name + " -> reached critical cpu temp during evaluation: " + std::to_string(finalTemp) + ", increased: " + std::to_string(cpuIncrease) + " elapsed: " + std::to_string(duration));
-		int fakeEstimateDuration = 5 * duration;
-		workUnit->addEvaluation(request.requestedTokens, fakeEstimateDuration, cpuIncrease);
+		waitForProcessToComplete(request, config.getRunInterval(), false);
+		endEpoch = std::time(nullptr);
+		duration = endEpoch - startEpoch;
+		workUnit->addEvaluation(request.requestedTokens, duration, cpuIncrease, groupId);
 		log(name + " updated stats: [secondsPerToken: " + std::to_string(workUnit->secondsPerToken) + ", tempPerToken: " + std::to_string(workUnit->cpuTempIncreasePerToken));
 	}
 	else {
 		log(name + " -> completed with cpu temp: " + std::to_string(finalTemp) + ", increased: " + std::to_string(cpuIncrease) + " took: " + std::to_string(duration) + " sec");
-		workUnit->addEvaluation(request.requestedTokens, duration, cpuIncrease);
+		workUnit->addEvaluation(request.requestedTokens, duration, cpuIncrease, groupId);
 		log(name + " updated stats: [secondsPerToken: " + std::to_string(workUnit->secondsPerToken) + ", tempPerToken: " + std::to_string(workUnit->cpuTempIncreasePerToken));
 	}
 
@@ -268,11 +292,23 @@ void Scheduler::coolOff()
 void Scheduler::waitForAllProcessesToComplete()
 {
 	log("Wait for all processes to complete");
+	std::time_t startTime = std::time(nullptr);
 	while (!runningProcesses.empty())
 	{
 		std::vector<std::string> keys = getKeys(runningProcesses);
-		log("Waiting for all processes to complete: " + vectorToString(keys));
 
+		std::time_t elapsed = std::time(nullptr) - startTime;
+		if (elapsed >= config.getProcessRunTimeout()) {
+			log("Timed out waiting for all processes to complete: " + vectorToString(keys));
+			for (auto& w : runningProcesses) {
+				killGroup(w.second->lastGroupId);
+				requestSource.markRequestFulfilled(w.second->name);
+				requestSource.markRequestFulfilled(w.second->name + "-completed");
+			}
+			break;
+		}
+
+		log("Waiting for all processes to complete: " + vectorToString(keys));
 		std::vector<Request> copy = requestSource.getRequests();
 		processCompletedRequests(copy);
 		sleepForInterval();

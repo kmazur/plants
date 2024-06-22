@@ -23,6 +23,7 @@ void ConfigManager::loadConfig()
 	reevaluationInterval = std::stof(getOrSetConfig("orchestrator.reevaluation_interval", "1800"));
 	coolOffTime = std::stof(getOrSetConfig("orchestrator.cool_off_seconds", "60"));
 	requiredEvaluationCount = std::stof(getOrSetConfig("orchestrator.required_evaluation_count", "3"));
+	processRunTimeout = std::stof(getOrSetConfig("orchestrator.process_run_timeout", "1800"));
 }
 
 std::string ConfigManager::getOrSetConfig(const std::string& key, const std::string& defaultValue)
@@ -100,6 +101,7 @@ float ConfigManager::getRunInterval() const { return runInterval; }
 float ConfigManager::getProcessReevaluationInterval() const { return reevaluationInterval; }
 float ConfigManager::getCoolOffTime() const { return coolOffTime; }
 float ConfigManager::getRequiredEvaluationCount() const { return requiredEvaluationCount; }
+float ConfigManager::getProcessRunTimeout() const { return processRunTimeout; }
 
 void ConfigManager::saveWorkUnit(const WorkUnit& workUnit) {
 	setConfig("workunit_" + workUnit.name, workUnit.serialize());

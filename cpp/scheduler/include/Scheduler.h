@@ -41,6 +41,7 @@ private:
 	bool canRunProcess(const Request& request);
 
 	void coolOff();
+	bool waitForProcessToComplete(const Request& request, const int waitInterval, const bool failFast);
 	void waitForAllProcessesToComplete();
 	bool hasProcessCompleted(const Request& request, const std::vector<Request>& requests);
 

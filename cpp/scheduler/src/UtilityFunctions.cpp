@@ -34,9 +34,14 @@ void wakeUpProcess(const Request& request)
     kill(request.sleepPid, SIGUSR1);
 }
 
-void wakeUpProcess(int pid)
+void wakeUpProcess(const int pid)
 {
     kill(pid, SIGUSR1);
+}
+
+void killGroup(const int pgid)
+{
+    kill(-pgid, SIGKILL);
 }
 
 void ensureFileExists(const std::string &filePath)
