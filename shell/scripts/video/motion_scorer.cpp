@@ -174,14 +174,14 @@ private:
         cv::Mat currRoi, prevRoi, maskedDiff;
         ensureSizeAndType(currRoi, boundingRect.size(), CV_8UC1);
 
-        double frameTimeSecond = 0.0;
+        float frameTimeSecond = 0.0;
         int frameIndex = 0;
         int frameIndexStep = config.getFrameStep();
 
-        double frameTimeIncrement = 1.0 / fps;
-        double stepTimeIncrement = frameIndexStep * frameTimeIncrement;
+        float frameTimeIncrement = 1.0 / fps;
+        float stepTimeIncrement = frameIndexStep * frameTimeIncrement;
 
-        double frameCount = cap.get(cv::CAP_PROP_FRAME_COUNT);
+        float frameCount = cap.get(cv::CAP_PROP_FRAME_COUNT);
 
         std::cout << "Diagnostics: " <<
         "\nFPS: " << fps <<
@@ -211,7 +211,7 @@ private:
             if (!prevRoi.empty()) {
                 cv::absdiff(prevRoi, currRoi, frameDiff);
                 frameDiff.copyTo(maskedDiff, mask);
-                double motionScore = cv::sum(maskedDiff)[0] / cv::countNonZero(mask);
+                float motionScore = static_cast<float>(cv::sum(maskedDiff)[0]) / cv::countNonZero(mask);
                 std::cout << "Frame: " << frameIndex << " (" << (100 * frameIndex / frameCount) << "%), frame score: " << motionScore << std::endl;
 
                 motionDataList.push_back({frameTimeSecond, frameIndex, motionScore});
