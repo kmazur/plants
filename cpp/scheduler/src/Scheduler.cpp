@@ -88,13 +88,13 @@ void Scheduler::processCompletedRequests(std::vector<Request>& requests)
 bool Scheduler::isEvaluationRequired(const Request& request) {
 	const std::string name = request.getName();
 	if (workStats.count(name) == 0) {
-		log("Evaluation for process required (0): " + request.process);
+		log("Evaluation for process required (0): " + name);
 		return true;
 	}
 
 	const std::shared_ptr<WorkUnit> unit = workStats[name];
 	if (unit->getEvaluationCount() < config.getRequiredEvaluationCount()) {
-		log("Evaluation for process required (" + std::to_string(unit->getEvaluationCount()) + "): " + request.process);
+		log("Evaluation for process required (" + std::to_string(unit->getEvaluationCount()) + "): " + name);
 		return true;
 	}
 
@@ -102,8 +102,10 @@ bool Scheduler::isEvaluationRequired(const Request& request) {
 	const int reevaluationSeconds = config.getProcessReevaluationInterval();
 	bool required = now - unit->lastEvaluationEpoch > reevaluationSeconds;
 	if (required) {
-		log("Evaluation for process required (timeout " + std::to_string(now - unit->lastEvaluationEpoch) + "s): " + request.process);
+		log("Evaluation for process required (timeout " + std::to_string(now - unit->lastEvaluationEpoch) + "s): " + name);
+		return true;
 	}
+	return false;
 }
 
 bool Scheduler::processRequest(const Request& request)
