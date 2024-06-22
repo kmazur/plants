@@ -173,6 +173,9 @@ private:
 
         cv::Mat currRoi, prevRoi, maskedDiff;
         ensureSizeAndType(currRoi, boundingRect.size(), CV_8UC1);
+        ensureSizeAndType(prevRoi, boundingRect.size(), CV_8UC1);
+        ensureSizeAndType(frameDiff, boundingRect.size(), CV_8UC1);
+        ensureSizeAndType(maskedDiff, boundingRect.size(), CV_8UC1);
 
         float frameTimeSecond = 0.0;
         int frameIndex = 0;
@@ -195,24 +198,24 @@ private:
 
         std::vector<MotionData> motionDataList;
 
-        ensureSizeAndType(currRoi, boundingRect.size(), CV_8UC1);
-        ensureSizeAndType(prevRoi, boundingRect.size(), CV_8UC1);
-        ensureSizeAndType(frameDiff, boundingRect.size(), CV_8UC1);
-        ensureSizeAndType(maskedDiff, boundingRect.size(), CV_8UC1);
-
-       // Read the first frame into currFrame
         if (!cap.read(currFrame)) {
             std::cerr << "Error reading the first frame." << std::endl;
             return;
         }
         cv::cvtColor(currFrame(boundingRect), prevRoi, cv::COLOR_BGR2GRAY);
 
-        // skip on the first iteration to the next frame immediately
+        // Skip to the first frame to be processed
         frameIndex += frameIndexStep;
         frameTimeSecond += stepTimeIncrement;
 
         while (frameIndex < frameCount) {
-            cap.set(cv::CAP_PROP_POS_FRAMES, frameIndex);
+            // Skip frames efficiently
+            for (int i = 1; i < frameIndexStep; ++i) {
+                if (!cap.grab()) {
+                    break;
+                }
+            }
+
             if (!cap.read(currFrame)) {
                 break;
             }
