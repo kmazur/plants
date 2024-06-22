@@ -3,9 +3,10 @@
 #*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "detect-audio-events" 20 300 &>> /home/user/cron.log
 */5 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "process-influx-queue" 10 500 &>> /home/user/cron.log
 #*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "report-audio" 20 300 &>> /home/user/cron.log
-*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "report-cpu-temp" 20 120 &>> /home/user/cron.log
 #*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "report-external-temp-humidity" 30 300 &>> /home/user/cron.log
 */10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "temp-fail-safe" 20 60 &>> /home/user/cron.log
+*/10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-1-get_cpu_temp" &>> /home/user/cron.log
+*/10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-2-upload_cputemp" &>> /home/user/cron.log
 */10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-1-record_video" &>> /home/user/cron.log
 */10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-1-get_temp_humidity_sensor" &>> /home/user/cron.log
 */10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-2-upload_light_level" &>> /home/user/cron.log
@@ -23,5 +24,4 @@
 */10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-6-video_segment_annotate" &>> /home/user/cron.log
 */10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-7-video_segment_overlay" &>> /home/user/cron.log
 */10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-8-upload_video_segment_overlay" &>> /home/user/cron.log
-#*/10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "run-orchestrator" &>> /home/user/cron.log
 */10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "run-scheduler" &>> /home/user/cron.log
