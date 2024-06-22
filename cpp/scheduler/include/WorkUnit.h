@@ -122,7 +122,7 @@ private:
 		for (const auto& ev : evaluations) {
 			totalTokensRequested += ev->requestedTokens;
 			totalCpuIncreased += ev->cpuTempIncrease;
-			totalDuration += ev->cpuTempIncrease;
+			totalDuration += ev->durationSeconds;
 		}
 		this->cpuTempIncreasePerToken = static_cast<float>(totalCpuIncreased) / totalTokensRequested;
 		this->secondsPerToken = static_cast<float>(totalDuration) / totalTokensRequested;
