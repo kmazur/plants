@@ -84,7 +84,7 @@ public:
 				++count;
 			}
 		}
-		return c;
+		return count;
 	}
 
 
