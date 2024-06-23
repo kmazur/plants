@@ -18,6 +18,5 @@ while true; do
   else
     log "No remote changes detected."
   fi
-
   sleep 10
 done
