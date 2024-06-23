@@ -13,10 +13,11 @@ while true; do
   LOCAL=$(git rev-parse $BRANCH)
   REMOTE=$(git rev-parse $REMOTE/$BRANCH)
   if [ $LOCAL != $REMOTE ]; then
-      restart_all
+    log "Changes detected - restarting all"
+    restart_all
   else
-      echo "No remote changes detected."
+    log "No remote changes detected."
   fi
 
-  sleep 300
+  sleep 10
 done
