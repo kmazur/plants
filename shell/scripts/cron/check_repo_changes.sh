@@ -17,4 +17,6 @@ while true; do
   else
       echo "No remote changes detected."
   fi
+
+  sleep 300
 done
