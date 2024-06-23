@@ -31,11 +31,6 @@ while true; do
     FREQ="$(cat "$cpu")"
     MHZ="$((FREQ/1000))"
 
-    MEASUREMENT_NAME="cpu"
-    FIELD_VALUES="frequency=$MHZ"
-    TAGS="machine_name=$MACHINE_NAME,core=$CORE"
-    TIMESTAMP="$EPOCH_SECONDS"
-
     echo "${CORE}=${MHZ}" >> "$FILE_PATH"
   done
 

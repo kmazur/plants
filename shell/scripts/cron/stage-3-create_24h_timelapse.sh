@@ -41,7 +41,6 @@ while true; do
   fi
 
   log "Processing: $LATEST_NOT_PROCESSED_PATH"
-
   FILE_NAME="${MACHINE_NAME}_24_timelapse.mp4"
   FILE_PATH="$OUTPUT_STAGE_DIR/$FILE_NAME"
 

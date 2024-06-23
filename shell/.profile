@@ -84,16 +84,6 @@ fi
 
 shopt -s direxpand
 
-function update_repo() {
-    "$REPO_DIR/meta/git-update.sh"
-    cp -f "$WORK_DIR/workspace/plants/shell/.profile" "$HOME"
-    cp -f "$REPO_DIR/meta/files/vim/.vimrc" "$HOME"
-    source "$HOME/.profile"
-}
-
-function compile_native() {
-    "$REPO_DIR/meta/compile.sh" "$1"
-}
 
 source "$LIB_INIT_FILE"
 
@@ -113,27 +103,3 @@ if [[ "$SHELL" == "/bin/bash" ]]; then
     alias cdp="cd \$(get_pipeline_dir)"
     alias htop="/usr/bin/htop -u user"
 fi
-
-function start_periodic_checks() {
-    "$REPO_DIR/shell/scripts/cron/run_all_periodics.sh" &>> /home/user/cron.log
-}
-
-function stop_periodic_checks() {
-    "$REPO_DIR/shell/scripts/cron/stop_all_periodics.sh" &>> /home/user/cron.log
-}
-
-function restart_scheduler() {
-    local PID="$(ps aux | grep run-scheduler.sh | grep -v grep | tr -s ' ' | cut -d' ' -f 2)"
-    if [ -n "$PID" ]; then
-        kill_tree "$PID"
-    fi
-    "$REPO_DIR/shell/cron/run_periodic_check.sh" "run-scheduler" &>> /home/user/cron.log
-}
-
-function restart_all() {
-    stop_periodic_checks
-    rm /dev/shm/REQUESTS.txt &> /dev/null
-    update_repo
-    compile_native
-    start_periodic_checks
-}
