@@ -23,7 +23,21 @@ while true; do
   FILE_NAME="cpu_temp_level_$START_DATE_TIME.txt"
   FILE_PATH="$OUTPUT_STAGE_DIR/$FILE_NAME"
 
-  VALUES="$(get_cpu_temp)"
-  echo "$VALUES" > "$FILE_PATH"
+  CPU_TEMP="$(get_cpu_temp)"
+  echo "$CPU_TEMP" > "$FILE_PATH"
+
+  for cpu in /sys/devices/system/cpu/cpu*/cpufreq/scaling_cur_freq; do
+    CORE="${cpu:27:1}"
+    FREQ="$(cat "$cpu")"
+    MHZ="$((FREQ/1000))"
+
+    MEASUREMENT_NAME="cpu"
+    FIELD_VALUES="frequency=$MHZ"
+    TAGS="machine_name=$MACHINE_NAME,core=$CORE"
+    TIMESTAMP="$EPOCH_SECONDS"
+
+    echo "${CORE}=${MHZ}" >> "$FILE_PATH"
+  done
+
   notify_work_completed "${PROCESS}-temp_read"
 done
