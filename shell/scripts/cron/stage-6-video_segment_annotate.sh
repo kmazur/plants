@@ -74,8 +74,12 @@ while true; do
         NEXT_TIME="${MOTION_DATA_LIST[$((I+2))]}"
         [ -z "$NEXT_TIME" ] && NEXT_TIME=$(echo "$TIME + 1" | bc)
 
-        TIME_TEXT=$(date -d@"$(calc "$VIDEO_START_TIME_TIMESTAMP + $TIME")" "+%Y-%m-%d %H\\:%M\\:%S")
+        if [[ "$I" == "0" ]]; then
+          TIME_TEXT=$(date -d@"$(calc "$VIDEO_START_TIME_TIMESTAMP")" "+%Y-%m-%d %H\\:%M\\:%S")
+          DRAWTEXT_COMMAND+="drawtext=fontfile=/path/to/font.ttf:text='$TIME_TEXT motion\\: $SCORE':x=10:y=h-50:fontcolor=white:fontsize=24:box=1:boxcolor=black@0.5:boxborderw=5:enable='between(t,0,$TIME)',"
+        fi
 
+        TIME_TEXT=$(date -d@"$(calc "$VIDEO_START_TIME_TIMESTAMP + $TIME")" "+%Y-%m-%d %H\\:%M\\:%S")
         DRAWTEXT_COMMAND+="drawtext=fontfile=/path/to/font.ttf:text='$TIME_TEXT motion\\: $SCORE':x=10:y=h-50:fontcolor=white:fontsize=24:box=1:boxcolor=black@0.5:boxborderw=5:enable='between(t,$TIME,$NEXT_TIME)',"
     done
 

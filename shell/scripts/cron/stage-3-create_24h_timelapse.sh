@@ -31,55 +31,23 @@ while true; do
     continue
   fi
 
-  echo "$NOT_PROCESSED_FILES" | while IFS= read -r LATEST_NOT_PROCESSED_FILE; do
-    LATEST_NOT_PROCESSED_PATH="$INPUT_STAGE_DIR/$LATEST_NOT_PROCESSED_FILE"
-    log "Processing: $LATEST_NOT_PROCESSED_PATH"
+  LATEST_NOT_PROCESSED_FILE="$(echo "$NOT_PROCESSED_FILES" | tail -n 1)"
+  LATEST_NOT_PROCESSED_PATH="$INPUT_STAGE_DIR/$LATEST_NOT_PROCESSED_FILE"
 
-    FILE_NAME="${MACHINE_NAME}_24_timelapse.mp4"
-    FILE_PATH="$OUTPUT_STAGE_DIR/$FILE_NAME"
+  # Skip earlier files
+  FILES_TO_SKIP="$(echo "$NOT_PROCESSED_FILES" | grep -v "$LATEST_NOT_PROCESSED_FILE")"
+  if [ -n "$FILES_TO_SKIP" ]; then
+    echo "$FILES_TO_SKIP" >> "$PROCESSED_PATH"
+  fi
 
-    if [[ ! -f "$FILE_PATH" ]]; then
-      request_cpu_time "${PROCESS}-create-first-frame"
-      if ! ffmpeg -threads 1 -y -framerate "$VIDEO_24_TIMELAPSE_FPS" -i "$LATEST_NOT_PROCESSED_PATH" -c:v libx264 -r "$VIDEO_24_TIMELAPSE_FPS" -pix_fmt yuv420p "$FILE_PATH"; then
-        notify_work_completed "${PROCESS}-create-first-frame"
-        continue
-      else
-        notify_work_completed "${PROCESS}-create-first-frame"
-      fi
-    else
-      NEW_FRAME_VIDEO_PATH="$OUTPUT_STAGE_DIR/${MACHINE_NAME}_24_timelapse_processing_new_vid.mp4"
-      FRAME_DURATION="0$(echo "scale=4; 1/$VIDEO_24_TIMELAPSE_FPS" | bc)"
+  log "Processing: $LATEST_NOT_PROCESSED_PATH"
 
-      request_cpu_time "${PROCESS}-create-next-frame" "5"
-      if ! ffmpeg -nostdin -threads 1 -y -loop 1 -i "$LATEST_NOT_PROCESSED_PATH" -c:v libx264 -t "$FRAME_DURATION" -pix_fmt yuv420p "$NEW_FRAME_VIDEO_PATH"; then
-        rm "$NEW_FRAME_VIDEO_PATH" 2> /dev/null
-        notify_work_completed "${PROCESS}-create-next-frame"
-        continue
-      else
-        notify_work_completed "${PROCESS}-create-next-frame"
-      fi
+  FILE_NAME="${MACHINE_NAME}_24_timelapse.mp4"
+  FILE_PATH="$OUTPUT_STAGE_DIR/$FILE_NAME"
 
-
-      request_cpu_time "${PROCESS}-join-next-frame" "10"
-      TMP_OUTPUT_PATH="$OUTPUT_STAGE_DIR/${MACHINE_NAME}_24_timelapse_processing_tmp_output.mp4"
-      CONCAT_LIST_PATH="$OUTPUT_STAGE_DIR/concat_list.txt"
-      {
-        echo "file '$FILE_PATH'"
-        echo "file '$NEW_FRAME_VIDEO_PATH'"
-      } > "$CONCAT_LIST_PATH"
-
-      if ffmpeg -nostdin -threads 1 -y -f concat -safe 0 -i "$CONCAT_LIST_PATH" -c copy "$TMP_OUTPUT_PATH"; then
-        if cp -f "$TMP_OUTPUT_PATH" "$FILE_PATH"; then
-          echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
-        fi
-      fi
-
-      rm "$NEW_FRAME_VIDEO_PATH" 2> /dev/null
-      rm "$TMP_OUTPUT_PATH" 2> /dev/null
-      rm "$CONCAT_LIST_PATH" 2> /dev/null
-
-      notify_work_completed "${PROCESS}-join-next-frame"
-    fi
-  done
+  request_cpu_time "${PROCESS}-create-timelapse" "$(ls -1 "$INPUT_STAGE_DIR/"*.jpg | wc -l)"
+  ffmpeg -threads 1 -y -nostdin -pattern_type glob -i "$INPUT_STAGE_DIR/*.jpg" -framerate 1 -r 30 -c:v libx264 -pix_fmt yuv420p "$FILE_PATH"
+  echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
+  notify_work_completed "${PROCESS}-create-timelapse"
 
 done
