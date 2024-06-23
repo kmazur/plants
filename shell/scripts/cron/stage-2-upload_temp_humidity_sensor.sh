@@ -28,26 +28,48 @@ while true; do
     continue
   fi
 
+  request_cpu_time "${PROCESS}-publish" "$(echo "$NOT_PROCESSED_FILES" | wc -l)"
+
+  BATCH=""
   echo "$NOT_PROCESSED_FILES" | while IFS= read -r LATEST_NOT_PROCESSED_FILE; do
-    request_cpu_time "${PROCESS}-publish" "1"
     LATEST_NOT_PROCESSED_PATH="$INPUT_STAGE_DIR/$LATEST_NOT_PROCESSED_FILE"
     log "Processing: $LATEST_NOT_PROCESSED_PATH"
-
     FILE_DATETIME="$(strip "$LATEST_NOT_PROCESSED_FILE" "temp_hum_level_" ".txt")"
     VALUES="$(cat "$LATEST_NOT_PROCESSED_PATH")"
     if [ -n "$VALUES" ] && [ -n "$FILE_DATETIME" ]; then
       TEMPERATURE="$(echo "$VALUES" | head -n 1)"
       HUMIDITY="$(echo "$VALUES" | tail -n 1)"
+      EPOCH_SECONDS="$(date_compact_to_epoch "$FILE_DATETIME")"
 
-      if [[ -n "$TEMPERATURE" ]]; then
-        publish_measurement_single "$PUBLISHER" "temp_measurement" "temperature=$TEMPERATURE" "$(date_compact_to_epoch "$FILE_DATETIME")"
+      TIMESTAMP="$EPOCH_SECONDS"
+      if [ -n "$TEMPERATURE" ]; then
+        DATAPOINT="temp_measurement,machine_name=$MACHINE_NAME temperature=$TEMPERATURE $TIMESTAMP"
+        if [[ -z "$BATCH" ]]; then
+          BATCH="$DATAPOINT"
+        else
+          BATCH="$BATCH
+$DATAPOINT"
+          DATAPOINT="$MEASUREMENT_NAME,$TAGS $FIELD_VALUES $TIMESTAMP"
+        fi
       fi
-
-      if [[ -n "$HUMIDITY" ]]; then
-        publish_measurement_single "$PUBLISHER" "humidity_measurement" "humidity=$HUMIDITY" "$(date_compact_to_epoch "$FILE_DATETIME")"
+      if [ -n "$HUMIDITY" ]; then
+        DATAPOINT="humidity_measurement,machine_name=$MACHINE_NAME humidity=$HUMIDITY $TIMESTAMP"
+        if [[ -z "$BATCH" ]]; then
+          BATCH="$DATAPOINT"
+        else
+          BATCH="$BATCH
+$DATAPOINT"
+          DATAPOINT="$MEASUREMENT_NAME,$TAGS $FIELD_VALUES $TIMESTAMP"
+        fi
       fi
-      echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
     fi
+
+    if [ -n "$BATCH" ]; then
+      publish_measurement_batch "$PUBLISHER" "$BATCH"
+    fi
+
+    echo "$NOT_PROCESSED_FILES" >> "$PROCESSED_PATH"
+
     notify_work_completed "${PROCESS}-publish"
   done
 done
