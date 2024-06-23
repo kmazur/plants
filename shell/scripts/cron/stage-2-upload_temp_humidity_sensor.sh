@@ -29,28 +29,25 @@ while true; do
   fi
 
   echo "$NOT_PROCESSED_FILES" | while IFS= read -r LATEST_NOT_PROCESSED_FILE; do
+    request_cpu_time "${PROCESS}-publish" "1"
     LATEST_NOT_PROCESSED_PATH="$INPUT_STAGE_DIR/$LATEST_NOT_PROCESSED_FILE"
     log "Processing: $LATEST_NOT_PROCESSED_PATH"
 
     FILE_DATETIME="$(strip "$LATEST_NOT_PROCESSED_FILE" "temp_hum_level_" ".txt")"
     VALUES="$(cat "$LATEST_NOT_PROCESSED_PATH")"
     if [ -n "$VALUES" ] && [ -n "$FILE_DATETIME" ]; then
-
       TEMPERATURE="$(echo "$VALUES" | head -n 1)"
       HUMIDITY="$(echo "$VALUES" | tail -n 1)"
 
       if [[ -n "$TEMPERATURE" ]]; then
-        request_cpu_time "${PROCESS}-publish" "1"
         publish_measurement_single "$PUBLISHER" "temp_measurement" "temperature=$TEMPERATURE" "$(date_compact_to_epoch "$FILE_DATETIME")"
-        notify_work_completed "${PROCESS}-publish"
       fi
 
       if [[ -n "$HUMIDITY" ]]; then
-        request_cpu_time "${PROCESS}-publish" "1"
         publish_measurement_single "$PUBLISHER" "humidity_measurement" "humidity=$HUMIDITY" "$(date_compact_to_epoch "$FILE_DATETIME")"
-        notify_work_completed "${PROCESS}-publish"
       fi
       echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
     fi
+    notify_work_completed "${PROCESS}-publish"
   done
 done
