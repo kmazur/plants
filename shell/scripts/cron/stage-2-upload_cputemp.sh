@@ -37,7 +37,7 @@ while true; do
     if [ -n "$VALUES" ] && [ -n "$FILE_DATETIME" ]; then
 
       TEMPERATURE="$(echo "$VALUES" | head -n 1)"
-      CPU_FREQENCIES="$(echo "$VALUES" | tail -n +2)"
+      CPU_FREQUENCIES="$(echo "$VALUES" | tail -n +2)"
 
       request_cpu_time "${PROCESS}-publish" "1"
 
