@@ -13,9 +13,9 @@
 */10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-2-annotate_snapshot" &>> /home/user/cron.log
 */10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-3-upload_annotated_snapshot" &>> /home/user/cron.log
 */10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-3-create_24h_snapshot" &>> /home/user/cron.log
-#*/10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-3-create_24h_timelapse" &>> /home/user/cron.log
+*/10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-3-create_24h_timelapse" &>> /home/user/cron.log
 */10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-4-upload_24_snapshot" &>> /home/user/cron.log
-#*/10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-4-upload_24_timelapse" &>> /home/user/cron.log
+*/10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-4-upload_24_timelapse" &>> /home/user/cron.log
 */10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-2-h264_to_mp4" &>> /home/user/cron.log
 */10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-3-extract_motion_scores" &>> /home/user/cron.log
 */10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-4-detect_motion_segments" &>> /home/user/cron.log

@@ -1,4 +1,4 @@
-motion_threshold=1.5
+motion_threshold=1.3
 polygon=200,0;1030,0;1030,250;1160,420;990,600;840,480;665,410;640,365;580,380;520,333;515,275;350,240;350,200
 seconds_before=1.5
 seconds_after=5
