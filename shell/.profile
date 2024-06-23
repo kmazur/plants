@@ -129,3 +129,11 @@ function restart_scheduler() {
     fi
     "$REPO_DIR/shell/cron/run_periodic_check.sh" "run-scheduler" &>> /home/user/cron.log
 }
+
+function restart_all() {
+    stop_periodic_checks
+    rm /dev/shm/REQUESTS.txt &> /dev/null
+    update_repo
+    compile_native
+    start_periodic_checks
+}
