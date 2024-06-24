@@ -103,3 +103,6 @@ if [[ "$SHELL" == "/bin/bash" ]]; then
     alias cdp="cd \$(get_pipeline_dir)"
     alias htop="/usr/bin/htop -u user"
 fi
+
+
+update_repo
