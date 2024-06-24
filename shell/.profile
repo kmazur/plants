@@ -104,5 +104,3 @@ if [[ "$SHELL" == "/bin/bash" ]]; then
     alias htop="/usr/bin/htop -u user"
 fi
 
-
-update_repo
