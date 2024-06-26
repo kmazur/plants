@@ -1,6 +1,7 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import FileResponse
 import os
+import mimetypes
 
 app = FastAPI()
 UPLOAD_FOLDER = 'uploads'
@@ -29,7 +30,11 @@ async def download_file(filename: str, auth_code: str = None):
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="File not found")
 
-    return FileResponse(file_path, filename=filename)
+    mime_type, _ = mimetypes.guess_type(file_path)
+    if not mime_type:
+        mime_type = "application/octet-stream"
+
+    return FileResponse(file_path, filename=filename, media_type=mime_type)
 
 if __name__ == '__main__':
     import uvicorn
