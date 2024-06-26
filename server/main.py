@@ -1,5 +1,6 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import FileResponse
+from fastapi.responses import StreamingResponse
 import os
 import mimetypes
 
@@ -21,6 +22,8 @@ async def upload_file(file: UploadFile = File(...), auth_code: str = None):
         buffer.write(await file.read())
     return {"filename": file.filename}
 
+
+
 @app.get("/download/{filename}")
 async def download_file(filename: str, auth_code: str = None):
     if auth_code != SECRET_AUTH_CODE:
@@ -34,8 +37,12 @@ async def download_file(filename: str, auth_code: str = None):
     if not mime_type:
         mime_type = "application/octet-stream"
 
-    return FileResponse(file_path, filename=filename, media_type=mime_type)
+    def iterfile():
+        with open(file_path, "rb") as file:
+            yield from file
+
+    return StreamingResponse(iterfile(), media_type=mime_type)
 
 if __name__ == '__main__':
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8080)
+    uvicorn.run(app, host="0.0.0.0", port=8089)
