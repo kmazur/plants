@@ -57,7 +57,7 @@ After=network.target
 User=www-data
 Group=www-data
 WorkingDirectory=$APP_DIR
-ExecStart=$PYTHON_BIN main:app --host 0.0.0.0 --port 8080
+ExecStart=$PYTHON_BIN main:app --host 0.0.0.0 --port 8089
 Environment="SECRET_AUTH_CODE=$SECRET_AUTH_CODE"
 Restart=always
 RestartSec=3
