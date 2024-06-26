@@ -4,7 +4,7 @@ import os
 
 app = FastAPI()
 UPLOAD_FOLDER = 'uploads'
-SECRET_AUTH_CODE = 'your_secret_auth_code'
+SECRET_AUTH_CODE = os.getenv('SECRET_AUTH_CODE')
 
 # Create upload directory if it doesn't exist
 if not os.path.exists(UPLOAD_FOLDER):
