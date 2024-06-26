@@ -68,19 +68,22 @@ while true; do
 
     DRAWTEXT_COMMAND=""
     SIZE=${#MOTION_DATA_LIST[@]}
+    PREV_SCORE=""
     for (( I=0; I<SIZE; I+=2 )); do
         TIME="${MOTION_DATA_LIST[$I]}"
         SCORE="${MOTION_DATA_LIST[$((I+1))]}"
         NEXT_TIME="${MOTION_DATA_LIST[$((I+2))]}"
         [ -z "$NEXT_TIME" ] && NEXT_TIME=$(echo "$TIME + 1" | bc)
 
-        if [[ "$I" == "0" ]]; then
-          TIME_TEXT=$(date -d@"$(calc "$VIDEO_START_TIME_TIMESTAMP")" "+%Y-%m-%d %H\\:%M\\:%S")
-          DRAWTEXT_COMMAND+="drawtext=fontfile=/path/to/font.ttf:text='$TIME_TEXT motion\\: $SCORE':x=10:y=h-50:fontcolor=white:fontsize=24:box=1:boxcolor=black@0.5:boxborderw=5:enable='between(t,0,$TIME)',"
-        fi
-
-        TIME_TEXT=$(date -d@"$(calc "$VIDEO_START_TIME_TIMESTAMP + $TIME")" "+%Y-%m-%d %H\\:%M\\:%S")
-        DRAWTEXT_COMMAND+="drawtext=fontfile=/path/to/font.ttf:text='$TIME_TEXT motion\\: $SCORE':x=10:y=h-50:fontcolor=white:fontsize=24:box=1:boxcolor=black@0.5:boxborderw=5:enable='between(t,$TIME,$NEXT_TIME)',"
+        for (( SEC=$TIME; SEC<$NEXT_TIME; SEC++ )); do
+          TIME_TEXT=$(date -d@"$(calc "$VIDEO_START_TIME_TIMESTAMP + $SEC")" "+%Y-%m-%d %H\\:%M\\:%S")
+          if [[ "$SCORE" != "$PREV_SCORE" || $SEC -eq $TIME ]]; then
+            DRAWTEXT_COMMAND+="drawtext=fontfile=/path/to/font.ttf:text='$TIME_TEXT motion\\: $SCORE':x=10:y=h-50:fontcolor=white:fontsize=24:box=1:boxcolor=black@0.5:boxborderw=5:enable='between(t,$SEC,$((SEC + 1)))',"
+          else
+            DRAWTEXT_COMMAND+="drawtext=fontfile=/path/to/font.ttf:text='$TIME_TEXT':x=10:y=h-50:fontcolor=white:fontsize=24:box=1:boxcolor=black@0.5:boxborderw=5:enable='between(t,$SEC,$((SEC + 1)))',"
+          fi
+        done
+        PREV_SCORE="$SCORE"
     done
 
     DRAWTEXT_COMMAND="${DRAWTEXT_COMMAND%,}"
