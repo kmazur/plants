@@ -12,7 +12,7 @@ function install_if_needed {
 }
 
 function pip_install_if_needed {
-      pip install --yes "$1"
+      pip install "$1"
 }
 
 # Update and install required packages
