@@ -47,7 +47,10 @@ while true; do
     if [ -f "$FILE_PATH" ]; then
       request_cpu_time "${PROCESS}-upload" "1"
       if upload_file "$FILE_PATH" "image/jpg"; then
+        log "Uploaded file: $FILE_PATH successfully"
         echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
+      else
+        log "Error uploading file: $FILE_PATH"
       fi
       notify_work_completed "${PROCESS}-upload"
     fi
