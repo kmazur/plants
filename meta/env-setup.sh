@@ -28,6 +28,10 @@ if [ ! -f "$CONFIG_INI" ]; then
     export MACHINE_NAME="birdbox-ctrl"
   elif [[ "$IP" == "192.168.0.18" ]]; then
     export MACHINE_NAME="birdbox-ir"
+  else
+    echo "Unknown machine name!"
+    read -p "Enter MACHINE_NAME: " USER_PROVIDED_NAME
+    export MACHINE_NAME="$USER_PROVIDED_NAME"
   fi
 
   echo "name=$MACHINE_NAME" > "$CONFIG_INI"

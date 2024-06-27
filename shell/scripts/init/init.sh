@@ -6,7 +6,7 @@ source "$LIB_INIT_FILE"
 ensure_env
 
 log "Starting init"
-"$INIT_DIR/init-general.sh"
+#"$INIT_DIR/init-general.sh"
 "$INIT_DIR/init-env-refresh.sh"
 "$INIT_DIR/init-daylight.sh"
 "$INIT_DIR/init-cron.sh"
