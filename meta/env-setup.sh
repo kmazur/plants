@@ -52,6 +52,7 @@ fi
 
 sudo apt-get -y install libcamera-apps
 
+
 # sudo apt-get -y install software-properties-common
 # sudo apt-get -y install autoconf
 # sudo apt-get -y install libtool
@@ -82,6 +83,7 @@ echo "- motion"
 echo "- openjdk-17-jdk"
 echo "- bc"
 echo "- lsof"
+echo "- ffmpeg"
 sudo apt-get -y install git vim htop pigpio screen imagemagick libcamera-tools python3-opencv jq
 #sudo apt-get -y install motion
 #sudo apt-get -y install openjdk-17-jdk
@@ -92,6 +94,7 @@ sudo apt-get -y install bc
 sudo apt-get -y install libopencv-dev
 sudo apt-get -y install cpufrequtils
 sudo apt-get -y install lsof
+sudo apt-get -y install ffmpeg
 
 
 echo "Set timezone to Europe/Warsaw"
