@@ -1,6 +1,6 @@
 0 0 * * * sudo reboot -h now &>> /home/user/cron.log
 */5 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "cleanup" 300 1800 &>> /home/user/cron.log
-*/5 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "check_repo_changes" &>> /home/user/cron.log
+0 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "check_repo_changes" &>> /home/user/cron.log
 #*/10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "temp-fail-safe" 20 60 &>> /home/user/cron.log
 */10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-1-process_influx_queue" &>> /home/user/cron.log
 */10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-1-get_cpu_temp" &>> /home/user/cron.log
