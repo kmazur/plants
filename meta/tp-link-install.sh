@@ -26,7 +26,7 @@ sudo modprobe -r 8188eu
 #echo "blacklist 8188eu" >> /etc/modprobe.d/blacklist-8188eu.conf
 sudo modprobe r8188eu
 su root
-echo "r8188eu" >> /etc/modules
+sudo bash -c "echo r8188eu >> /etc/modules"
 
 echo "PUT BELOW to /etc/network/interfaces"
 #
