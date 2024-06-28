@@ -100,6 +100,7 @@ function goto() {
 
 if [[ "$SHELL" == "/bin/bash" ]]; then
     alias cdll="cd \$(get_logs_dir)"
+    alias ll="/usr/bin/ls -lathr"
     alias cdp="cd \$(get_pipeline_dir)"
     alias htop="/usr/bin/htop -u user"
 fi
