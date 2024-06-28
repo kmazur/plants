@@ -41,6 +41,7 @@ while true; do
     log "Starting h264 -> mp4 conversion"
     if ffmpeg -nostdin -y -threads 1 -loglevel error -i "$LATEST_NOT_PROCESSED_PATH" -c:v copy -an "$FILE_PATH"; then
       log "Done h264 -> mp4 conversion"
+      rm "$LATEST_NOT_PROCESSED_PATH"
       echo "$LATEST_NOT_PROCESSED_FILE" >> "$PROCESSED_PATH"
     fi
 
