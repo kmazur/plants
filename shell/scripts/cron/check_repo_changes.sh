@@ -9,14 +9,7 @@ while true; do
   BRANCH="main"
   REMOTE="origin"
   git fetch $REMOTE
+  update_repo
 
-  LOCAL=$(git rev-parse $BRANCH)
-  REMOTE=$(git rev-parse $REMOTE/$BRANCH)
-  if [ $LOCAL != $REMOTE ]; then
-    log "Changes detected - restarting all"
-    restart_all
-  else
-    log "No remote changes detected."
-  fi
-  sleep 60
+  sleep 3600
 done
