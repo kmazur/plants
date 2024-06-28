@@ -1,0 +1,16 @@
+verbose=1
+width=4056
+height=3040
+nopreview=1
+gain=0.0
+awb=auto
+brightness=0.0
+contrast=1.0
+saturation=1.0
+sharpness=1.0
+framerate=30
+denoise=auto
+tuning-file=/usr/share/libcamera/ipa/rpi/vc4/imx708_wide.json
+autofocus-mode=continuous
+autofocus-speed=fast
+hdr=1
