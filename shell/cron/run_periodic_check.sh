@@ -6,8 +6,7 @@ source "$LIB_INIT_FILE"
 PROCESS_NAME="$1"
 LOCK_FILE="$LOCKS_DIR/$PROCESS_NAME.lock"
 if [ -f "$LOCK_FILE" ]; then
-  echo "Lock file exists: $LOCK_FILE. Exiting!"
-  exit 0
+  echo "Lock file exists: $LOCK_FILE. Continuing!"
 fi
 touch "$LOCK_FILE" || exit 1
 
