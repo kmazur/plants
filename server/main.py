@@ -37,6 +37,21 @@ async def download_file(filename: str, auth_code: str = None):
     if not mime_type:
         mime_type = "application/octet-stream"
 
+    return FileResponse(file_path, filename=filename, media_type=mime_type)
+
+@app.get("/stream/{filename}")
+async def download_file(filename: str, auth_code: str = None):
+    if auth_code != SECRET_AUTH_CODE:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    file_path = os.path.join(UPLOAD_FOLDER, filename)
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="File not found")
+
+    mime_type, _ = mimetypes.guess_type(file_path)
+    if not mime_type:
+        mime_type = "application/octet-stream"
+
     def iterfile():
         with open(file_path, "rb") as file:
             yield from file
