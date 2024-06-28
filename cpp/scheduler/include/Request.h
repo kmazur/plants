@@ -18,6 +18,11 @@ struct Request
 		return len >= 10 && process.rfind("-completed") == (len - 10);
 	}
 
+	bool isScan() const {
+		const int len = process.size();
+		return len >= 5 && process.rfind("-scan") == (len - 5);
+	}
+
 	std::string getName() const {
 		if (this->isCompleted()) {
 			return process.substr(0, process.find("-completed"));

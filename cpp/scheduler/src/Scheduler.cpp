@@ -87,6 +87,10 @@ void Scheduler::processCompletedRequests(std::vector<Request>& requests)
 
 bool Scheduler::isEvaluationRequired(const Request& request) {
 	const std::string name = request.getName();
+	if (request.isScan()) {
+		log("Scan is not required to evaluate: " + name);
+		return false;
+	}
 	if (workStats.count(name) == 0) {
 		log("Evaluation for process required (0): " + name);
 		return true;
@@ -130,6 +134,9 @@ bool Scheduler::canRunProcess(const Request& request) {
 	float maxTemp = config.getMaxTemp();
 
 	std::shared_ptr<WorkUnit>& workUnit = workStats[request.process];
+	if (workUnit->cpuTempIncreasePerToken < 0.2) {
+		workUnit->cpuTempIncreasePerToken = 0.2;
+	}
 	float estimateCpuTempIncrease = workUnit->cpuTempIncreasePerToken * request.requestedTokens;
 	return estimatedTemp + estimateCpuTempIncrease <= maxTemp;
 }
