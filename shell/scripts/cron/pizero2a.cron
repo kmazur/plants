@@ -14,10 +14,10 @@
 */10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-4-upload_24_snapshot" &>> /home/user/cron.log
 #*/10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-4-upload_24_timelapse" &>> /home/user/cron.log
 */10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-2-h264_to_mp4" &>> /home/user/cron.log
-#*/10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-3-extract_motion_scores" &>> /home/user/cron.log
-#*/10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-4-detect_motion_segments" &>> /home/user/cron.log
-#*/10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-5-extract_motion_segments" &>> /home/user/cron.log
-#*/10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-6-video_segment_annotate" &>> /home/user/cron.log
-#*/10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-7-video_segment_overlay" &>> /home/user/cron.log
-#*/10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-8-upload_video_segment_overlay" &>> /home/user/cron.log
+*/10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-3-extract_motion_scores" &>> /home/user/cron.log
+*/10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-4-detect_motion_segments" &>> /home/user/cron.log
+*/10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-5-extract_motion_segments" &>> /home/user/cron.log
+*/10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-6-video_segment_annotate" &>> /home/user/cron.log
+*/10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-7-video_segment_overlay" &>> /home/user/cron.log
+*/10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "stage-8-upload_video_segment_overlay" &>> /home/user/cron.log
 */10 * * * * /home/user/WORK/workspace/plants/shell/cron/run_periodic_check.sh "run-scheduler" &>> /home/user/cron.log
