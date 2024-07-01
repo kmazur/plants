@@ -67,6 +67,7 @@
   - Publish at each stage?
   - 
 
+thumbnail for grafana instead of full image
 
 #Disable Power LED (Red)
 dtparam=pwr_led_trigger=none
