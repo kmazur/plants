@@ -8,11 +8,15 @@ public interface TimeProvider {
 
     long getCurrentMillis();
 
-    default ZonedDateTime getCurrentDateTime() {
+    default ZonedDateTime getCurrentZonedDateTime() {
         return ZonedDateTime.ofInstant(
                 Instant.ofEpochMilli(getCurrentMillis()),
                 getZoneId()
         );
+    }
+
+    default LocalDateTime getCurrentLocalDateTime() {
+        return getCurrentZonedDateTime().toLocalDateTime();
     }
 
 }
