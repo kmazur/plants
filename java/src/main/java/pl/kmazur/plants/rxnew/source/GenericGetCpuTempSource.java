@@ -1,4 +1,4 @@
-package pl.kmazur.plants.rxnew;
+package pl.kmazur.plants.rxnew.source;
 
 import oshi.SystemInfo;
 import oshi.hardware.HardwareAbstractionLayer;
@@ -10,8 +10,8 @@ public class GenericGetCpuTempSource implements FloatSupplier {
     private final Sensors sensors;
 
     public GenericGetCpuTempSource() {
-        SystemInfo si = new SystemInfo();
-        HardwareAbstractionLayer hal = si.getHardware();
+        final SystemInfo               si  = new SystemInfo();
+        final HardwareAbstractionLayer hal = si.getHardware();
         this.sensors = hal.getSensors();
     }
 

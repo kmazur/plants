@@ -2,7 +2,7 @@ package pl.kmazur.plants.time;
 
 import java.time.*;
 
-public interface TimeProvider {
+public interface ITimeProvider {
 
     ZoneId getZoneId();
 

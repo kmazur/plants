@@ -1,47 +1,34 @@
 package pl.kmazur.plants.rxnew.publisher;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class FanOutPublisher<T> implements IExternalSourcePublisher<T> {
+public class IteratorPublisher<T> implements Publisher<T> {
     private final List<SubscriberWrapper> subscribers = new ArrayList<>();
+    private final Iterator<T>             iterator;
     private       boolean                 completed   = false;
+
+    public IteratorPublisher(final Iterator<T> iterator) {
+        this.iterator = iterator;
+    }
 
     @Override
     public void subscribe(Subscriber<? super T> subscriber) {
+        if (!subscribers.isEmpty()) {
+            throw new IllegalStateException("Only one subscriber allowed");
+        }
         SubscriberWrapper wrapper = new SubscriberWrapper(subscriber);
         subscribers.add(wrapper);
         subscriber.onSubscribe(wrapper.subscription);
-    }
-
-    @Override
-    public void publish(T element) {
-        for (SubscriberWrapper wrapper : subscribers) {
-            wrapper.personalBuffer.add(element);
-        }
-        emitElements();
-    }
-
-    @Override
-    public void emitException(final Throwable t) {
-        completed = true;
-        for (SubscriberWrapper wrapper : subscribers) {
-            wrapper.subscriber.onError(t);
-        }
-        emitComplete();
-    }
-
-    @Override
-    public void complete() {
-        completed = true;
-        emitComplete();
     }
 
     private void emitComplete() {
@@ -49,12 +36,6 @@ public class FanOutPublisher<T> implements IExternalSourcePublisher<T> {
             wrapper.subscriber.onComplete();
         }
         subscribers.clear();
-    }
-
-    private void emitElements() {
-        for (SubscriberWrapper wrapper : subscribers) {
-            wrapper.emit();
-        }
     }
 
     private class SubscriberWrapper {
@@ -70,15 +51,16 @@ public class FanOutPublisher<T> implements IExternalSourcePublisher<T> {
         }
 
         void emit() {
-            while (requested.get() > 0 && !personalBuffer.isEmpty() && !canceled.get()) {
-                T element = personalBuffer.poll();
+            while (requested.get() > 0 && !iterator.hasNext() && !canceled.get()) {
+                T element = iterator.next();
                 if (element != null) {
                     subscriber.onNext(element);
                     requested.decrementAndGet();
                 }
             }
 
-            if (completed) {
+            if (!iterator.hasNext()) {
+                completed = true;
                 subscriber.onComplete();
             }
         }
@@ -101,7 +83,7 @@ public class FanOutPublisher<T> implements IExternalSourcePublisher<T> {
             public void cancel() {
                 canceled.set(true);
                 requested.set(0);
-                subscribers.remove(SubscriberWrapper.this);
+                subscribers.remove(IteratorPublisher.SubscriberWrapper.this);
             }
         }
     }

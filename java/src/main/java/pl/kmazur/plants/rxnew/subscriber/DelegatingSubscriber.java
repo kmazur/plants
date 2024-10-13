@@ -1,26 +1,49 @@
-package pl.kmazur.plants.rxnew;
+package pl.kmazur.plants.rxnew.subscriber;
 
+import lombok.extern.slf4j.Slf4j;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 
+import java.util.Objects;
 import java.util.function.Consumer;
 
+@Slf4j
 public class DelegatingSubscriber<T> implements Subscriber<T> {
-    private final Consumer<Subscription> onSubscribe;
-    private final Consumer<T> onNext;
-    private final Consumer<Throwable> onError;
-    private final Runnable onComplete;
+
+    private static final Consumer<Subscription> EMPTY_ON_SUBSCRIBE = s -> {};
+    private static final Consumer<Throwable>    EMPTY_ON_ERROR     = t -> {};
+    private static final Runnable               EMPTY_ON_COMPLETE  = () -> {};
+
+    protected final Consumer<Subscription> onSubscribe;
+    protected final Consumer<T>            onNext;
+    protected final Consumer<Throwable>    onError;
+    protected final Runnable               onComplete;
+
+
+    public static <T> DelegatingSubscriber<T> of(final Consumer<T> onNext) {
+        return new DelegatingSubscriber<>(EMPTY_ON_SUBSCRIBE, onNext, EMPTY_ON_ERROR, EMPTY_ON_COMPLETE);
+    }
 
     public DelegatingSubscriber(
-            Consumer<Subscription> onSubscribe,
-            Consumer<T> onNext,
-            Consumer<Throwable> onError,
-            Runnable onComplete
+            final Subscriber<T> subscriber
     ) {
-        this.onSubscribe = onSubscribe;
-        this.onNext = onNext;
-        this.onError = onError;
-        this.onComplete = onComplete;
+        Objects.requireNonNull(subscriber, "subscriber");
+        this.onSubscribe = subscriber::onSubscribe;
+        this.onNext      = subscriber::onNext;
+        this.onError     = subscriber::onError;
+        this.onComplete  = subscriber::onComplete;
+    }
+
+    public DelegatingSubscriber(
+            final Consumer<Subscription> onSubscribe,
+            final Consumer<T> onNext,
+            final Consumer<Throwable> onError,
+            final Runnable onComplete
+    ) {
+        this.onSubscribe = Objects.requireNonNull(onSubscribe, "onSubscribe");
+        this.onNext      = Objects.requireNonNull(onNext, "onNext");
+        this.onError     = Objects.requireNonNull(onError, "onError");
+        this.onComplete  = Objects.requireNonNull(onComplete, "onComplete");
     }
 
     @Override

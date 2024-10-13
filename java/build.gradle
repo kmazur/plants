@@ -1,5 +1,7 @@
 plugins {
     id 'java'
+    id 'application'
+    id("me.champeau.jmh") version "0.7.2"
 }
 
 repositories {
@@ -7,13 +9,41 @@ repositories {
 }
 
 dependencies {
+    implementation "org.slf4j:slf4j-api:2.0.7"
     implementation "org.apache.logging.log4j:log4j-api:2.23.1"
     implementation "org.apache.logging.log4j:log4j-core:2.23.1"
-    implementation "org.apache.logging.log4j:log4j-slf4j-impl:2.23.1"
+    implementation "org.apache.logging.log4j:log4j-slf4j2-impl:2.23.1"
+
+    implementation 'org.openpnp:opencv:4.9.0-0'
+    implementation 'com.github.oshi:oshi-core:6.6.1'
+    implementation 'org.reactivestreams:reactive-streams:1.0.4'
+    testImplementation 'org.reactivestreams:reactive-streams-tck:1.0.4'
 
     compileOnly 'org.projectlombok:lombok:1.18.34'
     annotationProcessor 'org.projectlombok:lombok:1.18.34'
 
     testCompileOnly 'org.projectlombok:lombok:1.18.34'
     testAnnotationProcessor 'org.projectlombok:lombok:1.18.34'
+
+    jmh 'org.openjdk.jmh:jmh-core:1.37'
+    jmh 'org.openjdk.jmh:jmh-generator-annprocess:1.37'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.3'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.10.3'
+    testImplementation 'org.testng:testng:7.10.2'
+
+}
+
+jmh {
+    includes = ['.*']
+    duplicateClassesStrategy = DuplicatesStrategy.WARN
+}
+
+test {
+    useJUnitPlatform {
+        include '**/*Test.class'
+    }
+    useTestNG {
+        include '**/*VerificationTest.class'
+    }
 }

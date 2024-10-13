@@ -1,5 +1,7 @@
 package pl.kmazur.plants.task;
 
-public interface ContinuousTask extends Task {
+import java.io.Closeable;
+
+public interface IContinuousTask extends ITask, Closeable {
 
 }

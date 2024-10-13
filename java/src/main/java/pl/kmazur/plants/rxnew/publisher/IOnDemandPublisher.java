@@ -1,7 +1,5 @@
 package pl.kmazur.plants.rxnew.publisher;
 
-import org.reactivestreams.Publisher;
-
-public interface IOnDemandPublisher<T> extends Publisher<T> {
+public interface IOnDemandPublisher<T> extends IExternalNotificationPublisher<T> {
     void publish();
 }

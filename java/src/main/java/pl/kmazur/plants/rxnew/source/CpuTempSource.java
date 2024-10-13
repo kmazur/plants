@@ -1,4 +1,4 @@
-package pl.kmazur.plants.rxnew;
+package pl.kmazur.plants.rxnew.source;
 
 import pl.kmazur.plants.rxnew.function.FloatSupplier;
 

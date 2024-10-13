@@ -35,7 +35,8 @@
 - Control
   - Force video disable/enable
   - Force video publish by mediamtx (remotely as well?)
-  - [V] Take screenshot
+  - Take screenshot on demand
+  - Remote feature flags & configurations
 
 - General
   - Update git repo & reinitialize (env + processes) when detected changes

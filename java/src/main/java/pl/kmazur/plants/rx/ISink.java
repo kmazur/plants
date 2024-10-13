@@ -1,2 +1,6 @@
-package pl.kmazur.plants.rx;public interface ISink {
+package pl.kmazur.plants.rx;
+
+@FunctionalInterface
+public interface ISink<T> {
+    void accept(final T value);
 }

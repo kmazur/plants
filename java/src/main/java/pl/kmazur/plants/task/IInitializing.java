@@ -1,6 +1,6 @@
 package pl.kmazur.plants.task;
 
-public interface Initializing {
+public interface IInitializing {
 
     void init();
 

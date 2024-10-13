@@ -1,5 +1,7 @@
 package pl.kmazur.plants.config;
 
+import pl.kmazur.plants.storage.Storage;
+
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -13,7 +15,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
 import java.util.Map;
 
-public class FileConfig implements TypedConfig {
+public class FileConfig implements ITypedConfig {
 
     private final String configFilePath;
     private final Map<String, String> map;
@@ -35,6 +37,7 @@ public class FileConfig implements TypedConfig {
 
     public void readConfigFile() {
         map.clear();
+        Storage.ensureFileExists(configFilePath);
         try (BufferedReader reader = Files.newBufferedReader(Paths.get(configFilePath))) {
             reader.lines()
                     .map(line -> line.split("="))

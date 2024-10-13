@@ -1,5 +1,5 @@
 package pl.kmazur.plants.rx;
 
-public interface PushSource<T> extends ISource<T> {
-    void produce(final T value);
+public interface IPushSource<T> extends ISubscribable<T> {
+
 }

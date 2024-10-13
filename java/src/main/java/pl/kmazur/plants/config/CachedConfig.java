@@ -2,12 +2,12 @@ package pl.kmazur.plants.config;
 
 import java.util.HashMap;
 
-public class CachedConfig implements TypedConfig {
+public class CachedConfig implements ITypedConfig {
 
-    private final Config delegate;
+    private final IConfig delegate;
     private final HashMap<String, String> map;
 
-    public CachedConfig(final Config delegate) {
+    public CachedConfig(final IConfig delegate) {
         this.delegate = delegate;
         this.map = new HashMap<>();
     }

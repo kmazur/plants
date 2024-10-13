@@ -5,13 +5,17 @@ import org.reactivestreams.Subscriber;
 import org.slf4j.event.Level;
 
 @Slf4j
-public class Slf4jLoggingPublisher<T> implements IExternalSourcePublisher<T> {
+public class Slf4jOnDemandLoggingPublisher<T> implements IOnDemandPublisher<T> {
 
-    private final IExternalSourcePublisher<T> delegate;
-    private final String                      name;
-    private final Level                       level;
+    private final IOnDemandPublisher<T> delegate;
+    private final String                name;
+    private final Level                 level;
 
-    public Slf4jLoggingPublisher(IExternalSourcePublisher<T> delegate, String name, Level level) {
+    public Slf4jOnDemandLoggingPublisher(IOnDemandPublisher<T> delegate, String name) {
+        this(delegate, name, Level.INFO);
+    }
+
+    public Slf4jOnDemandLoggingPublisher(IOnDemandPublisher<T> delegate, String name, Level level) {
         this.delegate = delegate;
         this.name     = name;
         this.level    = level;
@@ -24,9 +28,9 @@ public class Slf4jLoggingPublisher<T> implements IExternalSourcePublisher<T> {
     }
 
     @Override
-    public void publish(T element) {
-        log.atLevel(level).log("{} publish {}", name, element);
-        delegate.publish(element);
+    public void publish() {
+        log.atLevel(level).log("{} publish", name);
+        delegate.publish();
     }
 
     @Override
@@ -40,4 +44,5 @@ public class Slf4jLoggingPublisher<T> implements IExternalSourcePublisher<T> {
         log.atLevel(level).log("{} complete", name);
         delegate.complete();
     }
+
 }

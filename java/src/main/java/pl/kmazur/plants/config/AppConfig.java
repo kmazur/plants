@@ -2,7 +2,7 @@ package pl.kmazur.plants.config;
 
 import java.util.concurrent.TimeUnit;
 
-public class AppConfig implements TypedConfig {
+public class AppConfig implements ITypedConfig {
 
     private final FileConfig config;
 

@@ -1,6 +1,6 @@
 package pl.kmazur.plants.config;
 
-public interface Reloadable {
+public interface IReloadable {
 
     void reload();
 

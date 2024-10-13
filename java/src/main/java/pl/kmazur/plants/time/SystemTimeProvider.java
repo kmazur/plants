@@ -1,13 +1,17 @@
 package pl.kmazur.plants.time;
 
-public class SystemTimeProvider implements TimeProvider {
+import java.time.ZoneId;
+
+public class SystemTimeProvider implements ITimeProvider {
+
+    @Override
+    public ZoneId getZoneId() {
+        return ZoneId.systemDefault();
+    }
 
     @Override
     public long getCurrentMillis() {
         return System.currentTimeMillis();
     }
 
-    public static void main(String[] args) {
-        System.out.println(new SystemTimeProvider().getCurrentDateTime());
-    }
 }

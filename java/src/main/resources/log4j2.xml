@@ -1,7 +1,7 @@
 <Configuration status="WARN" monitorInterval="5">
     <Appenders>
         <Console name="console">
-            <PatternLayout pattern="%m%n"/>
+            <PatternLayout pattern="%d{yyyy-MM-dd'T'HH:mm:ss,SSS} [%p] [%t] %c{3} - %m%n"/>
         </Console>
     </Appenders>
     <Loggers>

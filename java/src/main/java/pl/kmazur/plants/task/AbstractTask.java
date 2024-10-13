@@ -3,7 +3,7 @@ package pl.kmazur.plants.task;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public abstract class AbstractTask implements Task, InitializingAware {
+public abstract class AbstractTask implements ITask, IInitializing {
 
     @Override
     public final void init() {

@@ -1,2 +1,7 @@
-package pl.kmazur.plants.stage;public class VideoOutput {
+package pl.kmazur.plants.stage;
+
+import lombok.Data;
+
+@Data
+public class VideoOutput {
 }

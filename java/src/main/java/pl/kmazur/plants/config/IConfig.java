@@ -1,6 +1,6 @@
 package pl.kmazur.plants.config;
 
-public interface Config extends ReadableConfig, WritableConfig {
+public interface IConfig extends IReadableConfig, IWritableConfig {
 
     default String getOrSet(final String key, final String value) {
         String v = get(key);

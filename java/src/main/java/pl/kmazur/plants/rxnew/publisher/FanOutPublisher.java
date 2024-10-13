@@ -1,6 +1,5 @@
-package pl.kmazur.plants.rxnew;
+package pl.kmazur.plants.rxnew.publisher;
 
-import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 
@@ -11,17 +10,21 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class FanOutPublisher<T> implements Publisher<T> {
+public class FanOutPublisher<T> implements IExternalSourcePublisher<T> {
     private final List<SubscriberWrapper> subscribers = new ArrayList<>();
-    private boolean completed = false;
+    private       boolean                 completed   = false;
 
     @Override
     public void subscribe(Subscriber<? super T> subscriber) {
         SubscriberWrapper wrapper = new SubscriberWrapper(subscriber);
         subscribers.add(wrapper);
         subscriber.onSubscribe(wrapper.subscription);
+        if (completed) {
+            subscriber.onError(new IllegalStateException("Closed"));
+        }
     }
 
+    @Override
     public void publish(T element) {
         for (SubscriberWrapper wrapper : subscribers) {
             wrapper.personalBuffer.add(element);
@@ -29,41 +32,43 @@ public class FanOutPublisher<T> implements Publisher<T> {
         emitElements();
     }
 
-    public void emitException(final Exception t) {
+    @Override
+    public void emitException(final Throwable t) {
         completed = true;
         for (SubscriberWrapper wrapper : subscribers) {
             wrapper.subscriber.onError(t);
         }
-        emitElements();
+        emitComplete();
     }
 
+    @Override
     public void complete() {
         completed = true;
-        emitElements();
+        emitComplete();
+    }
+
+    private void emitComplete() {
+        for (SubscriberWrapper wrapper : subscribers) {
+            wrapper.subscriber.onComplete();
+        }
+        subscribers.clear();
     }
 
     private void emitElements() {
         for (SubscriberWrapper wrapper : subscribers) {
             wrapper.emit();
         }
-
-        if (completed) {
-            for (SubscriberWrapper wrapper : subscribers) {
-                wrapper.subscriber.onComplete();
-            }
-            subscribers.clear();
-        }
     }
 
     private class SubscriberWrapper {
         final Subscriber<? super T> subscriber;
-        final SubscriptionImpl subscription;
-        final AtomicLong requested = new AtomicLong();
-        final AtomicBoolean canceled = new AtomicBoolean(false);
-        final Queue<T> personalBuffer = new ConcurrentLinkedQueue<>();
+        final SubscriptionImpl      subscription;
+        final AtomicLong            requested      = new AtomicLong();
+        final AtomicBoolean         canceled       = new AtomicBoolean(false);
+        final Queue<T>              personalBuffer = new ConcurrentLinkedQueue<>();
 
         SubscriberWrapper(Subscriber<? super T> subscriber) {
-            this.subscriber = subscriber;
+            this.subscriber   = subscriber;
             this.subscription = new SubscriptionImpl();
         }
 

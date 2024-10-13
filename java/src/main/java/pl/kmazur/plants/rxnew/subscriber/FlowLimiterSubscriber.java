@@ -5,16 +5,18 @@ import lombok.extern.slf4j.Slf4j;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Slf4j
-public class ExternalSubscriber<T> extends DelegatingSubscriber<T> implements IExternalSubscriber<T> {
+public class FlowLimiterSubscriber<T> extends DelegatingSubscriber<T> implements IFlowLimiterSubscriber<T> {
 
     private ExternalControlSubscription subscription;
 
-    private final AtomicLong releaseRequest = new AtomicLong();
+    private final AtomicLong    releases = new AtomicLong();
+    private final AtomicBoolean opened   = new AtomicBoolean(true);
 
-    public ExternalSubscriber(final Subscriber<T> delegate) {
+    public FlowLimiterSubscriber(final Subscriber<T> delegate) {
         super(delegate);
     }
 
@@ -26,12 +28,37 @@ public class ExternalSubscriber<T> extends DelegatingSubscriber<T> implements IE
 
     @Override
     public void release(final long request) {
-        releaseRequest.addAndGet(request);
-        long decrement = release0();
-        subscription.delegate.request(decrement);
+        if (!opened.get()) {
+            releases.addAndGet(request);
+            long decrement = release0();
+            subscription.delegate.request(decrement);
+        } else {
+            subscription.delegate.request(1L);
+        }
+    }
+
+    @Override
+    public void closeFlow() {
+        opened.set(false);
+        releases.set(0L);
+    }
+
+    @Override
+    public void openFlow() {
+        opened.set(true);
+        releases.set(0L);
     }
 
     private long release0() {
+        if (opened.get()) {
+            AtomicLong requested = subscription.requested;
+            long       value;
+            do {
+                value = requested.get();
+            } while (!requested.compareAndSet(value, 0));
+            return value;
+        }
+
         AtomicLong accumulator = subscription.requested;
 
         long decremented;
@@ -39,15 +66,15 @@ public class ExternalSubscriber<T> extends DelegatingSubscriber<T> implements IE
         long changed;
         long request;
         do {
-            request     = releaseRequest.get();
+            request     = releases.get();
             value       = accumulator.get();
             changed     = Math.max(0, value - request);
             decremented = value - changed;
         } while (!accumulator.compareAndSet(value, changed));
 
         do {
-            request = releaseRequest.get();
-        } while (!releaseRequest.compareAndSet(request, request - decremented));
+            request = releases.get();
+        } while (!releases.compareAndSet(request, request - decremented));
 
         return decremented;
     }

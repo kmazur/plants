@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class GetCpuTempPublisher implements Publisher<Float> {
+public class DefaultPublisher implements Publisher<Float> {
 
     private List<Subscriber<? super Float>> subscribers = new ArrayList<>();
     private AtomicBoolean requested = new AtomicBoolean();
@@ -21,6 +21,7 @@ public class GetCpuTempPublisher implements Publisher<Float> {
     }
 
     private class CpuTempSubscription implements org.reactivestreams.Subscription {
+
         @Override
         public void request(long n) {
             if (requested.compareAndSet(false, true)) {

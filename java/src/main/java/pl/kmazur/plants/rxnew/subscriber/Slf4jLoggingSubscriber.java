@@ -1,46 +1,57 @@
 package pl.kmazur.plants.rxnew.subscriber;
 
+import lombok.extern.slf4j.Slf4j;
+import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import org.slf4j.event.Level;
 
-import java.util.function.Consumer;
+@Slf4j
+public class Slf4jLoggingSubscriber<T> extends DelegatingSubscriber<T> {
 
-public class AutoRequestSubscriber<T> extends DelegatingSubscriber<T> {
+    private final Level  level;
+    private final String name;
 
-    private static final Consumer<Subscription> EMPTY_ON_SUBSCRIBE = s -> {};
-    private static final Consumer<Throwable>    EMPTY_ON_ERROR     = t -> {};
-    private static final Runnable               EMPTY_ON_COMPLETE  = () -> {};
-
-    public static final long DEFAULT_REQUEST_COUNT = 1L;
-
-    private final long requestCount;
-
-    private Subscription subscription;
-
-    public static <T> AutoRequestSubscriber<T> of(final Consumer<T> onNext) {
-        return new AutoRequestSubscriber<>(EMPTY_ON_SUBSCRIBE, onNext, EMPTY_ON_ERROR, EMPTY_ON_COMPLETE);
+    public Slf4jLoggingSubscriber(final Subscriber<T> delegate) {
+        this(delegate, Level.INFO);
     }
 
-    public AutoRequestSubscriber(final Consumer<Subscription> onSubscribe, final Consumer<T> onNext, final Consumer<Throwable> onError, final Runnable onComplete) {
-        this(DEFAULT_REQUEST_COUNT, onSubscribe, onNext, onError, onComplete);
+    public Slf4jLoggingSubscriber(final String name, final Subscriber<T> delegate) {
+        this(name, delegate, Level.INFO);
     }
 
-    public AutoRequestSubscriber(final long requestCount, final Consumer<Subscription> onSubscribe, final Consumer<T> onNext, final Consumer<Throwable> onError, final Runnable onComplete) {
-        super(onSubscribe, onNext, onError, onComplete);
-        this.requestCount = requestCount;
+    public Slf4jLoggingSubscriber(final Subscriber<T> delegate, final Level level) {
+        super(delegate);
+        this.level = level;
+        this.name  = this.getClass().getSimpleName();
     }
 
+    public Slf4jLoggingSubscriber(final String name, final Subscriber<T> delegate, final Level level) {
+        super(delegate);
+        this.level = level;
+        this.name  = name;
+    }
 
     @Override
     public void onSubscribe(Subscription s) {
+        log.atLevel(level).log("{} onSubscribe", name);
         super.onSubscribe(s);
-        subscription = s;
-        s.request(requestCount);
     }
 
     @Override
-    public void onNext(T t) {
-        super.onNext(t);
-        subscription.request(requestCount);
+    public void onNext(T element) {
+        log.atLevel(level).log("{} onNext: {}", name, element);
+        super.onNext(element);
     }
 
+    @Override
+    public void onError(Throwable t) {
+        log.atLevel(level).log("{} onError", name);
+        super.onError(t);
+    }
+
+    @Override
+    public void onComplete() {
+        log.atLevel(level).log("{} onComplete", name);
+        super.onComplete();
+    }
 }

@@ -1,7 +1,7 @@
 package pl.kmazur.plants.config;
 
 @FunctionalInterface
-public interface ReadableConfig {
+public interface IReadableConfig {
 
     String get(final String key);
 

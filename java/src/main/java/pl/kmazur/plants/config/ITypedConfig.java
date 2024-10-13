@@ -1,6 +1,6 @@
 package pl.kmazur.plants.config;
 
-public interface TypedConfig extends Config {
+public interface ITypedConfig extends IConfig {
 
     default int getInt(final String key, final int defaultValue) {
         String value = get(key);

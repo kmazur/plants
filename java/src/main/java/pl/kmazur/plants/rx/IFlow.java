@@ -1,5 +1,7 @@
 package pl.kmazur.plants.rx;
 
-public interface IStage<T> {
-    void accept(final T value);
+@FunctionalInterface
+public interface IFlow<F, T> {
+
+    T apply(final F value);
 }
