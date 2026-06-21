@@ -11,6 +11,7 @@ import sys
 import threading
 import time
 from http import HTTPStatus
+from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import List, Optional
@@ -24,6 +25,8 @@ from .tatry import get_bootstrap
 
 log = logging.getLogger(__name__)
 TOKEN_RE = re.compile(r"([?&]token=)[^&\s\"]+")
+TOKEN_COOKIE = "camera_token"
+TOKEN_COOKIE_MAX_AGE = 60 * 60 * 24 * 365
 
 
 def configure_logging() -> None:
@@ -121,7 +124,19 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
         message = TOKEN_RE.sub(r"\1***", fmt % args)
         log.info("%s - %s", self.address_string(), message)
 
+    def end_headers(self) -> None:
+        token = getattr(self, "_cookie_token", None)
+        if token:
+            self.send_header(
+                "Set-Cookie",
+                f"{TOKEN_COOKIE}={token}; Path=/; Max-Age={TOKEN_COOKIE_MAX_AGE}; "
+                "HttpOnly; SameSite=Lax",
+            )
+            self._cookie_token = None
+        super().end_headers()
+
     def do_GET(self) -> None:
+        self._cookie_token = None
         parsed = urlparse(self.path)
         if parsed.path == "/healthz":
             self._send_text("ok\n", "text/plain")
@@ -157,9 +172,21 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             return True
         params = parse_qs(query)
         if params.get("token", [""])[0] == token:
+            self._cookie_token = token
             return True
         if self.headers.get("X-Camera-Token", "") == token:
+            self._cookie_token = token
             return True
+        raw_cookie = self.headers.get("Cookie")
+        if raw_cookie:
+            jar = SimpleCookie()
+            try:
+                jar.load(raw_cookie)
+            except Exception:
+                jar = SimpleCookie()
+            morsel = jar.get(TOKEN_COOKIE)
+            if morsel is not None and morsel.value == token:
+                return True
         return False
 
     def _status(self) -> dict:
