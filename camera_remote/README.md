@@ -20,7 +20,7 @@ Default runtime paths:
 /etc/camera-remote/config.ini
 /home/user/camera-remote-data/latest.jpg
 /home/user/camera-remote-data/history/YYYY-MM-DD/HH-MM-SS.jpg
-/home/user/camera-remote-data/static/checklista-tatry.html
+/home/user/IdeaProjects/plants/camera_remote/static/checklista-tatry.html
 ```
 
 By default the web server binds to `127.0.0.1`, so it is reachable only from
@@ -84,15 +84,16 @@ to enforce Basic Auth before requests reach the Python app.
 
 ## Tatry Checklist
 
-The server exposes `/checklista-tatry.html` from the runtime data directory,
-not from the Git checkout:
+The server exposes `/checklista-tatry.html` from the Git checkout:
 
 ```text
-/home/user/camera-remote-data/static/checklista-tatry.html
+/home/user/IdeaProjects/plants/camera_remote/static/checklista-tatry.html
 ```
 
-That keeps trip-specific page contents out of the public repository while the
-Python app still provides its `/api/bootstrap` data endpoint.
+The Python app provides the `/api/bootstrap` data endpoint used by the page.
+For compatibility, a runtime copy at
+`/home/user/camera-remote-data/static/checklista-tatry.html` is still accepted
+as a fallback if the repo copy is missing.
 
 ## Services
 

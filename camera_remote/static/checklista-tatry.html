@@ -1,0 +1,1879 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#2f6f57">
+<meta name="description" content="Plan i checklista wyjazdu w Tatry — Štrbské Pleso, Zakopane, Krynica.">
+<title>Wyjazd w Tatry — plan i checklista</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root{
+    --bg:#f3f6f4; --card:#ffffff; --detail-bg:#e9f1ec; --ink:#1d2b24; --muted:#698075;
+    --border:#e4ebe6; --border-strong:#cdd9d1;
+    --primary:#2f6f57; --accent:#ef9b42; --ring:rgba(47,111,87,.35);
+    --danger:#b23b2e; --shadow:0 1px 2px rgba(20,40,30,.05), 0 6px 18px rgba(20,40,30,.04);
+    --sk:#2f8f6b; --zak:#3170ad; --kry:#7d57ad; --travel:#d98328;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#101a16; --card:#172620; --detail-bg:#15251f; --ink:#e7efe9; --muted:#9bb1a6;
+      --border:#243730; --border-strong:#365045;
+      --primary:#4eb389; --accent:#f0a85a; --ring:rgba(78,179,137,.4);
+      --danger:#e2705f; --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 22px rgba(0,0,0,.25);
+      --sk:#4eb389; --zak:#5b9bd8; --kry:#a585d0; --travel:#f0a85a;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--bg);color:var(--ink);line-height:1.45;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;}
+  .plants-nav{position:sticky;top:0;z-index:10000;display:flex;gap:.45rem;align-items:center;
+    padding:.55rem .65rem;overflow-x:auto;background:#111b17;border-bottom:1px solid rgba(255,255,255,.12);
+    box-shadow:0 1px 6px rgba(0,0,0,.18)}
+  .plants-nav a{flex:0 0 auto;color:#fff;background:#26362f;border:1px solid rgba(255,255,255,.14);
+    border-radius:.45rem;padding:.48rem .7rem;text-decoration:none;font-size:.86rem;font-weight:700;
+    line-height:1;white-space:nowrap}
+  .plants-nav a[aria-current="page"]{background:var(--primary);border-color:rgba(255,255,255,.24)}
+
+  /* ---------- HERO ---------- */
+  .hero{position:relative;overflow:hidden;color:#fff;padding:1.5rem 1rem 2.3rem;
+    background:linear-gradient(160deg,#2f6f57 0%,#214f40 68%,#193b30 100%);}
+  .hero-inner{max-width:760px;margin:0 auto;position:relative;z-index:2}
+  .eyebrow{margin:0 0 .25rem;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;opacity:.85}
+  .hero h1{margin:.05rem 0;font-size:1.5rem;line-height:1.15;letter-spacing:-.01em}
+  .hero .sub{margin:.3rem 0 1rem;opacity:.9;font-size:.88rem}
+  .hero-mtns{position:absolute;left:0;right:0;bottom:-1px;width:100%;height:72px;z-index:1;opacity:.22}
+  .trip-row{display:flex;flex-wrap:wrap;align-items:center;gap:.55rem .8rem;margin-bottom:1rem}
+  .date-field{display:inline-flex;align-items:center;gap:.45rem;font-size:.82rem;
+    background:rgba(255,255,255,.15);padding:.38rem .65rem;border-radius:11px}
+  .date-field input{border:0;background:transparent;color:#fff;font:inherit;color-scheme:dark;outline:none}
+  .countdown{font-size:.85rem;font-weight:700;background:var(--accent);color:#3a2410;
+    padding:.32rem .7rem;border-radius:99px}
+  .countdown:empty{display:none}
+  .progress-head{display:flex;justify-content:space-between;align-items:baseline;font-size:.85rem;margin-bottom:.4rem}
+  #progPct{font-weight:800;font-size:1.05rem}
+  .progress-track{height:12px;background:rgba(255,255,255,.22);border-radius:99px;overflow:hidden}
+  .progress-fill{height:100%;width:0;border-radius:99px;transition:width .4s cubic-bezier(.4,0,.2,1);
+    background:linear-gradient(90deg,#ffd58c,#f0a85a)}
+
+  /* ---------- TABS ---------- */
+  .tabs{position:sticky;top:0;z-index:30;background:var(--bg);border-bottom:1px solid var(--border)}
+  .tabs-inner{max-width:760px;margin:0 auto;display:flex;gap:.2rem;padding:.4rem .6rem}
+  .tab{flex:1;border:0;background:transparent;color:var(--muted);font:inherit;font-size:.8rem;font-weight:600;white-space:nowrap;
+    padding:.55rem .25rem;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.25rem}
+  .tab:hover{color:var(--ink);background:var(--card)}
+  .tab.active{color:#fff;background:var(--primary)}
+  .tab-badge{font-size:.7rem;font-weight:700;opacity:.85;font-variant-numeric:tabular-nums}
+  .tab.active .tab-badge{color:#fff}
+
+  /* ---------- LAYOUT ---------- */
+  .container{max-width:760px;margin:0 auto;padding:1.1rem 1rem 3rem}
+  .panel{display:none}
+  .panel.active{display:block;animation:fade .25s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+  /* ---------- TIMELINE ---------- */
+  .seg{margin-bottom:1.1rem}
+  .seg-head{display:flex;align-items:baseline;gap:.5rem;flex-wrap:wrap;
+    font-weight:700;font-size:.95rem;padding:.5rem .2rem .6rem;border-bottom:2px solid var(--segc)}
+  .seg-head .seg-when{font-weight:500;color:var(--muted);font-size:.8rem}
+  .seg-sk{--segc:var(--sk)} .seg-zak{--segc:var(--zak)} .seg-kry{--segc:var(--kry)}
+  .days{display:flex;flex-direction:column;gap:.5rem;padding-top:.6rem}
+  .day{position:relative;display:flex;align-items:stretch;gap:.8rem;width:100%;text-align:left;
+    background:var(--card);border:1px solid var(--border);border-left:4px solid var(--dayc,var(--segc));
+    border-radius:13px;padding:.7rem .8rem;cursor:pointer;font:inherit;color:var(--ink);box-shadow:var(--shadow);
+    transition:transform .15s,box-shadow .15s,border-color .15s}
+  .day:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(20,40,30,.1)}
+  .day:focus-visible{outline:none;box-shadow:0 0 0 3px var(--ring)}
+  .day-date{flex:0 0 46px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    border-right:1px solid var(--border);padding-right:.7rem}
+  .day-date b{font-size:1.4rem;line-height:1;font-variant-numeric:tabular-nums}
+  .day-date span{font-size:.68rem;color:var(--muted);margin-top:.1rem;text-align:center}
+  .day-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:.18rem;justify-content:center}
+  .day-tag{align-self:flex-start;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
+    padding:.12rem .5rem;border-radius:99px;background:var(--dayc,var(--primary));color:#fff;opacity:.92}
+  .day.k-travel .day-tag,.day.k-home .day-tag{color:#3a2410}
+  .day-hl{font-size:.9rem;font-weight:600}
+  .day-flag{font-size:1rem}
+  .day-go{align-self:center;color:var(--muted);font-size:1.3rem;flex:0 0 auto}
+  /* hover peek */
+  /* dymek hover usunięty — szczegóły otwierają się inline po kliknięciu */
+  .tl-note{font-size:.78rem;color:var(--muted);text-align:center;margin:.4rem 0 0;line-height:1.5}
+  .day-wx{flex:0 0 auto;align-self:center;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    min-width:46px;font-size:.66rem;color:var(--muted);line-height:1.25}
+  .day-wx .wx-emoji{font-size:1.15rem}
+  .day-wx .wx-temp{font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}
+  .day-wx .wx-pop{color:var(--zak);font-variant-numeric:tabular-nums}
+  .day-wx:empty{display:none}
+  .m-wx{display:flex;align-items:center;gap:.6rem;background:var(--bg);border:1px solid var(--border);
+    border-radius:12px;padding:.55rem .8rem;margin-bottom:.9rem;font-size:.88rem}
+  .m-wx .wx-emoji{font-size:1.5rem}
+  .m-wx .wx-temp{font-weight:700}
+  .m-wx .wx-pop{color:var(--zak)}
+  .m-chart{margin:.1rem 0 .85rem}
+  .chart-wrap{position:relative}
+  .daychart{width:100%;height:auto;display:block;background:var(--card);border:1px solid var(--border);border-radius:10px;touch-action:none}
+  .ch-ax{font-size:10px;fill:var(--muted)}
+  .ch-grid{stroke:var(--border);stroke-width:.7}
+  .ch-night{fill:var(--ink);opacity:.06}
+  .ch-precip{fill:var(--zak);opacity:.2}
+  .ch-area{fill:var(--primary);opacity:.13}
+  .ch-line{fill:none;stroke:var(--primary);stroke-width:2;stroke-linejoin:round}
+  .ch-sun{stroke:var(--accent);stroke-width:1;stroke-dasharray:2 2;opacity:.75}
+  .ch-now{stroke:var(--primary);stroke-width:1.5;opacity:.5}
+  .ch-cursor{stroke:var(--ink);stroke-width:1;opacity:.45}
+  .ch-dot{fill:var(--accent);stroke:#fff;stroke-width:1.5}
+  .ch-tip{position:absolute;top:3px;background:#1f2d27;color:#fff;font-size:.74rem;font-weight:600;
+    padding:.25rem .5rem;border-radius:7px;pointer-events:none;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,.3);z-index:5}
+  .ch-cap{font-size:.7rem;color:var(--muted);margin-top:.3rem;line-height:1.45}
+
+  /* ---------- SZCZEGÓŁY DNIA (inline + pełna strona) ---------- */
+  .m-sec{margin-bottom:.9rem}
+  .m-sec h4{margin:0 0 .35rem;font-size:.82rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+  .m-sec ul{margin:0;padding-left:1.15rem;font-size:.9rem;line-height:1.55}
+  .m-sec li{margin-bottom:.3rem}
+  .m-drive,.m-stay{background:var(--bg);border:1px solid var(--border);border-radius:12px;
+    padding:.7rem .8rem;margin-bottom:.9rem;font-size:.85rem;line-height:1.5}
+  .m-drive b,.m-stay b{font-size:.78rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);
+    display:block;margin-bottom:.2rem}
+  .m-drive a,.m-stay a{color:var(--primary);font-weight:600;text-decoration:none;font-size:.85rem}
+  .m-drive a:hover,.m-stay a:hover{text-decoration:underline}
+  .m-stay .s-name{font-weight:700}
+  .btn-ghost,.btn-primary{flex:1;border:1px solid var(--border);background:var(--card);color:var(--ink);
+    padding:.6rem;border-radius:11px;font:inherit;font-size:.85rem;font-weight:600;cursor:pointer}
+  .btn-primary{background:var(--primary);color:#fff;border-color:var(--primary)}
+  .btn-ghost:hover{border-color:var(--border-strong)}
+
+  /* ---------- CELEBRATE + TOOLBAR ---------- */
+  .celebrate{display:none}
+  .celebrate.show{display:block;background:linear-gradient(135deg,#2f6f57,#3f9270);color:#fff;
+    padding:.9rem 1rem;border-radius:14px;text-align:center;font-weight:600;margin-bottom:1rem;
+    box-shadow:var(--shadow);animation:pop .4s ease}
+  @keyframes pop{from{transform:scale(.96);opacity:0}to{transform:scale(1);opacity:1}}
+  .toolbar{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1.1rem}
+  .toolbar button{border:1px solid var(--border);background:var(--card);color:var(--ink);
+    padding:.5rem .8rem;border-radius:99px;font:inherit;font-size:.82rem;cursor:pointer;box-shadow:var(--shadow)}
+  .toolbar button:hover{border-color:var(--border-strong)}
+  .toolbar button:active{transform:translateY(1px)}
+  .toolbar .spacer{flex:1}
+  #resetBtn{color:var(--danger)}
+
+  /* ---------- FILTRY ---------- */
+  .filters{display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:1rem}
+  .flt{border:1px solid var(--border);background:var(--card);color:var(--muted);font:inherit;font-size:.8rem;
+    padding:.4rem .7rem;border-radius:99px;cursor:pointer;box-shadow:var(--shadow);display:inline-flex;gap:.3rem;align-items:center}
+  .flt:hover{border-color:var(--border-strong)}
+  .flt.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+  .flt-count{opacity:.7;font-size:.72rem;font-variant-numeric:tabular-nums}
+  .flt.active .flt-count{opacity:.9}
+  .kind{flex:0 0 auto;align-self:center;opacity:.5;font-size:.82rem}
+  #categories.flt-pack .item:not([data-kind=pack]),
+  #categories.flt-do .item:not([data-kind=do]),
+  #categories.flt-buy .item:not([data-kind=buy]){display:none}
+
+  /* ---------- CHECKLIST CATEGORIES ---------- */
+  .cat{background:var(--card);border:1px solid var(--border);border-radius:16px;
+    margin-bottom:.8rem;box-shadow:var(--shadow);overflow:hidden}
+  .cat-head{width:100%;display:flex;align-items:center;gap:.6rem;background:transparent;border:0;
+    padding:.85rem 1rem;cursor:pointer;font:inherit;color:var(--ink);text-align:left;user-select:none}
+  .cat-icon{font-size:1.25rem;line-height:1;flex:0 0 auto}
+  .cat-title{flex:1;font-weight:700;font-size:.98rem}
+  .cat-count{font-size:.78rem;color:var(--muted);font-variant-numeric:tabular-nums;flex:0 0 auto}
+  .cat.complete .cat-count{color:var(--primary);font-weight:700}
+  .cat-mini{width:52px;height:6px;background:var(--border);border-radius:99px;overflow:hidden;flex:0 0 auto}
+  .cat-mini-fill{display:block;height:100%;width:0;background:var(--primary);border-radius:99px;transition:width .35s ease}
+  .chev{color:var(--muted);transition:transform .25s;font-size:.8rem;flex:0 0 auto}
+  .cat.collapsed .chev{transform:rotate(-90deg)}
+  .cat-body{display:grid;grid-template-rows:1fr;transition:grid-template-rows .26s ease}
+  .cat.collapsed .cat-body{grid-template-rows:0fr}
+  .cat-body-inner{overflow:hidden}
+  .items{list-style:none;margin:0;padding:0 1rem}
+  .item{display:flex;align-items:flex-start;gap:.4rem;padding:.55rem 0;border-top:1px solid var(--border)}
+  .item label{display:flex;align-items:flex-start;gap:.65rem;flex:1;cursor:pointer;min-width:0}
+  .item input{position:absolute;opacity:0;width:0;height:0}
+  .box{flex:0 0 auto;width:22px;height:22px;margin-top:1px;border:2px solid var(--border-strong);
+    border-radius:7px;background:var(--card);display:grid;place-items:center;color:#fff;
+    transition:background .16s,border-color .16s,transform .16s}
+  .box svg{opacity:0;transform:scale(.4);transition:opacity .16s,transform .16s}
+  .item input:checked + .box{background:var(--primary);border-color:var(--primary)}
+  .item input:checked + .box svg{opacity:1;transform:scale(1)}
+  .item input:focus-visible + .box{box-shadow:0 0 0 3px var(--ring)}
+  .item label:active .box{transform:scale(.9)}
+  .txt{min-width:0}
+  .txt .t{display:block;font-weight:600;font-size:.95rem}
+  .txt .d{display:block;font-size:.82rem;color:var(--muted);margin-top:.05rem}
+  .item.done .txt .t{text-decoration:line-through;color:var(--muted);text-decoration-thickness:1.5px}
+  .item.done .txt .d{opacity:.7}
+  .del-custom{flex:0 0 auto;align-self:center;border:0;background:transparent;color:var(--muted);
+    cursor:pointer;font-size:.85rem;padding:.25rem .45rem;border-radius:8px;line-height:1}
+  .del-custom:hover{color:var(--danger);background:rgba(178,59,46,.1)}
+  .is-custom .txt .t::after{content:" • własne";font-size:.7rem;color:var(--accent);font-weight:600}
+  .add-row{display:flex;gap:.5rem;padding:.65rem 0 1rem}
+  .add-row input{flex:1;padding:.5rem .7rem;border:1px dashed var(--border-strong);border-radius:10px;
+    background:transparent;color:var(--ink);font:inherit;font-size:.88rem;outline:none}
+  .add-row input:focus{border-color:var(--primary);border-style:solid}
+  .add-row button{width:40px;border:0;border-radius:10px;background:var(--primary);color:#fff;
+    font-size:1.25rem;line-height:1;cursor:pointer}
+  body.hide-done .item.done{display:none}
+
+  /* ---------- ŚCIĄGA / INFO ---------- */
+  .info-title{margin:.2rem 0 .8rem;font-size:1.05rem}
+  .info{background:var(--card);border:1px solid var(--border);border-radius:16px;
+    box-shadow:var(--shadow);padding:1rem 1.1rem;margin-bottom:1.1rem}
+  .sos{background:linear-gradient(135deg,rgba(178,59,46,.1),rgba(239,155,66,.12));
+    border:1px solid var(--border);border-radius:13px;padding:.8rem;margin-bottom:.5rem}
+  .sos-head{font-weight:700;font-size:.9rem;margin-bottom:.6rem}
+  .sos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.5rem}
+  .sos-chip{display:flex;flex-direction:column;gap:.05rem;padding:.5rem .65rem;border-radius:10px;
+    background:var(--card);border:1px solid var(--border);text-decoration:none;color:var(--ink)}
+  .sos-chip b{font-size:1rem;color:var(--danger);line-height:1.2}
+  .sos-chip span{font-size:.72rem;color:var(--muted)}
+  .sos-chip.big{grid-column:1/-1;align-items:center;text-align:center;background:var(--danger);border-color:var(--danger)}
+  .sos-chip.big b{color:#fff;font-size:1.6rem}
+  .sos-chip.big span{color:rgba(255,255,255,.92);font-size:.8rem}
+  .sos-chip:active{transform:translateY(1px)}
+  .sos-note{margin:.6rem 0 0;font-size:.75rem;color:var(--muted)}
+  .info-block{border-top:1px solid var(--border)}
+  .info-block summary{cursor:pointer;font-weight:600;font-size:.92rem;padding:.7rem 0;
+    list-style:none;display:flex;align-items:center;gap:.45rem;user-select:none}
+  .info-block summary::-webkit-details-marker{display:none}
+  .info-block summary::before{content:'▸';color:var(--muted);transition:transform .2s;font-size:.8rem}
+  .info-block[open] summary::before{transform:rotate(90deg)}
+  .info-block ul,.info-block ol{margin:.1rem 0 .85rem;padding-left:1.2rem;font-size:.85rem;line-height:1.55}
+  .info-block li{margin-bottom:.38rem}
+  .info-tip{margin:.5rem 0 .85rem;padding:.6rem .7rem;background:rgba(47,111,87,.1);
+    border-radius:10px;font-size:.8rem;line-height:1.5}
+  .info-src{margin:.85rem 0 0;color:var(--muted);font-size:.72rem;line-height:1.5}
+  .cmp{width:100%;border-collapse:collapse;font-size:.8rem;margin:.3rem 0 .5rem}
+  .cmp th,.cmp td{text-align:left;padding:.34rem .4rem;border-bottom:1px solid var(--border);vertical-align:top}
+  .cmp th{font-size:.75rem;color:var(--muted);font-weight:600}
+  .cmp td:first-child{color:var(--muted);white-space:nowrap}
+  .stays{display:flex;flex-direction:column}
+  .stay-row{display:flex;gap:.8rem;padding:.6rem 0;border-top:1px solid var(--border)}
+  .stay-row:first-child{border-top:0}
+  .stay-when{flex:0 0 86px;font-size:.8rem;font-weight:700;color:var(--primary);line-height:1.35}
+  .stay-info{min-width:0;display:flex;flex-direction:column;gap:.12rem;font-size:.85rem}
+  .stay-info .muted{color:var(--muted);font-size:.78rem}
+  .stay-info a{color:var(--primary);font-weight:600;text-decoration:none;font-size:.78rem;width:max-content}
+  .stay-info a:hover{text-decoration:underline}
+
+  .foot{text-align:center;color:var(--muted);font-size:.76rem;margin-top:1.6rem;line-height:1.7}
+
+  /* ---------- KARTA AWARYJNA ---------- */
+  .card-actions{display:flex;align-items:center;gap:.8rem;flex-wrap:wrap;margin-bottom:1rem}
+  .card-hint{font-size:.78rem;color:var(--muted)}
+  .card-sheet{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.1rem;box-shadow:var(--shadow)}
+  .cs-head{text-align:center;border-bottom:2px solid var(--primary);padding-bottom:.6rem;margin-bottom:.9rem}
+  .cs-head h2{margin:0;font-size:1.25rem}
+  .cs-head span{font-size:.82rem;color:var(--muted)}
+  .cs-grid{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}
+  .cs-box{border:1px solid var(--border);border-radius:11px;padding:.7rem .8rem;break-inside:avoid}
+  .cs-box h3{margin:0 0 .5rem;font-size:.85rem}
+  .cs-lines{font-size:.8rem;line-height:1.65}
+  .cs-lines b{font-variant-numeric:tabular-nums}
+  .cs-fields{display:flex;flex-direction:column;gap:.4rem}
+  .cs-fields label{display:flex;flex-direction:column;font-size:.72rem;color:var(--muted);gap:.12rem}
+  .cs-fields input{font:inherit;font-size:.85rem;color:var(--ink);border:0;border-bottom:1px solid var(--border-strong);
+    background:transparent;padding:.15rem 0;outline:none}
+  .cs-fields input:focus{border-color:var(--primary)}
+  .cs-foot{text-align:center;font-size:.7rem;color:var(--muted);margin:.9rem 0 0}
+  @media (max-width:520px){.cs-grid{grid-template-columns:1fr}}
+
+  /* ---------- WIDŻETY / PRZEGLĄD ---------- */
+  .trip-strip{margin:.1rem 0 1rem;font-size:.8rem}
+  .ts-label{display:flex;justify-content:space-between;margin-bottom:.35rem;font-weight:600;opacity:.95}
+  .ts-bar{display:flex;gap:3px;height:8px}
+  .ts-seg{position:relative;flex:1;background:rgba(255,255,255,.22);border-radius:99px;overflow:hidden}
+  .ts-seg-fill{position:absolute;inset:0 auto 0 0;width:0;border-radius:99px;transition:width .5s ease}
+
+  .widget{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:16px;
+    box-shadow:var(--shadow);padding:.85rem 1rem;margin-bottom:.8rem;display:flex;align-items:center;gap:.85rem;
+    cursor:pointer;width:100%;text-align:left;font:inherit;color:var(--ink)}
+  .widget:hover{border-color:var(--border-strong);transform:translateY(-1px)}
+  .widget .w-day{flex:0 0 auto;text-align:center;line-height:1.05;min-width:38px}
+  .widget .w-day b{font-size:1.55rem;display:block}
+  .widget .w-day span{font-size:.66rem;color:var(--muted)}
+  .widget .w-body{flex:1;min-width:0}
+  .widget .w-eyebrow{font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);font-weight:800}
+  .widget .w-title{font-weight:700;font-size:.96rem;margin:.05rem 0;line-height:1.25}
+  .widget .w-sub{font-size:.8rem;color:var(--muted)}
+  .widget .w-wx{flex:0 0 auto;text-align:center;font-size:.7rem;color:var(--muted)}
+  .widget .w-wx b{font-size:1.3rem;display:block}
+  .widget .w-go{flex:0 0 auto;color:var(--muted);font-size:1.35rem}
+
+  .reco{background:rgba(47,111,87,.09);border:1px solid var(--border);border-radius:13px;
+    padding:.7rem .85rem;margin-bottom:.8rem;font-size:.82rem;line-height:1.5}
+  .reco b{color:var(--primary)}
+  .reco:empty{display:none}
+
+  .route{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);
+    padding:.85rem 1rem;margin-bottom:1rem}
+  .route-head{font-weight:700;font-size:.9rem;margin-bottom:.5rem}
+  .leaflet-map{height:240px;border-radius:12px;overflow:hidden;margin-bottom:.7rem;z-index:0}
+  .gmaps-link{float:right;font-size:.74rem;font-weight:600;color:var(--primary);text-decoration:none}
+  .gmaps-link:hover{text-decoration:underline}
+  .leaflet-popup-content{font:inherit;font-size:.82rem;line-height:1.45}
+  .leaflet-popup-content a{color:#2f6f57;font-weight:600}
+
+  /* akordeon dnia (inline) */
+  .day-detail{display:grid;grid-template-rows:0fr;transition:grid-template-rows .28s ease}
+  .day-wrap.open .day-detail{grid-template-rows:1fr}
+  .day-detail-inner{overflow:hidden}
+  /* otwarty kafelek dnia — inny kolor, połączony z panelem w jeden blok */
+  .day-wrap.open .day{background:var(--detail-bg);
+    background:color-mix(in srgb, var(--dayc,var(--primary)) 16%, var(--card));
+    border-color:color-mix(in srgb, var(--dayc,var(--primary)) 40%, var(--border));
+    border-left-color:var(--dayc,var(--primary));border-bottom-color:transparent;
+    border-radius:13px 13px 0 0;box-shadow:none}
+  .day-wrap.open .day:hover{transform:none}
+  .day-detail-card{position:relative;margin:-1px 0 .7rem;padding:.55rem .9rem .85rem;
+    background:var(--detail-bg);
+    background:color-mix(in srgb, var(--dayc,var(--primary)) 11%, var(--card));
+    border:1px solid var(--border);
+    border-color:color-mix(in srgb, var(--dayc,var(--primary)) 40%, var(--border));
+    border-top:0;border-left:4px solid var(--dayc,var(--primary));
+    border-radius:0 0 13px 13px;box-shadow:none}
+  .dd-head{display:flex;align-items:baseline;justify-content:space-between;gap:.4rem;flex-wrap:wrap;
+    margin:0 0 .55rem;padding-bottom:.45rem;border-bottom:1px dashed color-mix(in srgb, var(--dayc,var(--primary)) 35%, var(--border))}
+  .dd-loc{font-weight:800;font-size:.95rem}
+  .dd-date{font-size:.77rem;color:var(--muted)}
+  .day-detail-card .m-wx,.day-detail-card .m-drive,.day-detail-card .m-stay{background:var(--card)}
+  .day-go{transition:transform .2s}
+  .day-wrap.open .day-go{transform:rotate(90deg)}
+  .detail-foot{margin-top:.4rem}
+  .detail-foot .btn-ghost{width:auto;flex:0 0 auto;padding:.45rem .85rem}
+
+  /* wiersze odcinków trasy */
+  .route-sum{font-size:.84rem;margin-bottom:.3rem}
+  .route-sum .big{font-size:1.1rem;font-weight:800}
+  .legs-list{display:flex;flex-direction:column;gap:.4rem;margin-top:.4rem}
+  .leg-row{display:flex;align-items:center;gap:.7rem;background:var(--bg);border:1px solid var(--border);border-radius:11px;padding:.5rem .65rem}
+  .leg-date{flex:0 0 auto;font-size:.74rem;font-weight:700;color:var(--primary);font-variant-numeric:tabular-nums}
+  .leg-route{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25}
+  .leg-route b{font-size:.86rem}
+  .leg-meta{font-size:.74rem;color:var(--muted)}
+  .leg-actions{flex:0 0 auto;display:flex;gap:.35rem}
+  .leg-actions a{text-decoration:none;font-size:1rem;width:32px;height:32px;display:grid;place-items:center;border:1px solid var(--border);border-radius:9px;background:var(--card)}
+  .leg-actions a:hover{border-color:var(--primary)}
+  .legs-note{font-size:.74rem;color:var(--muted);margin:.55rem 0 0;line-height:1.5}
+  .legs-note a{color:var(--primary)}
+  .rt-node{fill:var(--card);stroke:var(--muted);stroke-width:2}
+  .rt-node.act{fill:var(--accent);stroke:var(--accent)}
+  .rt-line{fill:none;stroke:var(--primary);stroke-width:2;stroke-dasharray:5 4;opacity:.65}
+  .rt-lbl{font-size:9px;fill:var(--ink);font-weight:600}
+
+  .place{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:.9rem 1rem;margin-bottom:1rem}
+  .place:empty{display:none}
+  .place-head{font-weight:700;font-size:.95rem;margin-bottom:.5rem}
+  .place-head .muted{color:var(--muted);font-weight:500;font-size:.8rem}
+  .place-body{display:flex;gap:.8rem}
+  .place-thumb{flex:0 0 auto;width:84px;height:84px;object-fit:cover;border-radius:11px;background:var(--bg)}
+  .place-txt{min-width:0}
+  .place-extract{margin:0 0 .4rem;font-size:.82rem;line-height:1.5}
+  .place-meta{font-size:.8rem;color:var(--muted);margin-bottom:.3rem}
+  .place-txt a{font-size:.78rem;color:var(--primary);font-weight:600;text-decoration:none}
+  .place-txt a:hover{text-decoration:underline}
+  @media (max-width:520px){.place-thumb{width:64px;height:64px}}
+
+  .data-bar{display:flex;align-items:center;gap:.6rem;margin-bottom:.7rem}
+  #refreshBtn{border:1px solid var(--border);background:var(--card);color:var(--ink);font:inherit;font-size:.78rem;
+    padding:.35rem .7rem;border-radius:99px;cursor:pointer;box-shadow:var(--shadow)}
+  #refreshBtn:hover{border-color:var(--border-strong)}
+  #refreshBtn:disabled{opacity:.6;cursor:default}
+  .data-stamp{font-size:.72rem;color:var(--muted)}
+  .holi-dot{cursor:help}
+  .m-holi{background:rgba(239,155,66,.15);border:1px solid var(--border);border-radius:11px;
+    padding:.55rem .75rem;margin-bottom:.8rem;font-size:.84rem;line-height:1.45}
+  .sug-txt{margin:0 0 .55rem;font-size:.9rem;line-height:1.5}
+  .chiplinks{display:flex;flex-wrap:wrap;gap:.4rem}
+  .chiplinks a{display:inline-flex;align-items:center;gap:.3rem;font-size:.8rem;text-decoration:none;font-weight:600;
+    background:var(--bg);border:1px solid var(--border);border-radius:99px;padding:.32rem .65rem;color:var(--primary)}
+  .chiplinks a:hover{border-color:var(--primary)}
+  .chiplinks .poi{color:var(--ink);font-weight:500}
+  .chiplinks .poi em{color:var(--muted);font-style:normal;font-size:.72rem}
+
+  .day.today{border-color:var(--accent);animation:tpulse 2.2s infinite}
+  @keyframes tpulse{0%,100%{box-shadow:0 0 0 2px var(--accent),var(--shadow)}50%{box-shadow:0 0 0 5px rgba(239,155,66,.3),var(--shadow)}}
+  .day.today::after{content:'● DZIŚ';position:absolute;top:-9px;right:12px;background:var(--accent);color:#3a2410;
+    font-size:.6rem;font-weight:800;letter-spacing:.03em;padding:.1rem .45rem;border-radius:99px}
+  .day.nextday::after{content:'START';position:absolute;top:-9px;right:12px;background:var(--accent);color:#3a2410;
+    font-size:.6rem;font-weight:800;padding:.1rem .45rem;border-radius:99px}
+
+  .meta{display:flex;align-items:center;gap:.3rem;flex:0 0 auto;align-self:center}
+  .who,.qty{border:1px solid var(--border);background:var(--card);cursor:pointer;font:inherit;border-radius:99px;color:var(--muted);line-height:1}
+  .who{width:23px;height:23px;display:grid;place-items:center;font-size:.7rem;font-weight:800;padding:0}
+  .who.set{color:#fff;border:0}
+  .qty{font-size:.72rem;padding:.13rem .42rem;min-width:26px;text-align:center;font-variant-numeric:tabular-nums}
+  .qty.empty{opacity:.35}
+  .qty-input{width:44px;font:inherit;font-size:.78rem;border:1px solid var(--primary);border-radius:7px;padding:.12rem .2rem;text-align:center;background:var(--card);color:var(--ink)}
+  .flt-div{flex-basis:100%;height:0}
+  .pf{border:1px solid var(--border);background:var(--card);color:var(--muted);font:inherit;font-size:.8rem;
+    padding:.4rem .7rem;border-radius:99px;cursor:pointer;box-shadow:var(--shadow);display:inline-flex;gap:.25rem;align-items:center}
+  .pf:hover{border-color:var(--border-strong)}
+  .pf.active{background:var(--zak);color:#fff;border-color:var(--zak)}
+  .sc{border:1px solid var(--border);background:var(--card);color:var(--muted);font:inherit;font-size:.8rem;
+    padding:.4rem .7rem;border-radius:99px;cursor:pointer;box-shadow:var(--shadow);display:inline-flex;gap:.25rem;align-items:center}
+  .sc:hover{border-color:var(--border-strong)}
+  .sc.active{background:var(--accent);color:#3a2410;border-color:var(--accent)}
+  #categories.who-ty .item:not([data-who="ty"]):not([data-who="oboje"]),
+  #categories.who-zona .item:not([data-who="zona"]):not([data-who="oboje"]){display:none}
+
+  /* ---------- HEATMAPA 15 DNI ---------- */
+  .heatbox{background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);margin-bottom:1rem;padding:.3rem .6rem .6rem;overflow-x:auto}
+  .heatbox>summary{cursor:pointer;font-weight:700;font-size:.85rem;padding:.5rem .3rem;list-style:none;color:var(--ink)}
+  .heatbox>summary::-webkit-details-marker{display:none}
+  .heatbox>summary::before{content:'▸ ';color:var(--muted)}
+  .heatbox[open]>summary::before{content:'▾ '}
+  .hm{border-collapse:collapse;font-size:.72rem;width:100%;min-width:560px}
+  .hm td,.hm th{text-align:center;padding:.18rem .1rem;border:1px solid var(--bg)}
+  .hm-lab{color:var(--muted);font-weight:600;text-align:right;padding-right:.35rem!important;white-space:nowrap;position:sticky;left:0;background:var(--card)}
+  .hm-day{cursor:pointer;font-weight:700;line-height:1.05;padding-bottom:.25rem!important}
+  .hm-day small{display:block;font-weight:500;color:var(--muted);font-size:.62rem}
+  .hm-day:hover{color:var(--accent)}
+  .hm-seg-c{font-size:.7rem;font-weight:700;text-align:center;padding:.3rem .3rem!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:color-mix(in srgb,var(--segcc) 16%,var(--card));border-bottom:2px solid var(--segcc)!important;color:var(--ink)}
+  .hm-trav small{color:var(--travel)}
+  .hm-c{cursor:pointer;font-variant-numeric:tabular-nums;color:#16261f;font-weight:600;border-radius:3px}
+
+  /* ---------- RYTM DNIA ---------- */
+  .rh-sum{display:flex;flex-wrap:wrap;gap:.4rem;margin:.2rem 0 .7rem}
+  .rh-pill{font-size:.76rem;padding:.25rem .6rem;border-radius:99px;font-weight:600}
+  .rh-pn{background:rgba(125,87,173,.16);color:var(--kry)}
+  .rh-pd{background:rgba(47,143,107,.16);color:var(--sk)}
+  .rh-pg{background:rgba(239,155,66,.18);color:var(--accent)}
+  .rh-none{color:var(--muted);font-size:.85rem}
+  .rh-list{border:1px solid var(--border);border-radius:11px;overflow:hidden}
+  .rh-row{display:flex;align-items:stretch;gap:.6rem;padding:0 .7rem;font-size:.82rem}
+  .rh-h{flex:0 0 46px;display:flex;align-items:center;padding:.34rem 0;font-weight:700;font-variant-numeric:tabular-nums;color:var(--muted)}
+  .rh-w{flex:0 0 auto;display:flex;gap:.45rem;align-items:stretch}
+  .rh-m{display:flex;align-items:center;align-self:stretch;gap:.25rem;font-size:.76rem;font-variant-numeric:tabular-nums}
+  .rh-m b{font-weight:600;min-width:27px;text-align:right}
+  .rh-mb{display:block;width:20px;align-self:stretch;background:var(--border);overflow:hidden;flex:0 0 auto}
+  .rh-mb i{display:block;height:100%}
+  .rh-now{box-shadow:inset 3px 0 0 var(--danger);background:rgba(178,59,46,.08)!important}
+  .rh-now .rh-h{color:var(--danger)}
+  .rh-ev{flex:1;display:flex;align-items:center;padding:.34rem 0;color:var(--muted);font-size:.78rem;line-height:1.3}
+  .rh-nap{background:rgba(125,87,173,.12)}
+  .rh-nap .rh-h{color:var(--kry)}
+  .rh-wake{background:rgba(232,162,58,.1)}
+  .rh-wake .rh-h{color:var(--accent)}
+  .rh-bed{background:rgba(49,112,173,.12)}
+  .rh-bed .rh-h{color:var(--zak)}
+  .rh-drive{background:rgba(217,131,40,.1)}
+  .rh-pw{background:rgba(232,162,58,.16);color:var(--accent)}
+  .rh-pb{background:rgba(49,112,173,.16);color:var(--zak)}
+
+  /* ---------- PEŁNY WIDOK DNIA ---------- */
+  .dayfull{position:fixed;inset:0;z-index:200;background:var(--bg);display:none;overflow-y:auto}
+  .dayfull.open{display:block}
+  .df-card{background:var(--bg);width:100%;max-width:760px;min-height:100%;margin:0 auto;box-shadow:none}
+  .df-detail [data-full]{display:none}
+  .df-bar{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:.7rem;color:#fff;padding:.7rem 1rem;background:linear-gradient(160deg,color-mix(in srgb,var(--dayc,var(--primary)) 82%,#0b1812),color-mix(in srgb,var(--dayc,var(--primary)) 50%,#0b1812))}
+  .df-close{flex:0 0 auto;width:36px;height:36px;border-radius:50%;border:0;background:rgba(255,255,255,.18);color:#fff;font-size:1.2rem;cursor:pointer}
+  .df-title{font-weight:800;font-size:1.05rem}
+  .df-date{font-size:.78rem;opacity:.9}
+  .df-body{padding:1rem 1rem 2.4rem}
+  .df-h{margin:.4rem 0 .6rem;font-size:.95rem}
+  .df-detail{margin-top:.4rem}
+  .df-detail .dd-head{display:none}
+
+  /* ---------- RADAR ---------- */
+  .radar-btn{border:1px solid var(--border);background:var(--card);color:var(--ink);font:inherit;font-size:.74rem;padding:.25rem .6rem;border-radius:99px;cursor:pointer;font-weight:600}
+  .radar-btn.on{background:var(--zak);color:#fff;border-color:var(--zak)}
+  .radar-time{font-size:.72rem;color:var(--muted);margin-left:.3rem}
+
+  /* ---------- POLISH / A11Y ---------- */
+  html{scroll-behavior:smooth}
+  body{accent-color:var(--primary)}
+  *{-webkit-tap-highlight-color:rgba(47,111,87,.16)}
+  a:focus-visible,button:focus-visible,input:focus-visible,summary:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--ring);outline-offset:2px;border-radius:6px}
+  .data-stamp.loading{color:var(--accent)}
+  [inert]{cursor:default}
+  @media (prefers-reduced-motion:reduce){
+    *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
+    html{scroll-behavior:auto}
+  }
+
+  @media print{
+    @page{margin:12mm}
+    .hero,.tabs,.toolbar,.chev,.add-row,.del-custom,.date-field,.day-go,.day-pop,.no-print{display:none!important}
+    .panel{display:none!important}
+    .panel.active{display:block!important}
+    .cat.collapsed .cat-body{grid-template-rows:1fr!important}
+    body{background:#fff}
+    .cat,.day,.info,.card-sheet,.cs-box{box-shadow:none}
+    .card-sheet{border:0;padding:0}
+  }
+</style>
+</head>
+<body>
+<nav class="plants-nav" aria-label="Plants navigation">
+  <a data-plants-path="/">Kamera</a>
+  <a data-plants-path="/live.mjpg">Live</a>
+  <a data-plants-path="/history">Historia</a>
+  <a data-plants-path="/checklista-tatry.html" aria-current="page">Tatry</a>
+</nav>
+<script>
+(function(){
+  const token=new URLSearchParams(location.search).get('token');
+  document.querySelectorAll('.plants-nav a[data-plants-path]').forEach(a=>{
+    const u=new URL(a.dataset.plantsPath,location.origin);
+    if(token)u.searchParams.set('token',token);
+    a.href=u.pathname+u.search;
+  });
+})();
+</script>
+<header class="hero">
+    <svg class="hero-mtns" viewBox="0 0 760 72" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+      <path fill="#ffffff" d="M0,72 L0,40 L64,20 L128,42 L200,10 L272,44 L344,16 L420,46 L496,14 L568,40 L640,22 L712,44 L760,28 L760,72 Z"/>
+    </svg>
+    <div class="hero-inner">
+      <p class="eyebrow">🏔️ Wyjazd w Tatry 2026</p>
+      <h1>Štrbské Pleso · Zakopane · Krynica</h1>
+      <p class="sub">21 cze – 5 lip 2026 • 15 dni • samochodem • z dzieckiem (16 mies.) i żoną</p>
+      <div class="trip-row">
+        <label class="date-field">Data wyjazdu <input type="date" id="tripDate"></label>
+        <span id="countdown" class="countdown"></span>
+      </div>
+      <div id="tripStrip" class="trip-strip"></div>
+      <div class="progress-wrap">
+        <div class="progress-head"><span id="progLabel">0 / 0 gotowe</span><span id="progPct">0%</span></div>
+        <div class="progress-track" role="progressbar" aria-label="Postęp checklisty"><div class="progress-fill" id="progFill"></div></div>
+      </div>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <div class="tabs-inner">
+      <button class="tab active" data-tab="timeline" type="button">📅 Oś czasu</button>
+      <button class="tab" data-tab="checklist" type="button">✅ Lista <span class="tab-badge" id="clBadge"></span></button>
+      <button class="tab" data-tab="info" type="button">📋 Info</button>
+      <button class="tab" data-tab="card" type="button">🆘 Karta</button>
+    </div>
+  </nav>
+
+  <div class="container">
+
+    <!-- ============ TIMELINE ============ -->
+    <section id="panel-timeline" class="panel active">
+      <div class="data-bar"><button id="refreshBtn" type="button">⟳ Odśwież dane</button><span id="dataStamp" class="data-stamp"></span></div>
+      <button id="todayWidget" class="widget" type="button"></button>
+      <div id="weatherReco" class="reco"></div>
+      <div id="routeWidget" class="route"></div>
+      <div id="placeWidget" class="place"></div>
+      <details id="heatBox" class="heatbox" open><summary>📊 Pogoda na 15 dni · wg miejsca pobytu — kliknij dzień, by otworzyć pełny widok</summary><div id="heatmap"></div></details>
+      <div id="timeline"></div>
+      <p class="tl-note">Najedź na dzień, aby zobaczyć skrót · kliknij, by otworzyć pełne szczegóły. Plany wycieczek to propozycje pod dziecko — dostosuj do pogody i drzemki.<br>🌦️ Pogoda: Open-Meteo (aktualizowana online, max 16 dni do przodu — 5.07 dojdzie bliżej terminu).</p>
+    </section>
+
+    <!-- ============ CHECKLIST ============ -->
+    <section id="panel-checklist" class="panel">
+      <div id="celebrate" class="celebrate">🎉 Wszystko odhaczone — udanego wyjazdu w Tatry! 🏔️</div>
+      <div class="toolbar">
+        <button id="toggleDone" type="button"></button>
+        <button id="toggleCollapse" type="button"></button>
+        <span class="spacer"></span>
+        <button id="resetBtn" type="button">↺ Resetuj</button>
+      </div>
+      <div class="filters">
+        <button class="flt active" data-flt="all" type="button">Wszystko <span class="flt-count" data-fc="all"></span></button>
+        <button class="flt" data-flt="pack" type="button">🎒 Zabrać <span class="flt-count" data-fc="pack"></span></button>
+        <button class="flt" data-flt="do" type="button">✅ Zrobić <span class="flt-count" data-fc="do"></span></button>
+        <button class="flt" data-flt="buy" type="button">🛒 Kupić <span class="flt-count" data-fc="buy"></span></button>
+        <span class="flt-div"></span>
+        <button class="pf active" data-pf="all" type="button">👥 Wszyscy</button>
+        <button class="pf" data-pf="ty" type="button">🟦 Ty</button>
+        <button class="pf" data-pf="zona" type="button">🟪 Żona</button>
+        <span class="flt-div"></span>
+        <button class="sc active" data-sc="all" type="button">🗂️ Całość</button>
+        <button class="sc" data-sc="child" type="button">👶 Dziecko <span class="flt-count" data-fc="child"></span></button>
+        <button class="sc" data-sc="rest" type="button">🧑 Reszta</button>
+      </div>
+      <main id="categories"></main>
+      <p class="foot">
+        Zaznaczenia, własne pozycje i data zapisują się lokalnie w tej przeglądarce (localStorage).<br>
+        Działa offline — możesz dodać do ekranu głównego telefonu.
+      </p>
+    </section>
+
+    <!-- ============ INFO / ŚCIĄGA ============ -->
+    <section id="panel-info" class="panel">
+      <h2 class="info-title">📋 Ściąga — ważne informacje</h2>
+      <div class="info">
+        <div class="sos">
+          <div class="sos-head">📞 Telefony alarmowe</div>
+          <div class="sos-grid">
+            <a class="sos-chip big" href="tel:112"><b>112</b><span>numer alarmowy — działa w PL i SK</span></a>
+            <a class="sos-chip" href="tel:18300"><b>18 300</b><span>ratownictwo górskie SK (HZS)</span></a>
+            <a class="sos-chip" href="tel:601100300"><b>601 100 300</b><span>ratownictwo górskie PL (TOPR)</span></a>
+            <a class="sos-chip" href="tel:155"><b>155</b><span>pogotowie SK</span></a>
+            <a class="sos-chip" href="tel:158"><b>158</b><span>policja SK</span></a>
+            <a class="sos-chip" href="tel:+421910719193"><b>+421 910 719 193</b><span>nocleg Štrbské Pleso</span></a>
+          </div>
+          <p class="sos-note">PL: 999 pogotowie · 997 policja · 998 straż. SK: 155 · 158 · 150. W całej UE działa 112.</p>
+        </div>
+
+        <details class="info-block"><summary>📄 Dokumenty i sprawy prawne</summary>
+          <ul>
+            <li><b>Dziecko musi mieć własny dokument</b> — paszport albo dowód osobisty. <b>Akt urodzenia NIE wystarcza</b> jako dokument podróży (ale weź go — potwierdza pokrewieństwo, zwłaszcza przy innym nazwisku).</li>
+            <li>PL i SK są w strefie Schengen — brak rutynowych kontroli, ale dokument jest wymagany prawnie i policja może go sprawdzić.</li>
+            <li><b>EKUZ dla każdego</b> (też dziecka) — publiczna opieka zdrowotna w SK na zasadach jak miejscowi.</li>
+            <li>Do auta: prawo jazdy, dowód rejestracyjny, polisa OC (ważna w całej UE). Jeśli auto nie Twoje — pisemne upoważnienie właściciela.</li>
+          </ul>
+        </details>
+
+        <details class="info-block"><summary>🚗 Przepisy drogowe — Polska vs Słowacja</summary>
+          <table class="cmp">
+            <tr><th>&nbsp;</th><th>🇵🇱 Polska</th><th>🇸🇰 Słowacja</th></tr>
+            <tr><td>Alkohol</td><td>do 0,2 ‰</td><td><b>0,0 ‰</b> (zero!)</td></tr>
+            <tr><td>Światła</td><td>całą dobę, cały rok</td><td>całą dobę, cały rok</td></tr>
+            <tr><td>Zabudowany</td><td>50</td><td>50</td></tr>
+            <tr><td>Poza zabud.</td><td>90</td><td>90</td></tr>
+            <tr><td>Ekspresowa</td><td>100 / 120</td><td>130</td></tr>
+            <tr><td>Autostrada</td><td>140</td><td>130</td></tr>
+            <tr><td>Winieta</td><td>nie (auta osob.)</td><td><b>tak</b> — eznamka.sk, 10-dni ~12 €</td></tr>
+            <tr><td>Fotelik</td><td>&lt; 150 cm</td><td>&lt; 150 cm, tylko z tyłu</td></tr>
+            <tr><td>Wyposaż.</td><td>gaśnica + trójkąt</td><td>trójkąt + kamizelka + apteczka (bez gaśnicy)</td></tr>
+          </table>
+          <p class="info-tip">💡 Miej w aucie <b>komplet obu krajów</b>: gaśnica i trójkąt (PL) + kamizelki odblaskowe, apteczka, koło zapasowe (SK). Kamizelka <b>w zasięgu ręki</b> — zakładasz ją, wychodząc z auta na drodze. Telefon tylko głośnomówiący. Fotelik tyłem do kierunku jazdy — nigdy na przednim fotelu z aktywną poduszką.</p>
+        </details>
+
+        <details class="info-block"><summary>🏥 Zdrowie — dziecko (16 mies.)</summary>
+          <ul>
+            <li><b>EKUZ</b> pokrywa opiekę publiczną; <b>prywatne kliniki i transport do kraju — nie</b>. Dlatego rozważ <b>ubezpieczenie turystyczne z assistance</b> (z małym dzieckiem mocno zalecane).</li>
+            <li>Najbliższy szpital z pediatrią: <b>Poprad</b> (~20–25 km od Štrbskégo Plesa).</li>
+            <li><b>Kleszcze / KZM</b> — Tatry to teren endemiczny. Szczepionka wymaga kilku dawek (za późno na ten wyjazd) → profilaktyka: repelent, zakryta skóra, <b>codzienne oglądanie skóry</b>, szybkie usunięcie pęsetą. Obserwuj rumień i gorączkę.</li>
+            <li><b>Wysokość 1346 m</b> — dla malucha bezpieczna, ale: mocniejsze UV (SPF50 + czapka), chłodniejsze noce, więcej picia.</li>
+            <li>Leki dziecka <b>z nazwami substancji</b> (paracetamol/ibuprofen), termometr, dawkowanie wg wagi.</li>
+          </ul>
+        </details>
+
+        <details class="info-block"><summary>💥 Stłuczka / wypadek — co robić</summary>
+          <ol>
+            <li>Zatrzymaj się, <b>kamizelki na siebie</b>, trójkąt za autem, dziecko w bezpiecznym miejscu poza jezdnią.</li>
+            <li>Są ranni? Dzwoń <b>112</b>. W SK policję wzywa się obowiązkowo przy obrażeniach lub szkodzie powyżej ~4000 €.</li>
+            <li>Drobna stłuczka: <b>wspólne oświadczenie</b> (constat) — miej druk w aucie + zrób zdjęcia, spisz dane i OC drugiego kierowcy.</li>
+            <li>Zadzwoń na <b>assistance swojego ubezpieczyciela</b> (numer z polisy) po holowanie / pomoc.</li>
+          </ol>
+        </details>
+
+        <details class="info-block"><summary>🔐 Zabezpieczenie i zapas</summary>
+          <ul>
+            <li><b>Skany dokumentów</b> (dowody, paszport dziecka, OC, rezerwacje) w telefonie + w chmurze.</li>
+            <li>Zdjęcie numerów kart i telefon do zastrzeżenia (na wypadek kradzieży portfela).</li>
+            <li>Zostaw <b>plan wyjazdu i adresy</b> komuś z rodziny.</li>
+            <li>Mapy offline (mapy.cz — Tatry) — zasięg w górach bywa słaby.</li>
+            <li>Trochę <b>gotówki w euro</b> na SK — nie wszędzie biorą kartę.</li>
+          </ul>
+        </details>
+
+        <p class="info-src">Źródła: gov.pl (MSZ — Słowacja), eznamka.sk, hzs.sk, szczepienia.pzh.gov.pl, Straż Graniczna. Ceny winiet aktualizowane co roku — sprawdź przy zakupie.</p>
+      </div>
+
+      <h2 class="info-title">🛏️ Noclegi i kontakty</h2>
+      <div class="info">
+        <div class="stays">
+          <div class="stay-row">
+            <span class="stay-when">21–28 cze</span>
+            <div class="stay-info">
+              <strong>🇸🇰 Štrbské Pleso</strong>
+              <span>Apartament z widokiem na jezioro · Pri Jazere 4049/2</span>
+              <span class="muted">zamel. 21.06 od 14:00 · wymel. 28.06 do 10:00 · ☎ +421 910 719 193</span>
+              <a href="https://www.google.com/maps/search/Pri+Jazere+4049%2F2,+059+85+%C5%A0trbsk%C3%A9+Pleso,+Slovakia" target="_blank" rel="noopener">Mapa ↗</a>
+            </div>
+          </div>
+          <div class="stay-row">
+            <span class="stay-when">28 cze–4 lip</span>
+            <div class="stay-info">
+              <strong>🇵🇱 Zakopane</strong>
+              <span>Owca na Szlaku — Rezydencja Rodzinna · Mieczysława Karłowicza 17/A</span>
+              <a href="https://www.google.com/maps/search/?api=1&query=Owca%20na%20Szlaku%2C%20Mieczys%C5%82awa%20Kar%C5%82owicza%2017%2FA%2C%2034-500%20Zakopane" target="_blank" rel="noopener">Mapa ↗</a>
+            </div>
+          </div>
+          <div class="stay-row">
+            <span class="stay-when">4–5 lip</span>
+            <div class="stay-info">
+              <strong>🇵🇱 Krynica-Zdrój</strong>
+              <span>Pensjonat Lira · ul. Piękna</span>
+              <a href="https://maps.app.goo.gl/EMNXSoY7qcHe1xsN8" target="_blank" rel="noopener">Mapa ↗</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ KARTA AWARYJNA ============ -->
+    <section id="panel-card" class="panel">
+      <div class="card-actions no-print">
+        <button id="printCard" class="btn-primary" type="button" style="flex:0 0 auto">🖨️ Drukuj kartę (A4)</button>
+        <span class="card-hint">Wypełnij raz — zapisuje się automatycznie. Wydrukuj i schowaj w aucie + zostaw kopię rodzinie.</span>
+      </div>
+      <div class="card-sheet">
+        <div class="cs-head">
+          <h2>🆘 Karta awaryjna</h2>
+          <span>Wyjazd w Tatry · 21 cze – 5 lip 2026</span>
+        </div>
+        <div class="cs-grid">
+          <div class="cs-box">
+            <h3>📞 Telefony alarmowe</h3>
+            <div class="cs-lines">
+              <div><b>112</b> — alarmowy (PL + SK)</div>
+              <div><b>18 300</b> — ratownictwo górskie SK (HZS)</div>
+              <div><b>601 100 300</b> — ratownictwo górskie PL (TOPR)</div>
+              <div>SK: <b>155</b> pog. · <b>158</b> pol. · <b>150</b> straż</div>
+              <div>PL: <b>999</b> · <b>997</b> · <b>998</b></div>
+              <div>Szpital: <b>Poprad</b> (SK, ~25 km od Štrbskégo)</div>
+            </div>
+          </div>
+          <div class="cs-box">
+            <h3>🛏️ Noclegi</h3>
+            <div class="cs-lines">
+              <div><b>Štrbské Pleso</b> · Pri Jazere 4049/2<br>☎ +421 910 719 193</div>
+              <div><b>Zakopane</b> · Karłowicza 17/A (Owca na Szlaku)</div>
+              <div><b>Krynica</b> · ul. Piękna (Pensjonat Lira)</div>
+            </div>
+          </div>
+          <div class="cs-box">
+            <h3>👶 Dziecko</h3>
+            <div class="cs-fields">
+              <label>Imię<input data-card="kidName"></label>
+              <label>Waga (do dawkowania leków)<input data-card="kidWeight" placeholder="kg"></label>
+              <label>Grupa krwi<input data-card="kidBlood"></label>
+              <label>Alergie<input data-card="kidAllergy" placeholder="brak / jakie"></label>
+              <label>Leki i dawki<input data-card="kidMeds"></label>
+              <label>Nr dokumentu / PESEL<input data-card="kidDoc"></label>
+            </div>
+          </div>
+          <div class="cs-box">
+            <h3>👪 Kontakty</h3>
+            <div class="cs-fields">
+              <label>Rodzic 1 (telefon)<input data-card="p1"></label>
+              <label>Rodzic 2 (telefon)<input data-card="p2"></label>
+              <label>Osoba kontaktowa w PL<input data-card="contactPL" placeholder="imię + telefon"></label>
+            </div>
+          </div>
+          <div class="cs-box">
+            <h3>🚗 Auto i OC</h3>
+            <div class="cs-fields">
+              <label>Auto / nr rejestracyjny<input data-card="carReg"></label>
+              <label>OC — firma + nr polisy<input data-card="oc"></label>
+              <label>Assistance auto (telefon)<input data-card="assist"></label>
+            </div>
+          </div>
+          <div class="cs-box">
+            <h3>🏥 Ubezpieczenie turyst.</h3>
+            <div class="cs-fields">
+              <label>Firma + nr polisy<input data-card="travelIns"></label>
+              <label>Assistance medyczny (telefon)<input data-card="travelAssist"></label>
+              <label>EKUZ — uwagi<input data-card="ekuz" placeholder="każdy ma własną kartę"></label>
+            </div>
+          </div>
+        </div>
+        <p class="cs-foot">Karta prywatna — trzymaj w aucie/portfelu. Dane wpisane tutaj zapisują się tylko w tej przeglądarce (localStorage).</p>
+      </div>
+    </section>
+  </div>
+
+  <!-- szczegóły dnia renderowane są inline w osi czasu (rozwijanie) -->
+  <div id="dayFull" class="dayfull"></div>
+
+<script>
+/* ============ DANE: OŚ CZASU ============ */
+const SEGMENTS=[
+  {key:'sk', cls:'seg-sk', flag:'🇸🇰', name:'Štrbské Pleso', when:'21–28 cze · 7 nocy'},
+  {key:'zak',cls:'seg-zak',flag:'🇵🇱', name:'Zakopane', when:'28 cze – 4 lip · 6 nocy'},
+  {key:'kry',cls:'seg-kry',flag:'🇵🇱', name:'Krynica-Zdrój', when:'4–5 lip · 1 noc'},
+];
+const DAYS=[
+  {stop:'sk',dnum:'21',mon:'cze',dow:'niedz.',full:'niedziela · 21 czerwca',loc:'Štrbské Pleso',flag:'🇸🇰',kind:'travel',
+   tag:'Przejazd + zameldowanie',hl:'Wyjazd z domu ~8:00 · zameldowanie od 14:00',
+   peek:['~5 h 19 min jazdy (realnie 6,5–7 h z postojami)','Drzemka ~11:00 — zgraj z najdłuższym odcinkiem','Zameldowanie dopiero od 14:00'],
+   drive:{from:'Dom (Stryjeńskich 8, Warszawa)',to:'Štrbské Pleso',time:'~5 h 19 min',map:'https://www.google.com/maps/dir/?api=1&origin=Stryje%C5%84skich+8,+Warszawa&destination=%C5%A0trbsk%C3%A9+Pleso'},
+   plan:['Spokojny dojazd, postoje co ~2 h (przewijanie, nogi, jedzenie)','Po zameldowaniu lekki spacer nad jeziorem, wczesna kolacja i sen'],
+   remember:['Winieta SK kupiona (eznamka.sk)','Dokument dziecka — paszport/dowód','Fotelik tyłem, dziecko z tyłu','EKUZ i gotówka w euro przy sobie'],
+   stay:{name:'Apartament z widokiem na jezioro',addr:'Pri Jazere 4049/2, Štrbské Pleso',info:'Zameldowanie od 14:00 · ☎ +421 910 719 193',map:'https://www.google.com/maps/search/Pri+Jazere+4049%2F2,+059+85+%C5%A0trbsk%C3%A9+Pleso,+Slovakia'}},
+
+  {stop:'sk',dnum:'22',mon:'cze',dow:'pon.',full:'poniedziałek · 22 czerwca',loc:'Štrbské Pleso',flag:'🇸🇰',kind:'stay',
+   tag:'Aklimatyzacja',hl:'Promenada wokół jeziora Štrbské Pleso',
+   peek:['Płaska trasa wokół jeziora — wózek OK','Mocniejsze UV na 1346 m — SPF + czapka','Pierwszy dzień bez forsowania'],
+   plan:['Spacer wokół jeziora Štrbské Pleso (~2 km, płasko)','Kawa, plac zabaw, aklimatyzacja','Lekko — organizm przyzwyczaja się do wysokości'],
+   remember:['SPF50 i czapka dziecka','Więcej picia na wysokości']},
+
+  {stop:'sk',dnum:'23',mon:'cze',dow:'wt.',full:'wtorek · 23 czerwca',loc:'Štrbské Pleso',flag:'🇸🇰',kind:'stay',
+   tag:'Wycieczka (propozycja)',hl:'Łatwy szlak nad Popradské pleso',
+   peek:['Štrbské Pleso → Popradské pleso','Umiarkowany szlak w nosidle','Schronisko z jedzeniem na miejscu'],
+   plan:['Szlak nad Popradské pleso (nosidło z ramą)','Odpoczynek i posiłek przy schronisku','Powrót pod drzemkę dziecka'],
+   remember:['Peleryna na nosidło — pogoda w górach zmienna','Zapas wody i przekąsek']},
+
+  {stop:'sk',dnum:'24',mon:'cze',dow:'śr.',full:'środa · 24 czerwca',loc:'Vysoké Tatry',flag:'🇸🇰',kind:'stay',
+   tag:'Kolejka + widoki (propozycja)',hl:'Tatrzańska Łomnica / Hrebienok kolejką',
+   peek:['Mniej chodzenia, dużo widoków','Dobry plan też przy zmęczeniu','Wyżej chłodniej — warstwa zapasowa'],
+   plan:['Wyjazd kolejką (np. Skalnaté pleso lub Hrebienok)','Krótkie spacery i widoki, posiłek na górze','Elastycznie pod drzemkę'],
+   remember:['Cieplejsza warstwa dla dziecka — wyżej chłodniej','Karta/gotówka na bilety kolejki']},
+
+  {stop:'sk',dnum:'25',mon:'cze',dow:'czw.',full:'czwartek · 25 czerwca',loc:'Poprad / okolice',flag:'🇸🇰',kind:'stay',
+   tag:'Luz / plan B',hl:'Dzień lżejszy lub deszczowy: AquaCity Poprad',
+   peek:['Baseny termalne — świetne z dzieckiem','Idealny plan na deszcz','~25 km, w Popradzie'],
+   plan:['Baseny (AquaCity Poprad) — brodzik dla dziecka','Albo odpoczynek przy apartamencie','Dobry moment na pranie w połowie wyjazdu'],
+   remember:['Pieluszka do wody + strój','Ręcznik i klapki']},
+
+  {stop:'sk',dnum:'26',mon:'cze',dow:'pt.',full:'piątek · 26 czerwca',loc:'Hrebienok',flag:'🇸🇰',kind:'stay',
+   tag:'Las i wodospady (propozycja)',hl:'Hrebienok → Studenovodské vodopády',
+   peek:['Leśna trasa w cieniu','Wodospady niedaleko kolejki Hrebienok','Nosidło / krótszy wariant'],
+   plan:['Kolejka na Hrebienok → wodospady','Spacer leśny, dużo cienia','Krótko, pod możliwości dziecka'],
+   remember:['Środek na kleszcze — wchodzicie w las!','Wieczorem dokładny przegląd skóry dziecka']},
+
+  {stop:'sk',dnum:'27',mon:'cze',dow:'sob.',full:'sobota · 27 czerwca',loc:'Štrbské Pleso',flag:'🇸🇰',kind:'stay',
+   tag:'Ostatni dzień SK + pakowanie',hl:'Lekko za dnia, wieczorem pakowanie',
+   peek:['Powtórka ulubionego miejsca','Wieczorem spakuj ~80%','Jutro przejazd do Zakopanego'],
+   plan:['Ulubione miejsce / drobne zakupy','Wieczorem pakowanie (kostki do pakowania!)','Lodówka: zjedz lub oddaj resztki'],
+   remember:['Torbę podręczną spakuj osobno','Naładuj powerbank i telefony','Nie zostaw ładowarek i kosmetyczki w łazience']},
+
+  {stop:'zak',dnum:'28',mon:'cze',dow:'niedz.',full:'niedziela · 28 czerwca',loc:'Štrbské Pleso → Zakopane',flag:'🇵🇱',kind:'travel',
+   tag:'Przejazd + zameldowanie',hl:'Wymeldowanie do 10:00 · przejazd ~1,5 h · Zakopane',
+   peek:['Štrbské → Zakopane ~1,5 h','Granica SK/PL po drodze','Zameldowanie: Owca na Szlaku'],
+   drive:{from:'Štrbské Pleso',to:'Zakopane (Karłowicza 17/A)',time:'~1 h 30 min',map:'https://www.google.com/maps/dir/?api=1&origin=%C5%A0trbsk%C3%A9+Pleso&destination=Mieczys%C5%82awa+Kar%C5%82owicza+17,+Zakopane'},
+   plan:['Wymeldowanie do 10:00 — sprawdź apartament, nic nie zostaw','Krótki przejazd przez granicę','Zameldowanie, wieczorem spacer po Krupówkach'],
+   remember:['Dokument dziecka pod ręką (granica)','Sprawdź szafy/łazienkę/ładowarki przed wyjazdem'],
+   stay:{name:'Owca na Szlaku — Rezydencja Rodzinna',addr:'Mieczysława Karłowicza 17/A, Zakopane',info:'Godzina zameldowania — potwierdź u gospodarza',map:'https://www.google.com/maps/search/?api=1&query=Owca%20na%20Szlaku%2C%20Mieczys%C5%82awa%20Kar%C5%82owicza%2017%2FA%2C%2034-500%20Zakopane'}},
+
+  {stop:'zak',dnum:'29',mon:'cze',dow:'pon.',full:'poniedziałek · 29 czerwca',loc:'Zakopane',flag:'🇵🇱',kind:'stay',
+   tag:'Miasto (propozycja)',hl:'Gubałówka kolejką + Krupówki',
+   peek:['Kolejka na Gubałówkę — łatwe, widoki','Krupówki — deptak, jedzenie','Dobre z wózkiem'],
+   plan:['Kolejka na Gubałówkę, spacer grzbietem','Oscypki, widok na Tatry','Krupówki, plac zabaw'],
+   remember:['Tłumy — trzymaj dziecko/wózek blisko','Portfel z przodu (kieszonkowcy na deptaku)']},
+
+  {stop:'zak',dnum:'30',mon:'cze',dow:'wt.',full:'wtorek · 30 czerwca',loc:'Zakopane',flag:'🇵🇱',kind:'stay',
+   tag:'Dolina (propozycja)',hl:'Dolina Kościeliska — płaska, wózek/nosidło',
+   peek:['Szutrowa, płaska dolina','Można wózkiem terenowym','Cień, potok, fajne widoki'],
+   plan:['Dolina Kościeliska (płasko, np. do Hali Pisanej)','Postój nad potokiem, piknik','Powrót na drzemkę'],
+   remember:['Woda i przekąski na trasę','Środek na kleszcze + wieczorny przegląd skóry']},
+
+  {stop:'zak',dnum:'1',mon:'lip',dow:'śr.',full:'środa · 1 lipca',loc:'okolice Zakopanego',flag:'🇵🇱',kind:'stay',
+   tag:'Termy / plan B',hl:'Termy (Chochołowskie / Bukovina) — baseny z dzieckiem',
+   peek:['Brodziki i ciepła woda','Plan też na chłód/deszcz','Blisko Zakopanego'],
+   plan:['Termy — strefa dla dzieci','Relaks, krótkie sesje w wodzie','Wczesny powrót na sen'],
+   remember:['Pieluszka do wody','Klapki, ręczniki']},
+
+  {stop:'zak',dnum:'2',mon:'lip',dow:'czw.',full:'czwartek · 2 lipca',loc:'Zakopane',flag:'🇵🇱',kind:'stay',
+   tag:'Łatwa trasa (propozycja)',hl:'Dolina Strążyska / Polana — blisko i lekko',
+   peek:['Krótko z centrum','Łąka, potok, cień','Dobre na pół dnia'],
+   plan:['Dolina Strążyska (łatwa)','Piknik na polanie','Lody na Krupówkach'],
+   remember:['Lekka warstwa przeciwdeszczowa','Kapelusz/czapka z daszkiem']},
+
+  {stop:'zak',dnum:'3',mon:'lip',dow:'pt.',full:'piątek · 3 lipca',loc:'Zakopane',flag:'🇵🇱',kind:'stay',
+   tag:'Ostatni dzień PL + pakowanie',hl:'Pamiątki, wieczorem pakowanie',
+   peek:['Lżejszy dzień','Spakuj ~80% wieczorem','Jutro Krynica — tylko 1 noc'],
+   plan:['Pamiątki / ulubione miejsce','Wieczorem pakowanie','Na Krynicę spakuj MAŁĄ torbę na 1 noc'],
+   remember:['Torba na 1 noc (Krynica) osobno','Naładuj sprzęt','Lodówka — opróżnij']},
+
+  {stop:'kry',dnum:'4',mon:'lip',dow:'sob.',full:'sobota · 4 lipca',loc:'Zakopane → Krynica-Zdrój',flag:'🇵🇱',kind:'travel',
+   tag:'Przejazd + zameldowanie',hl:'Wymeldowanie · przejazd ~2,5 h · Pensjonat Lira',
+   peek:['Zakopane → Krynica-Zdrój ~2,5 h','Górskie drogi — zgraj z drzemką','Pensjonat Lira, ul. Piękna'],
+   drive:{from:'Zakopane',to:'Krynica-Zdrój (Pensjonat Lira, ul. Piękna)',time:'~2 h 30 min',map:'https://www.google.com/maps/dir/?api=1&origin=Zakopane&destination=Pensjonat+Lira,+Pi%C4%99kna,+Krynica-Zdr%C3%B3j'},
+   plan:['Wymeldowanie z Zakopanego','Przejazd — najlepiej w czasie drzemki w aucie','Zameldowanie w Lirze, wieczorem deptak i pijalnia wód'],
+   remember:['Do pokoju tylko torba na 1 noc','Drzemka dziecka w trasie'],
+   stay:{name:'Pensjonat Lira',addr:'ul. Piękna, Krynica-Zdrój',info:'Nocleg 1 noc · postój w drodze powrotnej',map:'https://maps.app.goo.gl/EMNXSoY7qcHe1xsN8'}},
+
+  {stop:'kry',dnum:'5',mon:'lip',dow:'niedz.',full:'niedziela · 5 lipca',loc:'Krynica → Dom',flag:'🏠',kind:'home',
+   tag:'Powrót do domu',hl:'Wymeldowanie · przejazd ~4 h · Stryjeńskich 8/6',
+   peek:['Krynica → Warszawa ~4 h','Frisco dostawa na wieczór','Rozpakowanie, pranie'],
+   drive:{from:'Krynica-Zdrój',to:'Dom (Stryjeńskich 8, Warszawa)',time:'~4 h',map:'https://www.google.com/maps/dir/?api=1&origin=Krynica-Zdr%C3%B3j&destination=Stryje%C5%84skich+8,+Warszawa'},
+   plan:['Rano krótki spacer / pijalnia wód','Przejazd do domu (drzemka w aucie)','Wieczorem Frisco: podstawy + jedzenie dziecka'],
+   remember:['Frisco zamówione na dostawę 5.07','Przytulanka dziecka spakowana','Po wejściu: otwórz wodę, sprawdź mieszkanie']},
+];
+const DAY_ISO=DAYS.map(d=>'2026-'+(d.mon==='cze'?'06':'07')+'-'+String(d.dnum).padStart(2,'0'));
+const FUEL_L=7.0, FUEL_PRICE=6.50;
+const LEGS=[{d:'21.06',from:'Dom',to:'Štrbské',km:480,time:'~5 h 19 min'},{d:'28.06',from:'Štrbské',to:'Zakopane',km:90,time:'~1 h 30 min'},{d:'04.07',from:'Zakopane',to:'Krynica',km:130,time:'~2 h 30 min'},{d:'05.07',from:'Krynica',to:'Dom',km:400,time:'~4 h'}];
+const GDDKIA_URL='https://drogi.gddkia.gov.pl/informacje-drogowe/lista-utrudnien';
+const STOP_LL={dom:{ll:[52.131,21.030],n:'Dom — Stryjeńskich 8',c:'#ef9b42'},sk:{ll:[49.120,20.063],n:'Štrbské Pleso',c:'#2f8f6b'},zak:{ll:[49.299,19.949],n:'Zakopane',c:'#3170ad'},kry:{ll:[49.422,20.961],n:'Krynica-Zdrój',c:'#7d57ad'}};
+const DRIVE_ENDS={0:['dom','sk'],7:['sk','zak'],13:['zak','kry'],14:['kry','dom']};
+const LEG_COORD={'Dom':[52.131,21.030],'Štrbské':[49.120,20.063],'Zakopane':[49.299,19.949],'Krynica':[49.422,20.961]};
+const DRIVE_KM={0:480,7:90,13:130,14:400};
+const WHO={ty:{ini:'T',color:'#3170ad'},zona:{ini:'Ż',color:'#b6478f'},oboje:{ini:'O',color:'#2f8f6b'}};
+function dayColorVar(d){return (d.kind==='travel'||d.kind==='home')?'--travel':'--'+d.stop;}
+
+/* ============ DANE: CHECKLISTA ============ */
+const DATA = [
+  { id:'docs', icon:'📄', title:'Dokumenty i samochód', items:[
+    {id:'docs-1', title:'Dowody / paszporty', desc:'dla wszystkich, sprawdź ważność'},
+    {id:'docs-2', title:'Akt urodzenia / paszport dziecka', desc:'przyda się przy granicy i u lekarza'},
+    {id:'docs-3', title:'EKUZ dla każdego', desc:'karta ubezpieczenia zdrowotnego — załatw online przez NFZ'},
+    {id:'docs-4', title:'Winieta na Słowację', desc:'kup online na eznamka.sk — 10-dniowa pokrywa tydzień w SK (21–28.06)'},
+    {id:'docs-5', title:'Prawo jazdy + dowód rejestracyjny + OC', desc:'komplet do auta'},
+    {id:'docs-6', title:'Kamizelki odblaskowe + trójkąt + apteczka auta', desc:'obowiązkowe na Słowacji — kontrole to egzekwują'},
+    {id:'docs-7', title:'Fotelik dziecięcy', desc:'sprawdź mocowanie i pasy przed wyjazdem'},
+    {id:'docs-8', title:'Ładowarka samochodowa', desc:'na telefon i nawigację'},
+    {id:'docs-9', title:'Gotówka w euro', desc:'część miejsc nie bierze kart'},
+    {id:'docs-10', title:'Ładowarki sieciowe + kable', desc:'do telefonów i urządzeń (samochodową już masz)'},
+    {id:'docs-11', title:'Wydruk / skan potwierdzeń rezerwacji', desc:'noclegi, winieta, EKUZ — na wypadek braku zasięgu'},
+    {id:'docs-12', title:'Polisa ubezpieczenia turystycznego', desc:'z assistance — EKUZ nie pokrywa prywatnych klinik'},
+  ]},
+  { id:'you', icon:'🧥', title:'Ubrania — Ty', items:[
+    {id:'you-1', title:'Buty trekkingowe za kostkę', desc:'priorytet, rozchodzone jeśli nowe'},
+    {id:'you-2', title:'Spodnie trekkingowe (2×)', desc:'lekkie, szybkoschnące, nie dżinsy'},
+    {id:'you-3', title:'Kurtka przeciwdeszczowa z membraną', desc:'kluczowa w górach'},
+    {id:'you-4', title:'Polar / bluza', desc:'warstwa środkowa'},
+    {id:'you-5', title:'Koszulki termoaktywne (2–3×)', desc:'nie bawełna'},
+    {id:'you-6', title:'Czapka / buff + cienkie rękawiczki', desc:'rano na 1350 m bywa zimno'},
+    {id:'you-7', title:'Skarpety trekkingowe', desc:'kilka par'},
+  ]},
+  { id:'adult', icon:'🧳', title:'Dorośli — podstawy i wygoda', items:[
+    {id:'ad1', title:'Bielizna', desc:'na każdy dzień + zapas'},
+    {id:'ad2', title:'Piżama / coś do spania'},
+    {id:'ad3', title:'Strój kąpielowy / kąpielówki', desc:'termy, AquaCity, baseny'},
+    {id:'ad4', title:'Klapki / sandały', desc:'apartament, termy, pod prysznic'},
+    {id:'ad5', title:'Okulary przeciwsłoneczne', desc:'mocne słońce na wysokości'},
+    {id:'ad6', title:'Soczewki + płyn / okulary korekcyjne', desc:'jeśli nosisz'},
+    {id:'ad7', title:'Maszynka + krem do golenia'},
+    {id:'ad8', title:'Balsam / krem do twarzy i rąk'},
+    {id:'ad9', title:'Szczotka / grzebień'},
+    {id:'ad10', title:'Środki higieny osobistej', desc:'podpaski / tampony'},
+    {id:'ad11', title:'Cieplejsza kurtka / puchówka', desc:'✨ chłodne wieczory na 1350 m'},
+    {id:'ad12', title:'Kije trekkingowe', desc:'✨ przy dłuższych szlakach'},
+    {id:'ad13', title:'Kapcie do apartamentu', desc:'✨'},
+    {id:'ad14', title:'Poduszka podróżna', desc:'✨ na drogę w aucie'},
+    {id:'ad15', title:'Opaska na oczy + zatyczki do uszu', desc:'✨ sen w obcym miejscu'},
+    {id:'ad16', title:'Książka / czytnik', desc:'✨ na wieczór'},
+    {id:'ad17', title:'Aparat + karty + ładowarka', desc:'✨'},
+  ]},
+  { id:'c-clothes', icon:'👕', title:'Dziecko — Ubrania', child:true, items:[
+    {id:'kc1', title:'Body krótki rękaw', desc:'ok. 7–8 szt. — szybko się brudzą'},
+    {id:'kc2', title:'Body długi rękaw', desc:'4–5 szt. — na chłodne poranki'},
+    {id:'kc3', title:'Bluzeczki / koszulki', desc:'ok. 6 szt.'},
+    {id:'kc4', title:'Spodnie / legginsy', desc:'5–6 szt., szybkoschnące'},
+    {id:'kc5', title:'Sweterek / polar', desc:'2 szt. — warstwa środkowa'},
+    {id:'kc6', title:'Kurtka softshell / przeciwdeszczowa', desc:'w górach must-have'},
+    {id:'kc7', title:'Cieplejsza kurtka lub kamizelka', desc:'wieczory na 1350 m bywają zimne'},
+    {id:'kc8', title:'Czapka z daszkiem', desc:'ochrona przed słońcem'},
+    {id:'kc9', title:'Cieplejsza czapka', desc:'poranek i wieczór'},
+    {id:'kc10', title:'Cienkie rękawiczki', desc:'✨ opcja — zimne poranki w górach'},
+    {id:'kc11', title:'Skarpetki', desc:'8–10 par'},
+    {id:'kc12', title:'Buty sportowe / trekkingowe', desc:'rozchodzone'},
+    {id:'kc13', title:'Kalosze', desc:'na błoto i kałuże'},
+    {id:'kc14', title:'Kapcie / buciki do mieszkania', desc:'apartament bywa chłodny'},
+    {id:'kc15', title:'Sandałki', desc:'✨ opcja — jeśli ciepło'},
+    {id:'kc16', title:'Piżamy', desc:'3–4 szt.'},
+    {id:'kc17', title:'Śliniaki', desc:'kilka, z kieszonką'},
+    {id:'kc18', title:'Worek na brudne / mokre ubranka', desc:'osobno w walizce'},
+  ]},
+  { id:'c-sleep', icon:'😴', title:'Dziecko — Sen', child:true, items:[
+    {id:'ks1', title:'Łóżeczko turystyczne', desc:'sprawdź, czy nocleg zapewnia — jeśli nie, zabierz własne'},
+    {id:'ks2', title:'Prześcieradło z gumką do łóżeczka', desc:'2 szt.'},
+    {id:'ks3', title:'Śpiworek do spania', desc:'chłodne noce na 1350 m'},
+    {id:'ks4', title:'Ulubiona przytulanka', desc:'NAJWAŻNIEJSZE — bez niej noce w obcym miejscu są trudne'},
+    {id:'ks5', title:'Ulubiony kocyk', desc:'zapach i komfort domu'},
+    {id:'ks6', title:'Smoczek + zapasowy', desc:'jeśli używa'},
+    {id:'ks7', title:'Przyciemniana lampka nocna', desc:'na nocne pobudki'},
+    {id:'ks8', title:'Zaciemnienie okna (rolka travel / folia)', desc:'✨ w górach robi się jasno bardzo wcześnie'},
+    {id:'ks9', title:'Biały szum', desc:'aplikacja w telefonie lub urządzonko'},
+    {id:'ks10', title:'Niania elektroniczna + ładowarka', desc:'jeśli używacie w domu'},
+  ]},
+  { id:'c-feed', icon:'🍼', title:'Dziecko — Karmienie', child:true, items:[
+    {id:'kf1', title:'Krzesełko turystyczne / nakładka na krzesło', desc:'sprawdź, czy nocleg ma'},
+    {id:'kf2', title:'Śliniaki silikonowe z kieszonką', desc:'2–3 szt., łatwe do umycia'},
+    {id:'kf3', title:'Miseczka / talerz z przyssawką', desc:'nie zrzuci ze stołu'},
+    {id:'kf4', title:'Łyżeczki i widelczyk dziecięce'},
+    {id:'kf5', title:'Kubek niekapek', desc:'2 szt.'},
+    {id:'kf6', title:'Butelka + smoczek', desc:'jeśli pije mleko'},
+    {id:'kf7', title:'Mleko modyfikowane + miarka', desc:'jeśli pije — weź sprawdzone'},
+    {id:'kf8', title:'Termos na ciepłą wodę', desc:'mleko / kaszka w trasie'},
+    {id:'kf9', title:'Słoiczki / dania gotowe sprawdzone', desc:'na drogę i pierwszy dzień'},
+    {id:'kf10', title:'Kaszki', desc:'sprawdzone smaki'},
+    {id:'kf11', title:'Przekąski', desc:'musy w tubkach, chrupki, biszkopty, paluszki, wafle ryżowe'},
+    {id:'kf12', title:'Pojemnik na przekąski (niewysypujący)', desc:'snack cup'},
+    {id:'kf13', title:'Płyn / kapsułki do naczyń + gąbka', desc:'mycie butelek i naczyń'},
+    {id:'kf14', title:'Serwetki i ręcznik papierowy', desc:'po każdym posiłku'},
+  ]},
+  { id:'c-hyg', icon:'🧷', title:'Dziecko — Higiena i pielęgnacja', child:true, items:[
+    {id:'kh1', title:'Pieluchy', desc:'zapas + dokup, rozmiar wg wagi'},
+    {id:'kh2', title:'Chusteczki nawilżane', desc:'kilka paczek — przydają się wszędzie'},
+    {id:'kh3', title:'Krem na odparzenia (Sudocrem / Bepanthen)'},
+    {id:'kh4', title:'Podkład / mata do przewijania (travel)'},
+    {id:'kh5', title:'Worki na zużyte pieluchy', desc:'na zapach'},
+    {id:'kh6', title:'Szampon-żel 2w1 dla dzieci'},
+    {id:'kh7', title:'Balsam / krem do ciała'},
+    {id:'kh8', title:'Krem SPF50 dla dzieci (mineralny)', desc:'słońce na wysokości mocniejsze'},
+    {id:'kh9', title:'Szczotka / grzebień'},
+    {id:'kh10', title:'Szczoteczka + pasta dla dzieci'},
+    {id:'kh11', title:'Obcinaczka do paznokci'},
+    {id:'kh12', title:'Ręcznik z kapturkiem'},
+    {id:'kh13', title:'Myjka / gąbka do kąpieli'},
+    {id:'kh14', title:'Składana wanienka / wkładka', desc:'✨ opcja — jeśli w noclegu tylko prysznic'},
+  ]},
+  { id:'c-med', icon:'💊', title:'Dziecko — Apteczka', child:true, items:[
+    {id:'km1', title:'Termometr', desc:'bezdotykowy lub elektroniczny'},
+    {id:'km2', title:'Paracetamol dla dzieci', desc:'czopki + syrop'},
+    {id:'km3', title:'Ibuprofen dla dzieci', desc:'syrop'},
+    {id:'km4', title:'Elektrolity', desc:'na odwodnienie / biegunkę'},
+    {id:'km5', title:'Probiotyk', desc:'na rozstrój w podróży'},
+    {id:'km6', title:'Sól fizjologiczna', desc:'nos i oczy'},
+    {id:'km7', title:'Aspirator do nosa'},
+    {id:'km8', title:'Żel / gryzak na ząbkowanie'},
+    {id:'km9', title:'Krem po ukąszeniach (Fenistil)'},
+    {id:'km10', title:'Pęseta do kleszczy (mała)', desc:'Tatry to teren kleszczowy — oglądaj skórę co wieczór'},
+    {id:'km11', title:'Plastry dziecięce + maść na otarcia'},
+    {id:'km12', title:'Płyn do dezynfekcji ran'},
+    {id:'km13', title:'Witamina D i leki stałe', desc:'jeśli przyjmuje'},
+    {id:'km14', title:'Książeczka zdrowia / karta szczepień', desc:'kopia lub zdjęcie'},
+  ]},
+  { id:'c-car', icon:'🚗', title:'Dziecko — Auto, nosidło, wózek', child:true, items:[
+    {id:'kr1', title:'Fotelik samochodowy', desc:'sprawdzony, tyłem do kierunku jazdy'},
+    {id:'kr2', title:'Lusterko do obserwacji dziecka', desc:'✨ na tylnym zagłówku'},
+    {id:'kr3', title:'Osłonka przeciwsłoneczna na szybę', desc:'✨'},
+    {id:'kr4', title:'Organizer na oparcie fotela', desc:'✨ zabawki i picie pod ręką'},
+    {id:'kr5', title:'Nosidło z ramą', desc:'wyregulowane pod siebie'},
+    {id:'kr6', title:'Daszek przeciwsłoneczny do nosidła'},
+    {id:'kr7', title:'Peleryna przeciwdeszczowa na nosidło', desc:'osłania i Ciebie, i dziecko'},
+    {id:'kr8', title:'Wózek terenowy / spacerówka', desc:'promenada i utwardzone trasy wokół jeziora'},
+    {id:'kr9', title:'Folia przeciwdeszczowa na wózek'},
+    {id:'kr10', title:'Moskitiera na wózek', desc:'✨ opcja'},
+    {id:'kr11', title:'Podpinka na zabawkę', desc:'✨ żeby nie spadała z nosidła/wózka'},
+  ]},
+  { id:'c-play', icon:'🧸', title:'Dziecko — Zabawki i rozrywka', child:true, items:[
+    {id:'kp1', title:'Ulubione 2–3 zabawki z domu', desc:'komfort i poczucie znajomości'},
+    {id:'kp2', title:'Książeczki kartonowe', desc:'2–3 szt.'},
+    {id:'kp3', title:'Zabawki do auta', desc:'przyczepiane, niespadające'},
+    {id:'kp4', title:'Naklejki + kolorowanka + kredki świecowe'},
+    {id:'kp5', title:'Bańki mydlane', desc:'✨ hit na postojach i polanach'},
+    {id:'kp6', title:'Zabawki do wody / wanny', desc:'termy i wieczorna kąpiel'},
+    {id:'kp7', title:'Małe autka / figurki / klocki'},
+    {id:'kp8', title:'Nowa, nieznana zabawka „na trudny moment”', desc:'taktyka na kryzys w aucie'},
+    {id:'kp9', title:'Bajki i muzyka offline + słuchawki dziecięce', desc:'✨ na długą drogę'},
+    {id:'kp10', title:'Koc piknikowy / mata do zabawy', desc:'✨ na polanę i postoje'},
+    {id:'kp11', title:'Worek / organizer na zabawki', desc:'żeby nie rozjechały się po aucie'},
+  ]},
+  { id:'c-doc', icon:'📄', title:'Dziecko — Dokumenty', child:true, items:[
+    {id:'kd1', title:'Paszport lub dowód dziecka', desc:'wymagany przy granicy — akt urodzenia NIE wystarcza'},
+    {id:'kd2', title:'Akt urodzenia (kopia)', desc:'potwierdza pokrewieństwo'},
+    {id:'kd3', title:'EKUZ dziecka', desc:'leczenie publiczne w SK na zasadach jak miejscowi'},
+    {id:'kd4', title:'Książeczka zdrowia / szczepienia', desc:'kopia lub zdjęcie w telefonie'},
+    {id:'kd5', title:'Numer do pediatry / przychodni', desc:'zapisz offline'},
+  ]},
+  { id:'c-safe', icon:'🛟', title:'Dziecko — Bezpieczeństwo i nice-to-have', child:true, items:[
+    {id:'kn1', title:'Zaślepki do gniazdek', desc:'obce mieszkanie — tanie, a ważne'},
+    {id:'kn2', title:'Opaska z imieniem + telefonem na rękę', desc:'✨ tłumy na Krupówkach'},
+    {id:'kn3', title:'Szelki bezpieczeństwa / smycz', desc:'✨ deptaki i parkingi'},
+    {id:'kn4', title:'Blokady szafek / ochraniacze rogów (travel)', desc:'✨ obce mieszkanie'},
+    {id:'kn5', title:'Bramka przenośna na schody', desc:'✨ jeśli nocleg piętrowy'},
+    {id:'kn6', title:'Kapsułki do prania', desc:'pranie w połowie wyjazdu'},
+    {id:'kn7', title:'Parawan / namiot przeciwsłoneczny', desc:'✨ cień na dworze'},
+    {id:'kn8', title:'Ochraniacze na uszy', desc:'✨ jeśli wrażliwe na hałas (kolejki, tłum)'},
+  ]},
+  { id:'trail', icon:'🥾', title:'Szlak — sprzęt wspólny', items:[
+    {id:'trail-5', title:'Bidony / termos', desc:'woda to podstawa na szlaku'},
+    {id:'trail-6', title:'Powerbank', desc:'telefon z mapą i zdjęciami szybko pada'},
+    {id:'trail-7', title:'Mały plecak', desc:'na codzienne wyjścia'},
+  ]},
+  { id:'hyg', icon:'🧴', title:'Kosmetyki i higiena (dorośli)', items:[
+    {id:'hyg-1', title:'Kosmetyczka', desc:'szczoteczki + pasta, szampon, żel, dezodorant'},
+    {id:'hyg-2', title:'Ręczniki', desc:'sprawdź, czy nocleg zapewnia'},
+    {id:'hyg-4', title:'Chusteczki nawilżane', desc:'przydają się wszędzie'},
+  ]},
+  { id:'meds', icon:'💊', title:'Apteczka rodzinna (dorośli)', items:[
+    {id:'meds-2', title:'Krem SPF50', desc:'dla Was — słońce na wysokości mocniejsze (dziecko ma swój)'},
+    {id:'meds-3', title:'Środek na komary/kleszcze + pęseta', desc:'Tatry to teren kleszczowy'},
+    {id:'meds-4', title:'Plastry, dezynfekcja, krem na otarcia/odparzenia', desc:'podstawa'},
+    {id:'meds-5', title:'Twoje leki i suplementy', desc:'komplet na 2 tygodnie'},
+    {id:'meds-6', title:'Leki na alergię (antyhistaminowe)', desc:'osobno od leków stałych'},
+    {id:'meds-7', title:'Żel do dezynfekcji rąk', desc:'w trasie i przed jedzeniem'},
+  ]},
+  { id:'plants', icon:'🪴', title:'Dom — balkon i rośliny', items:[
+    {id:'plants-1', title:'Nawadnianie roślin', desc:'knot kapilarny ze sznurka lub kule nawadniające — samo podlanie nie starczy na 2 tyg.'},
+    {id:'plants-2', title:'Doniczki w cień', desc:'przestaw w głąb balkonu, mniej parują'},
+    {id:'plants-3', title:'Zbij doniczki w grupę', desc:'wolniej schną razem'},
+    {id:'plants-4', title:'Poproś sąsiada o podlanie raz', desc:'najpewniejsza opcja w połowie wyjazdu'},
+    {id:'plants-5', title:'Zdejmij wiszące doniczki', desc:'najbardziej narażone na słońce i wiatr'},
+  ]},
+  { id:'home', icon:'🏠', title:'Dom — kuchnia i bezpieczeństwo', items:[
+    {id:'home-1', title:'Opróżnij lodówkę z psujących się rzeczy', desc:'nabiał, warzywa, otwarte produkty'},
+    {id:'home-2', title:'Wynieś śmieci', desc:'inaczej zapach i muszki po powrocie'},
+    {id:'home-3', title:'Zakręć główny zawór wody', desc:'pralka/zmywarka to typowe źródło zalania'},
+    {id:'home-4', title:'Wyłącz elektronikę z gniazdek', desc:'TV, komputer, ekspres — ochrona przy burzy'},
+    {id:'home-5', title:'Sprawdź zamknięte okna', desc:'zwłaszcza balkonowe'},
+    {id:'home-6', title:'Wstaw pranie przed wyjazdem', desc:'żeby nie wracać do brudnego'},
+  ]},
+  { id:'digital', icon:'📱', title:'Sprawy cyfrowe i organizacyjne', items:[
+    {id:'dig-1', title:'Powiadom zaufaną osobę', desc:'zostaw klucz na wszelki wypadek'},
+    {id:'dig-2', title:'Sprawdź abonamenty/płatności', desc:'czy nic nie wygasa w trakcie'},
+    {id:'dig-3', title:'Backup telefonu', desc:'na wypadek zgubienia w drodze'},
+    {id:'dig-4', title:'Mapy offline (mapy.cz)', desc:'świetne na Słowację — pobierz Tatry'},
+    {id:'dig-5', title:'Bajki/muzyka offline dla dziecka', desc:'na drogę w aucie'},
+  ]},
+  { id:'travel', icon:'🚗', title:'Dzień wyjazdu i przejazdy', items:[
+    {id:'tr-1', title:'Wyjazd 21.06 ok. 8:00 — zgrany z drzemką', desc:'najdłuższy odcinek jazdy wypadnie w czasie snu (~11:00), dojazd ~14:30 na zameldowanie'},
+    {id:'tr-2', title:'Postoje co ~2 h', desc:'przewijanie, jedzenie, rozprostowanie nóg — realnie ~6,5–7 h zamiast 5h19'},
+    {id:'tr-3', title:'Kostki / worki do pakowania', desc:'3 noclegi — nie rozpakowuj wszystkiego za każdym razem'},
+    {id:'tr-4', title:'Osobna torba podręczna na 1 noc w Krynicy', desc:'nie wnoś całego bagażnika na jedną noc'},
+    {id:'tr-5', title:'Adresy i telefony noclegów offline', desc:'zapisz w notatkach + mapy.cz — zasięg w górach bywa słaby'},
+    {id:'tr-6', title:'Woda, przekąski, chusteczki pod ręką w aucie', desc:'nie w bagażniku — dziecko poprosi w trasie'},
+    {id:'tr-7', title:'Zapasowe ubranko + worek na śmieci w kabinie', desc:'na rozlanie albo chorobę lokomocyjną'},
+    {id:'tr-8', title:'Plan przejazdów między noclegami', desc:'28.06 Štrbské→Zakopane ~1,5 h · 04.07 Zakopane→Krynica ~2,5 h · 05.07 Krynica→dom ~4 h'},
+  ]},
+  { id:'frisco1', icon:'🛒', title:'Frisco — zamów 1–2 dni przed wyjazdem', items:[
+    {id:'f1-1', title:'Woda niegazowana (zgrzewki)', desc:'do auta i termosu'},
+    {id:'f1-2', title:'Przekąski dziecka', desc:'musy w tubkach, chrupki, biszkopty, paluszki'},
+    {id:'f1-3', title:'Przekąski dla Was', desc:'batony, orzechy, bakalie na szlak'},
+    {id:'f1-4', title:'Słoiczki / kaszki', desc:'jeśli dziecko jeszcze je — weź sprawdzone'},
+    {id:'f1-5', title:'Pieluchy + chusteczki', desc:'zapas na 2 tyg. — taniej dowieźć niż dźwigać'},
+    {id:'f1-6', title:'Apteczka', desc:'SPF50, środek na kleszcze, leki dla dzieci, plastry'},
+  ]},
+  { id:'frisco2', icon:'🛒', title:'Frisco — dostawa na powrót (5 lip)', items:[
+    {id:'f2-1', title:'Podstawy spożywcze', desc:'mleko, pieczywo, jajka, masło, coś na kolację'},
+    {id:'f2-2', title:'Jedzenie dla dziecka na pierwszy dzień', desc:'wracacie 5.07 z Krynicy zmęczeni, lodówka pusta'},
+  ]},
+  { id:'departure', icon:'🚪', title:'Tuż przed wyjściem', items:[
+    {id:'dep-1', title:'Zakręcona woda, wyłączony gaz/płyta', desc:'ostatni obchód'},
+    {id:'dep-2', title:'Zgaszone światła, klima/wentylatory off', desc:'wszystko wyłączone'},
+    {id:'dep-3', title:'Okna i drzwi balkonowe zamknięte', desc:'sprawdź dokładnie'},
+    {id:'dep-4', title:'Komplet: dokumenty, leki, ładowarki, klucze', desc:'przy drzwiach'},
+    {id:'dep-5', title:'Ulubiona przytulanka dziecka', desc:'bez niej noce w obcym miejscu są trudne'},
+  ]},
+];
+
+/* ============ STORAGE ============ */
+const LS={checks:'tatry.checks.v1',custom:'tatry.custom.v1',collapsed:'tatry.collapsed.v1',prefs:'tatry.prefs.v1',date:'tatry.date.v1',tab:'tatry.tab.v1',card:'tatry.card.v1',weather:'tatry.weather.v1',assign:'tatry.assign.v1',qty:'tatry.qty.v1'};
+const load=(k,f)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):f;}catch(e){return f;}};
+const save=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}};
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+let checks=load(LS.checks,{});
+let custom=load(LS.custom,{});
+let collapsed=load(LS.collapsed,{});
+let prefs=load(LS.prefs,{hideDone:false});
+let tripDate=load(LS.date,'2026-06-21');
+let activeTab=load(LS.tab,'timeline');
+let assign=load(LS.assign,{});
+let qty=load(LS.qty,{});
+
+/* ============ TIMELINE RENDER ============ */
+function renderTimeline(){
+  const tl=document.getElementById('timeline');
+  tl.innerHTML=SEGMENTS.map(seg=>{
+    const days=DAYS.map((d,i)=>({d,i})).filter(o=>o.d.stop===seg.key);
+    const rows=days.map(({d,i})=>{
+      const iso='2026-'+(d.mon==='cze'?'06':'07')+'-'+String(d.dnum).padStart(2,'0');
+      return `
+      <div class="day-wrap" data-i="${i}" style="--dayc:var(${dayColorVar(d)})">
+      <button class="day k-${d.kind}" data-i="${i}" type="button">
+        <span class="day-date"><b>${d.dnum}</b><span>${d.mon} · ${d.dow}</span></span>
+        <span class="day-main">
+          <span class="day-tag">${esc(d.tag)}</span>
+          <span class="day-hl"><span class="day-flag">${d.flag}</span> ${esc(d.hl)}</span>
+        </span>
+        <span class="day-wx" data-wx="${d.stop}|${iso}"></span>
+        <span class="day-go">›</span>
+      </button>
+      <div class="day-detail"><div class="day-detail-inner"></div></div>
+      </div>`;}).join('');
+    return `<div class="seg ${seg.cls}">
+      <div class="seg-head">${seg.flag} ${esc(seg.name)} <span class="seg-when">· ${esc(seg.when)}</span></div>
+      <div class="days">${rows}</div>
+    </div>`;
+  }).join('');
+}
+
+/* ============ SZCZEGÓŁY DNIA (inline) ============ */
+const CH={W:600,H:190,padL:34,padR:14,tTop:12,tBot:120,uTop:132,uBot:160,axY:178};
+function chScale(hrs){const v=hrs.filter(p=>p.t!=null).map(p=>p.t);let mn=Math.min(...v),mx=Math.max(...v);let range=mx-mn;if(range<3){const m=(mn+mx)/2;mn=m-1.5;mx=m+1.5;range=3;}const step=[1,2,3,5,10].find(s=>range/s<=6)||10;mn=Math.floor(mn/step)*step;mx=Math.ceil(mx/step)*step;return {mn,mx,step};}
+function chX(h){return CH.padL+(h/23)*(CH.W-CH.padL-CH.padR);}
+function chYt(t,sc){return CH.tBot-((t-sc.mn)/(sc.mx-sc.mn))*(CH.tBot-CH.tTop);}
+function uvCol(v){return v>=11?'#9b59b6':v>=8?'#d6453f':v>=6?'#ef8e36':v>=3?'#e8c233':'#4eb35a';}
+function dayChart(hrs,wx,nowHour){
+  if(!hrs||!hrs.length)return '';
+  const valid=hrs.filter(p=>p.t!=null);
+  if(valid.length<2)return '';
+  const {W,padL,padR,tTop,tBot,uTop,uBot,axY}=CH,sc=chScale(hrs),X=chX,Yt=t=>chYt(t,sc);
+  let grid='';
+  for(let t=sc.mn;t<=sc.mx+0.001;t+=sc.step){const y=Yt(t);grid+=`<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W-padR}" y2="${y.toFixed(1)}" class="ch-grid"/><text x="${padL-4}" y="${(y+3.5).toFixed(1)}" text-anchor="end" class="ch-ax">${t}°</text>`;}
+  let xax='';
+  for(let h=0;h<=22;h+=2){const x=X(h);xax+=`<line x1="${x.toFixed(1)}" y1="${tTop}" x2="${x.toFixed(1)}" y2="${uBot}" class="ch-grid"/><text x="${x.toFixed(1)}" y="${axY}" text-anchor="middle" class="ch-ax">${h}</text>`;}
+  const toH=s=>(typeof s==='string'&&s.length>=16)?(+s.slice(11,13)+(+s.slice(14,16))/60):null;
+  const sr=wx?toH(wx.sr):null,ss=wx?toH(wx.ss):null;
+  let night='';
+  if(sr!=null)night+=`<rect x="${X(0).toFixed(1)}" y="${tTop}" width="${(X(sr)-X(0)).toFixed(1)}" height="${uBot-tTop}" class="ch-night"/>`;
+  if(ss!=null)night+=`<rect x="${X(ss).toFixed(1)}" y="${tTop}" width="${(X(23)-X(ss)).toFixed(1)}" height="${uBot-tTop}" class="ch-night"/>`;
+  const pts=valid.map(p=>[X(p.h),Yt(p.t)]);
+  const line=pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+  const area=line+` L ${pts[pts.length-1][0].toFixed(1)} ${tBot} L ${pts[0][0].toFixed(1)} ${tBot} Z`;
+  const dots=valid.map(p=>`<circle cx="${X(p.h).toFixed(1)}" cy="${Yt(p.t).toFixed(1)}" r="1.5" fill="var(--primary)"/>`).join('');
+  const bw=Math.max(4,(W-padL-padR)/24*0.72);
+  const bars=hrs.map(p=>{if(p.uv==null||p.uv<=0)return '';const hh=Math.min(11,p.uv)/11*(uBot-uTop);return `<rect x="${(X(p.h)-bw/2).toFixed(1)}" y="${(uBot-hh).toFixed(1)}" width="${bw.toFixed(1)}" height="${hh.toFixed(1)}" rx="1" fill="${uvCol(p.uv)}"/>`;}).join('');
+  const precip=hrs.map(p=>{if(p.p==null||p.p<=0)return '';const hh=p.p/100*(tBot-tTop);return `<rect x="${(X(p.h)-bw/2).toFixed(1)}" y="${(tBot-hh).toFixed(1)}" width="${bw.toFixed(1)}" height="${hh.toFixed(1)}" rx="1" class="ch-precip"/>`;}).join('');
+  const vline=(x,cls)=>`<line x1="${x.toFixed(1)}" y1="${tTop}" x2="${x.toFixed(1)}" y2="${uBot}" class="${cls}"/>`;
+  const sun=(sr!=null?vline(X(sr),'ch-sun'):'')+(ss!=null?vline(X(ss),'ch-sun'):'');
+  const now=(nowHour!=null)?vline(X(nowHour),'ch-now'):'';
+  const uvlbl=`<text x="${W-padR}" y="${uTop-2}" text-anchor="end" class="ch-ax">UV</text>`;
+  return `<div class="chart-wrap">
+    <svg viewBox="0 0 ${W} ${CH.H}" class="daychart">
+      ${night}${grid}${precip}${xax}
+      <path d="${area}" class="ch-area"/><path d="${line}" class="ch-line"/>${dots}
+      ${bars}${sun}${now}${uvlbl}
+      <line class="ch-cursor" y1="${tTop}" y2="${uBot}" x1="0" x2="0" style="display:none"/>
+      <circle class="ch-dot" r="3.2" style="display:none"/>
+    </svg>
+    <div class="ch-tip" style="display:none"></div>
+  </div>`;
+}
+function wireChart(wrap,hrs){
+  const cw=wrap.querySelector('.chart-wrap');if(!cw)return;
+  const svg=cw.querySelector('.daychart'),tip=cw.querySelector('.ch-tip'),cursor=cw.querySelector('.ch-cursor'),dot=cw.querySelector('.ch-dot');
+  if(!svg)return;
+  const sc=chScale(hrs),byHour={};hrs.forEach(p=>byHour[p.h]=p);
+  function show(clientX){
+    const rect=svg.getBoundingClientRect();if(!rect.width)return;
+    let h=Math.round((((clientX-rect.left)/rect.width*CH.W)-CH.padL)/(CH.W-CH.padL-CH.padR)*23);
+    h=Math.max(0,Math.min(23,h));const p=byHour[h];if(!p){return;}
+    const x=chX(h);
+    cursor.setAttribute('x1',x);cursor.setAttribute('x2',x);cursor.style.display='';
+    if(p.t!=null){dot.setAttribute('cx',x);dot.setAttribute('cy',chYt(p.t,sc));dot.style.display='';}else dot.style.display='none';
+    const uv=p.uv!=null?(' · UV '+(Math.round(p.uv*10)/10)):'';
+    tip.innerHTML=`<b>${String(h).padStart(2,'0')}:00</b> · ${p.t!=null?Math.round(p.t)+'°':'—'}${uv}${p.p!=null?` · 💧${p.p}%`:''}`;
+    tip.style.display='';
+    const cwR=cw.getBoundingClientRect(),tw=tip.offsetWidth;
+    tip.style.left=Math.max(2,Math.min(cwR.width-tw-2,(clientX-cwR.left)-tw/2))+'px';
+  }
+  const move=e=>{const cx=e.touches&&e.touches[0]?e.touches[0].clientX:e.clientX;if(cx!=null)show(cx);};
+  const hide=()=>{tip.style.display='none';cursor.style.display='none';dot.style.display='none';};
+  cw.addEventListener('mousemove',move);
+  cw.addEventListener('mouseleave',hide);
+  cw.addEventListener('touchstart',move,{passive:true});
+  cw.addEventListener('touchmove',move,{passive:true});
+  cw.addEventListener('touchend',hide);
+}
+function dayDetailHtml(i){
+  const d=DAYS[i],iso=DAY_ISO[i],wx=WX[d.stop+'|'+iso];
+  let h=`<div class="dd-head"><span class="dd-loc">${d.flag} ${esc(d.loc)}</span><span class="dd-date">${esc(d.full)} 2026</span></div>`;
+  const country=d.stop==='sk'?'SK':'PL';
+  const holi=HOLIDAYS[country]&&HOLIDAYS[country][iso];
+  if(holi)h+=`<div class="m-holi">🎉 <b>${esc(holi)}</b> — święto (${country}). Sklepy i atrakcje mogą mieć inne godziny.</div>`;
+  if(wx&&wx.hi!=null){const wi=wxIcon(wx.c);
+    const extra=[wx.sr?`🌅 ${hm(wx.sr)}  🌇 ${hm(wx.ss)}`:'',wx.uv!=null?`☀️ UV ${Math.round(wx.uv)}`:''].filter(Boolean).join('  ·  ');
+    h+=`<div class="m-wx"><span class="wx-emoji">${wi[0]}</span><span><span class="wx-temp">dzień ${Math.round(wx.hi)}° / noc ${Math.round(wx.lo)}°</span> · ${wi[1]}${wx.p!=null?` · <span class="wx-pop">opady ${wx.p}%</span>`:''}${extra?`<br><span style="color:var(--muted);font-size:.82rem">${extra}</span>`:''}</span></div>`;}
+  const hrs=HOURLY[d.stop+'|'+iso];
+  if(hrs&&hrs.length){const nowH=(iso===computeToday().iso)?new Date().getHours():null;h+=`<div class="m-chart">${dayChart(hrs,wx,nowH)}<div class="ch-cap">🌡️ linia = temperatura · 🟦 tło = opady % · dolne słupki = UV (zielony→fiolet) · 👆 najedź / dotknij, by odczytać godzinę</div></div>`;}
+  if(d.drive){const km=DRIVE_KM[i],ends=DRIVE_ENDS[i];const tl=ends?gtrafficStops(ends[0],ends[1],km):'';
+    h+=`<div class="m-drive"><b>🚗 Przejazd · ${esc(d.drive.time)}${km?` · ${km} km`:''}</b>${esc(d.drive.from)} → ${esc(d.drive.to)}<br><a href="${d.drive.map}" target="_blank" rel="noopener">🧭 Nawiguj ↗</a>${tl?` · <a href="${tl}" target="_blank" rel="noopener">🚦 Ruch na żywo ↗</a>`:''} · <a href="${GDDKIA_URL}" target="_blank" rel="noopener">🚧 Utrudnienia ↗</a></div>`;}
+  h+=`<div class="m-sec"><h4>📍 Plan dnia</h4><ul>${d.plan.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`;
+  h+=`<div class="m-sec"><h4>✅ Pamiętaj</h4><ul>${d.remember.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`;
+  const sug=daySuggestion(wx,d.stop);
+  if(sug)h+=`<div class="m-sec"><h4>💡 Propozycja na dziś (wg pogody)</h4><p class="sug-txt">${sug.icon} ${esc(sug.txt)}</p>${sug.links&&sug.links.length?`<div class="chiplinks">${sug.links.map(x=>`<a href="${x.u}" target="_blank" rel="noopener">${esc(x.t)} ↗</a>`).join('')}</div>`:''}</div>`;
+  const near=ATTRACTIONS[d.stop]||[];
+  if(near.length)h+=`<div class="m-sec"><h4>📍 Ciekawe w okolicy (Wikipedia)</h4><div class="chiplinks">${near.map(a=>`<a class="poi" href="${a.url}" target="_blank" rel="noopener" title="${esc(a.desc||'')}">${esc(a.title)}${a.dist!=null?` <em>${(a.dist/1000).toFixed(1)} km</em>`:''}</a>`).join('')}</div></div>`;
+  if(d.stay)h+=`<div class="m-stay"><b>🛏️ Nocleg</b><span class="s-name">${esc(d.stay.name)}</span><br>${esc(d.stay.addr)}<br><span style="color:var(--muted)">${esc(d.stay.info)}</span><br><a href="${d.stay.map}" target="_blank" rel="noopener">Otwórz mapę ↗</a></div>`;
+  h+=`<div class="detail-foot"><button class="btn-ghost" data-full="${i}" type="button">🔎 Pełny widok dnia</button><button class="btn-ghost" data-gotab="info" type="button">📋 Ważne info</button></div>`;
+  return h;
+}
+function fillDetail(wrap,i){
+  wrap.querySelector('.day-detail-inner').innerHTML=`<div class="day-detail-card">${dayDetailHtml(i)}</div>`;
+  const hrs=HOURLY[DAYS[i].stop+'|'+DAY_ISO[i]];
+  if(hrs&&hrs.length)wireChart(wrap,hrs);
+}
+function toggleDay(i){
+  const wrap=document.querySelector(`.day-wrap[data-i="${i}"]`);if(!wrap)return;
+  const open=wrap.classList.contains('open');
+  document.querySelectorAll('.day-wrap.open').forEach(w=>w.classList.remove('open'));
+  if(!open){fillDetail(wrap,i);wrap.classList.add('open');focusMapOnDay(i);}
+}
+function openDayInline(i){
+  const wrap=document.querySelector(`.day-wrap[data-i="${i}"]`);if(!wrap)return;
+  document.querySelectorAll('.day-wrap.open').forEach(w=>{if(w!==wrap)w.classList.remove('open');});
+  if(!wrap.classList.contains('open')){fillDetail(wrap,i);wrap.classList.add('open');}
+  focusMapOnDay(i);
+  setTimeout(()=>wrap.scrollIntoView({block:'center',behavior:'smooth'}),90);
+}
+document.getElementById('timeline').addEventListener('click',e=>{
+  const fb=e.target.closest('[data-full]');if(fb){openDayFull(+fb.dataset.full);return;}
+  if(e.target.closest('[data-gotab]')){switchTab('info');return;}
+  if(e.target.closest('a'))return;
+  const day=e.target.closest('.day');if(day)toggleDay(+day.dataset.i);
+});
+
+/* ============ TABS ============ */
+function switchTab(name){
+  activeTab=name;save(LS.tab,name);
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===name));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+name));
+  window.scrollTo({top:0,behavior:'smooth'});
+  if(name==='timeline'&&leafMap)setTimeout(()=>{leafMap.invalidateSize();focusMapOnDay(currentDayIndex());},60);
+}
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>switchTab(t.dataset.tab)));
+
+/* ============ CHECKLIST RENDER ============ */
+const catItems=cat=>[...cat.items,...((custom[cat.id]||[]).map(c=>({...c,custom:true})))];
+const CAT_KIND={docs:'pack',you:'pack',kid:'pack',sleep:'pack',trail:'pack',hyg:'pack',meds:'pack',plants:'do',home:'do',digital:'do',travel:'do',frisco1:'buy',frisco2:'buy',departure:'do'};
+const ITEM_KIND={'docs-3':'do','docs-4':'buy','docs-7':'do','docs-9':'buy','docs-11':'do','docs-12':'do','ks1':'do','kf1':'do','kh1':'buy','kh2':'buy','kr1':'do','kd3':'do'};
+const KIND_ICON={pack:'🎒',do:'✅',buy:'🛒'};
+const KIND_LABEL={pack:'Zabrać',do:'Zrobić',buy:'Kupić'};
+const kindOf=(cat,it)=>ITEM_KIND[it.id]||CAT_KIND[cat.id]||'pack';
+const CHECK='<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 6"/></svg>';
+function renderItem(cat,it){
+  const done=!!checks[it.id];
+  const kind=kindOf(cat,it);
+  const who=assign[it.id]||'';
+  const q=qty[it.id];
+  return `<li class="item${done?' done':''}${it.custom?' is-custom':''}" data-id="${it.id}" data-kind="${kind}" data-who="${who}">
+    <label><input type="checkbox" ${done?'checked':''}>
+      <span class="box">${CHECK}</span>
+      <span class="txt"><span class="t">${esc(it.title)}</span>${it.desc?`<span class="d">${esc(it.desc)}</span>`:''}</span>
+    </label>
+    <span class="meta">
+      <button class="qty${q?'':' empty'}" data-qty="${it.id}" title="Ilość" type="button">${q?('×'+esc(String(q))):'×?'}</button>
+      <button class="who${who?' set':''}" data-whobtn="${it.id}" title="Kto pakuje / robi" type="button"${who?` style="background:${WHO[who].color}"`:''}>${who?WHO[who].ini:'+'}</button>
+      <span class="kind" title="${KIND_LABEL[kind]}">${KIND_ICON[kind]}</span>
+    </span>
+    ${it.custom?`<button class="del-custom" data-cat="${cat.id}" data-id="${it.id}" title="Usuń" aria-label="Usuń">✕</button>`:''}
+  </li>`;
+}
+function renderCat(cat){
+  const isCol=!!collapsed[cat.id];
+  return `<section class="cat${isCol?' collapsed':''}" data-cat="${cat.id}">
+    <button class="cat-head" type="button" aria-expanded="${!isCol}">
+      <span class="cat-icon">${cat.icon}</span>
+      <span class="cat-title">${esc(cat.title)}</span>
+      <span class="cat-count" data-count></span>
+      <span class="cat-mini"><span class="cat-mini-fill" data-mini></span></span>
+      <span class="chev">▾</span>
+    </button>
+    <div class="cat-body"><div class="cat-body-inner">
+      <ul class="items">${catItems(cat).map(it=>renderItem(cat,it)).join('')}</ul>
+      <form class="add-row" data-cat="${cat.id}">
+        <input type="text" placeholder="Dodaj własną pozycję…" aria-label="Dodaj własną pozycję">
+        <button type="submit" aria-label="Dodaj">+</button>
+      </form>
+    </div></div>
+  </section>`;
+}
+function renderChecklist(){
+  document.getElementById('categories').innerHTML=DATA.map(renderCat).join('');
+  document.body.classList.toggle('hide-done',!!prefs.hideDone);
+  updateProgress();
+  applyFilter();
+}
+function applyFilter(){
+  const f=prefs.filter||'all', pf=prefs.person||'all', sc=prefs.scope||'all';
+  const c=document.getElementById('categories');
+  c.classList.toggle('flt-pack',f==='pack');
+  c.classList.toggle('flt-do',f==='do');
+  c.classList.toggle('flt-buy',f==='buy');
+  c.classList.toggle('who-ty',pf==='ty');
+  c.classList.toggle('who-zona',pf==='zona');
+  const vis=(cat,it)=>{
+    if(f!=='all'&&kindOf(cat,it)!==f)return false;
+    if(pf!=='all'){const w=assign[it.id]||'';if(!(w===pf||w==='oboje'))return false;}
+    return true;
+  };
+  const scopeOk=cat=>sc==='all'||(sc==='child'?!!cat.child:!cat.child);
+  DATA.forEach(cat=>{
+    const el=document.querySelector(`.cat[data-cat="${cat.id}"]`);if(!el)return;
+    el.style.display=(scopeOk(cat)&&catItems(cat).some(it=>vis(cat,it)))?'':'none';
+  });
+  document.querySelectorAll('.flt').forEach(b=>b.classList.toggle('active',b.dataset.flt===f));
+  document.querySelectorAll('.pf').forEach(b=>b.classList.toggle('active',b.dataset.pf===pf));
+  document.querySelectorAll('.sc').forEach(b=>b.classList.toggle('active',b.dataset.sc===sc));
+}
+function updateProgress(){
+  let done=0,total=0;
+  DATA.forEach(cat=>{
+    const items=catItems(cat);
+    const d=items.filter(i=>checks[i.id]).length, t=items.length;
+    done+=d; total+=t;
+    const el=document.querySelector(`.cat[data-cat="${cat.id}"]`);
+    if(!el)return;
+    el.querySelector('[data-count]').textContent=`${d}/${t}`;
+    el.querySelector('[data-mini]').style.width=t?(d/t*100)+'%':'0%';
+    el.classList.toggle('complete',t>0&&d===t);
+  });
+  const pct=total?Math.round(done/total*100):0;
+  document.getElementById('progLabel').textContent=`${done} / ${total} gotowe`;
+  document.getElementById('progPct').textContent=pct+'%';
+  document.getElementById('progFill').style.width=pct+'%';
+  document.getElementById('clBadge').textContent=`${done}/${total}`;
+  document.getElementById('celebrate').classList.toggle('show',total>0&&done===total);
+  const kc={pack:[0,0],do:[0,0],buy:[0,0]};
+  DATA.forEach(cat=>catItems(cat).forEach(it=>{const k=kindOf(cat,it);if(kc[k]){kc[k][1]++;if(checks[it.id])kc[k][0]++;}}));
+  const setFc=(k,v)=>{const el=document.querySelector(`[data-fc="${k}"]`);if(el)el.textContent=v;};
+  setFc('all',total-done);setFc('pack',kc.pack[1]-kc.pack[0]);setFc('do',kc.do[1]-kc.do[0]);setFc('buy',kc.buy[1]-kc.buy[0]);
+  let childRem=0;
+  DATA.forEach(cat=>{if(cat.child)catItems(cat).forEach(it=>{if(!checks[it.id])childRem++;});});
+  setFc('child',childRem);
+}
+function updateToolbar(){
+  document.getElementById('toggleDone').textContent=prefs.hideDone?'👁️ Pokaż zrobione':'🙈 Ukryj zrobione';
+  const anyOpen=DATA.some(c=>!collapsed[c.id]);
+  document.getElementById('toggleCollapse').textContent=anyOpen?'⊟ Zwiń wszystko':'⊞ Rozwiń wszystko';
+}
+
+const cats=document.getElementById('categories');
+cats.addEventListener('change',e=>{
+  if(!e.target.matches('input[type=checkbox]'))return;
+  const li=e.target.closest('.item'),id=li.dataset.id;
+  if(e.target.checked)checks[id]=true;else delete checks[id];
+  save(LS.checks,checks);
+  li.classList.toggle('done',e.target.checked);
+  updateProgress();
+});
+cats.addEventListener('click',e=>{
+  const wb=e.target.closest('[data-whobtn]');
+  if(wb){cycleWho(wb.dataset.whobtn);return;}
+  const qb=e.target.closest('[data-qty]');
+  if(qb){editQty(qb);return;}
+  const head=e.target.closest('.cat-head');
+  if(head){
+    const cat=head.closest('.cat'),id=cat.dataset.cat,nowCol=!cat.classList.contains('collapsed');
+    cat.classList.toggle('collapsed',nowCol);
+    head.setAttribute('aria-expanded',String(!nowCol));
+    if(nowCol)collapsed[id]=true;else delete collapsed[id];
+    save(LS.collapsed,collapsed);updateToolbar();return;
+  }
+  const del=e.target.closest('.del-custom');
+  if(del){
+    const cid=del.dataset.cat,id=del.dataset.id;
+    custom[cid]=(custom[cid]||[]).filter(c=>c.id!==id);delete checks[id];
+    save(LS.custom,custom);save(LS.checks,checks);renderChecklist();
+  }
+});
+cats.addEventListener('submit',e=>{
+  const form=e.target.closest('.add-row');if(!form)return;
+  e.preventDefault();
+  const input=form.querySelector('input'),val=input.value.trim();if(!val)return;
+  const cid=form.dataset.cat;
+  const id='c-'+cid+'-'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+  (custom[cid]=custom[cid]||[]).push({id,title:val});
+  save(LS.custom,custom);delete collapsed[cid];save(LS.collapsed,collapsed);
+  renderChecklist();updateToolbar();
+  const f=document.querySelector(`.add-row[data-cat="${cid}"] input`);if(f)f.focus();
+});
+document.getElementById('toggleDone').addEventListener('click',()=>{
+  prefs.hideDone=!prefs.hideDone;save(LS.prefs,prefs);
+  document.body.classList.toggle('hide-done',prefs.hideDone);updateToolbar();
+});
+document.getElementById('toggleCollapse').addEventListener('click',()=>{
+  const anyOpen=DATA.some(c=>!collapsed[c.id]);
+  DATA.forEach(c=>{if(anyOpen)collapsed[c.id]=true;else delete collapsed[c.id];});
+  save(LS.collapsed,collapsed);renderChecklist();updateToolbar();
+});
+document.getElementById('resetBtn').addEventListener('click',()=>{
+  if(confirm('Odznaczyć wszystkie pozycje i usunąć własne dodane? Tej operacji nie można cofnąć.')){
+    checks={};custom={};collapsed={};
+    save(LS.checks,checks);save(LS.custom,custom);save(LS.collapsed,collapsed);
+    renderChecklist();updateToolbar();
+  }
+});
+document.querySelectorAll('.flt').forEach(b=>b.addEventListener('click',()=>{
+  prefs.filter=b.dataset.flt;save(LS.prefs,prefs);applyFilter();
+}));
+document.querySelectorAll('.pf').forEach(b=>b.addEventListener('click',()=>{
+  prefs.person=b.dataset.pf;save(LS.prefs,prefs);applyFilter();
+}));
+document.querySelectorAll('.sc').forEach(b=>b.addEventListener('click',()=>{
+  prefs.scope=b.dataset.sc;save(LS.prefs,prefs);applyFilter();
+}));
+function cycleWho(id){
+  const order=['','ty','zona','oboje'];
+  const next=order[(order.indexOf(assign[id]||'')+1)%order.length];
+  if(next)assign[id]=next;else delete assign[id];
+  save(LS.assign,assign);
+  const li=document.querySelector(`.item[data-id="${id}"]`);if(!li)return;
+  li.dataset.who=next;
+  const btn=li.querySelector('[data-whobtn]');
+  if(next){btn.classList.add('set');btn.style.background=WHO[next].color;btn.textContent=WHO[next].ini;}
+  else{btn.classList.remove('set');btn.style.background='';btn.textContent='+';}
+  applyFilter();
+}
+function editQty(btn){
+  const id=btn.dataset.qty;
+  const input=document.createElement('input');
+  input.type='number';input.min='0';input.className='qty-input';input.value=qty[id]||'';
+  btn.replaceWith(input);input.focus();
+  const commit=()=>{
+    const v=input.value.trim();
+    if(v&&+v>0)qty[id]=+v;else delete qty[id];
+    save(LS.qty,qty);
+    const nb=document.createElement('button');
+    nb.className='qty'+(qty[id]?'':' empty');nb.dataset.qty=id;nb.type='button';nb.title='Ilość';
+    nb.textContent=qty[id]?('×'+qty[id]):'×?';
+    input.replaceWith(nb);
+  };
+  input.addEventListener('blur',commit);
+  input.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();input.blur();}});
+}
+
+/* ---- oś „dziś" + widżety ---- */
+function computeToday(){
+  let iso=SERVER_TODAY;
+  if(!iso){const t=new Date();t.setHours(0,0,0,0);iso=t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0');}
+  const idx=DAY_ISO.indexOf(iso);
+  let status='during';
+  if(idx===-1)status=(iso<DAY_ISO[0])?'before':'after';
+  return {iso,idx,status,dayNo:idx+1,total:DAYS.length};
+}
+function daysTo(iso){const t=new Date();t.setHours(0,0,0,0);return Math.round((new Date(iso+'T00:00:00')-t)/86400000);}
+function renderHeroTrip(){
+  const T=computeToday(),el=document.getElementById('tripStrip');
+  const segs=[{k:'sk',n:7,s:0},{k:'zak',n:6,s:7},{k:'kry',n:2,s:13}];
+  let label;
+  if(T.status==='before')label='Przed wyjazdem';
+  else if(T.status==='after')label='Po wyjeździe 🏔️';
+  else{const seg=SEGMENTS.find(s=>s.key===DAYS[T.idx].stop);label=`Dzień ${T.dayNo} z ${T.total} · ${seg.flag} ${seg.name}`;}
+  const elapsed=T.status==='before'?0:(T.status==='after'?T.total:T.dayNo);
+  const bar=segs.map(s=>{const frac=Math.max(0,Math.min(s.n,elapsed-s.s))/s.n;
+    return `<span class="ts-seg" style="flex:${s.n}"><span class="ts-seg-fill" style="width:${frac*100}%;background:var(--${s.k})"></span></span>`;}).join('');
+  el.innerHTML=`<div class="ts-label"><span>${label}</span><span>${T.status==='during'?T.dayNo+'/'+T.total:''}</span></div><div class="ts-bar">${bar}</div>`;
+}
+function renderTodayWidget(){
+  const T=computeToday(),el=document.getElementById('todayWidget');
+  let idx,eyebrow;
+  if(T.status==='before'){idx=0;eyebrow='Do wyjazdu · za '+daysTo(DAY_ISO[0])+' dni';}
+  else if(T.status==='during'){idx=T.idx;eyebrow='Dziś · dzień '+T.dayNo+'/'+T.total;}
+  else{el.style.display='none';el.innerHTML='';el.removeAttribute('data-i');return;}
+  el.style.display='';el.dataset.i=idx;
+  const d=DAYS[idx],wx=WX[d.stop+'|'+DAY_ISO[idx]];
+  const now=(T.status==='during')?WXNOW[d.stop]:null;
+  const wxHtml=now?`<div class="w-wx"><b>${wxIcon(now.c)[0]}</b>teraz ${Math.round(now.temp)}°</div>`
+    :((wx&&wx.hi!=null)?`<div class="w-wx"><b>${wxIcon(wx.c)[0]}</b>${Math.round(wx.hi)}°/${Math.round(wx.lo)}°</div>`:'');
+  const sub=(T.status==='before')?`Pierwszy dzień — ${d.tag}`:`${d.loc} · ${d.tag}`;
+  const rem=(d.remember&&d.remember[0])?' · 💡 '+d.remember[0]:'';
+  el.innerHTML=`<div class="w-day"><b>${d.dnum}</b><span>${d.mon}</span></div>
+    <div class="w-body"><div class="w-eyebrow">${eyebrow}</div>
+      <div class="w-title">${esc(d.hl)}</div>
+      <div class="w-sub">${esc(sub+rem)}</div></div>
+    ${wxHtml}<div class="w-go">›</div>`;
+}
+function routeSvg(act){
+  const N={dom:[245,28,'Dom'],sk:[95,158,'Štrbské'],zak:[130,132,'Zakopane'],kry:[205,138,'Krynica']};
+  const pts=['dom','sk','zak','kry','dom'].map(k=>N[k][0]+','+N[k][1]).join(' ');
+  const nodes=Object.entries(N).map(([k,v])=>`<circle class="rt-node${k===act?' act':''}" cx="${v[0]}" cy="${v[1]}" r="${k===act?7:5}"/><text class="rt-lbl" x="${v[0]}" y="${v[1]-9}" text-anchor="middle">${v[2]}</text>`).join('');
+  return `<svg viewBox="0 0 300 178" xmlns="http://www.w3.org/2000/svg"><polyline class="rt-line" points="${pts}"/>${nodes}</svg>`;
+}
+let routeBuilt=false,leafMap=null,attrLayer=null;
+const GNAME={'Dom':'Stryjeńskich 8, Warszawa','Štrbské':'Štrbské Pleso','Zakopane':'Mieczysława Karłowicza 17, Zakopane','Krynica':'Pensjonat Lira, Krynica-Zdrój'};
+const gdir=(from,to)=>'https://www.google.com/maps/dir/?api=1&origin='+encodeURIComponent(GNAME[from]||from)+'&destination='+encodeURIComponent(GNAME[to]||to)+'&travelmode=driving';
+function renderRouteWidget(){
+  if(routeBuilt)return; routeBuilt=true;
+  const el=document.getElementById('routeWidget');
+  const totalKm=LEGS.reduce((a,l)=>a+l.km,0);
+  const fuel=Math.round(totalKm/100*FUEL_L*FUEL_PRICE);
+  const full='https://www.google.com/maps/dir/?api=1&origin='+encodeURIComponent('Stryjeńskich 8, Warszawa')+'&destination='+encodeURIComponent('Stryjeńskich 8, Warszawa')+'&waypoints='+encodeURIComponent('Štrbské Pleso')+'%7C'+encodeURIComponent('Zakopane')+'%7C'+encodeURIComponent('Krynica-Zdrój')+'&travelmode=driving';
+  el.innerHTML=`<div class="route-head">🗺️ Trasa i koszty <button id="radarBtn" class="radar-btn" type="button">🌧️ Radar</button><span id="radarTime" class="radar-time"></span> <a class="gmaps-link" href="${full}" target="_blank" rel="noopener">🧭 Google Maps ↗</a></div>
+    <div id="leafletMap" class="leaflet-map"></div>
+    <div id="routeSvgFallback" hidden></div>
+    <div class="route-sum"><span class="big">~${totalKm} km</span> w pętli · ⛽ ~${fuel} zł <span style="color:var(--muted)">(${FUEL_L} l/100 · ${FUEL_PRICE} zł/l)</span></div>
+    <div class="legs-list">${LEGS.map(l=>`
+      <div class="leg-row">
+        <div class="leg-date">${l.d}</div>
+        <div class="leg-route"><b>${esc(l.from)} → ${esc(l.to)}</b><span class="leg-meta">${l.km} km · ${esc(l.time||'')}</span></div>
+        <div class="leg-actions"><a href="${gdir(l.from,l.to)}" target="_blank" rel="noopener" title="Nawigacja od→do (ruch i ETA na żywo)">🧭</a><a href="${gtraffic(l)}" target="_blank" rel="noopener" title="Mapa ruchu na żywo w tym rejonie (Google)">🚦</a><a href="${GDDKIA_URL}" target="_blank" rel="noopener" title="Utrudnienia / remonty / wypadki (GDDKiA)">🚧</a></div>
+      </div>`).join('')}</div>
+    <p class="legs-note">🧭 nawigacja od→do · 🚦 <b>mapa ruchu na żywo</b> (Google, ten rejon) · 🚧 <a href="${GDDKIA_URL}" target="_blank" rel="noopener">utrudnienia GDDKiA</a> (remonty, wypadki)</p>`;
+}
+function initLeaflet(){
+  if(leafMap)return;
+  const el=document.getElementById('leafletMap');if(!el)return;
+  if(typeof L==='undefined'){const fb=document.getElementById('routeSvgFallback');if(fb){fb.hidden=false;fb.innerHTML=routeSvg('dom');}el.style.display='none';return;}
+  const stay={sk:'Apartament · Pri Jazere 4049/2',zak:'Owca na Szlaku · Karłowicza 17/A',kry:'Pensjonat Lira · ul. Piękna',dom:'Start i powrót'};
+  leafMap=L.map(el,{scrollWheelZoom:false}).setView([49.3,20.2],9);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'© OpenStreetMap'}).addTo(leafMap);
+  L.polyline(['dom','sk','zak','kry','dom'].map(k=>STOP_LL[k].ll),{color:'#2f6f57',weight:3,dashArray:'7 7',opacity:.85}).addTo(leafMap);
+  ['dom','sk','zak','kry'].forEach(k=>{const s=STOP_LL[k];
+    L.circleMarker(s.ll,{radius:9,color:'#fff',weight:2,fillColor:s.c,fillOpacity:1}).addTo(leafMap)
+      .bindPopup(`<b>${esc(s.n)}</b><br>${esc(stay[k]||'')}<br><a href="${gdir('Dom',k==='dom'?'Dom':s.n)}" target="_blank" rel="noopener">Nawiguj ↗</a>`);});
+  attrLayer=L.layerGroup().addTo(leafMap);
+  const rb=document.getElementById('radarBtn');if(rb&&!rb._w){rb._w=1;rb.addEventListener('click',()=>toggleRadar(rb));}
+  focusMapOnDay(currentDayIndex());
+  setTimeout(()=>{leafMap.invalidateSize();focusMapOnDay(currentDayIndex());},200);
+}
+function syncAttractions(){
+  if(!leafMap||!attrLayer)return;
+  attrLayer.clearLayers();
+  Object.values(ATTRACTIONS).forEach(arr=>(arr||[]).forEach(a=>{
+    if(a.lat==null||a.lon==null)return;
+    L.circleMarker([a.lat,a.lon],{radius:5,color:'#1f5e46',weight:1,fillColor:'#74cda9',fillOpacity:.9}).addTo(attrLayer)
+      .bindPopup(`<b>${esc(a.title)}</b>${a.desc?'<br>'+esc(a.desc):''}<br><a href="${esc(a.url)}" target="_blank" rel="noopener">Wikipedia ↗</a>`);
+  }));
+  focusMapOnDay(currentDayIndex());
+}
+function currentDayIndex(){const T=computeToday();return T.status==='during'?T.idx:(T.status==='before'?0:DAYS.length-1);}
+function focusMapOnDay(i){
+  if(!leafMap)return;
+  let pts=[];
+  if(DRIVE_ENDS[i]){pts=DRIVE_ENDS[i].map(k=>STOP_LL[k].ll);}
+  else{const k=DAYS[i].stop;pts=[STOP_LL[k].ll];(ATTRACTIONS[k]||[]).forEach(a=>{if(a.lat!=null&&a.lon!=null)pts.push([a.lat,a.lon]);});}
+  try{if(pts.length===1)leafMap.setView(pts[0],13);else leafMap.fitBounds(pts,{padding:[28,28],maxZoom:14});}catch(e){}
+}
+function gtrafZoom(km){return km>350?7:km>120?9:10;}
+function gtrafficStops(fromKey,toKey,km){const a=STOP_LL[fromKey].ll,b=STOP_LL[toKey].ll;return `https://www.google.com/maps/@${((a[0]+b[0])/2).toFixed(4)},${((a[1]+b[1])/2).toFixed(4)},${gtrafZoom(km)}z/data=!5m1!1e1`;}
+function gtraffic(l){const a=LEG_COORD[l.from],b=LEG_COORD[l.to];if(!a||!b)return 'https://www.google.com/maps';return `https://www.google.com/maps/@${((a[0]+b[0])/2).toFixed(4)},${((a[1]+b[1])/2).toFixed(4)},${gtrafZoom(l.km)}z/data=!5m1!1e1`;}
+function weatherReco(){
+  const el=document.getElementById('weatherReco'),T=computeToday();
+  const stopKey=(T.status==='before')?'sk':(T.status==='during'?DAYS[T.idx].stop:null);
+  if(!stopKey){el.innerHTML='';return;}
+  const wd=DAYS.map((d,i)=>({d,iso:DAY_ISO[i]})).filter(o=>o.d.stop===stopKey&&o.d.kind==='stay')
+    .map(o=>({d:o.d,w:WX[stopKey+'|'+o.iso]})).filter(o=>o.w&&o.w.p!=null);
+  if(wd.length<2){el.innerHTML='';return;}
+  wd.sort((a,b)=>a.w.p-b.w.p);
+  const best=wd[0],worst=wd[wd.length-1],seg=SEGMENTS.find(s=>s.key===stopKey);
+  el.innerHTML=`💡 <b>${seg.name}:</b> najmniej deszczu <b>${best.d.dow} ${best.d.dnum}.${best.d.mon==='cze'?'06':'07'}</b> (💧${best.w.p}%) — dobry na wycieczkę. Najwięcej <b>${worst.d.dow} ${worst.d.dnum}.${worst.d.mon==='cze'?'06':'07'}</b> (💧${worst.w.p}%) → plan pod dachem (termy / AquaCity).`;
+}
+function markToday(){
+  const T=computeToday();
+  document.querySelectorAll('.day').forEach(b=>b.classList.remove('today','nextday'));
+  if(T.status==='during'){const b=document.querySelector(`.day[data-i="${T.idx}"]`);if(b)b.classList.add('today');}
+  else if(T.status==='before'){const b=document.querySelector('.day[data-i="0"]');if(b)b.classList.add('nextday');}
+}
+function renderPlaceWidget(){
+  const el=document.getElementById('placeWidget'),T=computeToday();
+  const key=(T.status==='during')?DAYS[T.idx].stop:(T.status==='before'?'sk':null);
+  const p=key&&PLACES[key];
+  if(!p){el.style.display='none';el.innerHTML='';return;}
+  el.style.display='';
+  const iso=(T.status==='during')?DAY_ISO[T.idx]:DAY_ISO[0];
+  const w=WX[key+'|'+iso];
+  const temps=(w&&w.hi!=null)?`🌡️ dzień ${Math.round(w.hi)}° / noc ${Math.round(w.lo)}°`:'';
+  const sun=(w&&w.sr)?`🌅 ${hm(w.sr)} · 🌇 ${hm(w.ss)}`:'';
+  const uv=(w&&w.uv!=null)?`☀️ UV ${Math.round(w.uv)}`:'';
+  const meta=[temps,sun,uv].filter(Boolean).join('  ·  ');
+  el.innerHTML=`<div class="place-head">📍 ${esc(p.name||key)} <span class="muted">${p.elevation?p.elevation+' m · ':''}${p.country||''}</span></div>
+    <div class="place-body">${p.thumb?`<img class="place-thumb" src="${esc(p.thumb)}" alt="" loading="lazy">`:''}
+      <div class="place-txt"><p class="place-extract">${esc(p.extract||'Opis ładuje się z Wikipedii…')}</p>
+        ${meta?`<div class="place-meta">${meta}</div>`:''}
+        ${p.url?`<a href="${esc(p.url)}" target="_blank" rel="noopener">Wikipedia ↗</a>`:''}</div></div>`;
+}
+function markHolidays(){
+  document.querySelectorAll('.day').forEach(b=>{
+    if(b.querySelector('.holi-dot'))return;
+    const i=+b.dataset.i,d=DAYS[i],iso=DAY_ISO[i],country=d.stop==='sk'?'SK':'PL';
+    const holi=HOLIDAYS[country]&&HOLIDAYS[country][iso];
+    if(holi){const hl=b.querySelector('.day-hl');if(hl){const s=document.createElement('span');s.className='holi-dot';s.textContent=' 🎉';s.title=holi;hl.appendChild(s);}}
+  });
+}
+function updateSmartWidgets(){renderHeroTrip();renderTodayWidget();renderRouteWidget();initLeaflet();syncAttractions();renderPlaceWidget();renderHeatmap();weatherReco();markToday();markHolidays();if(curDayPage!=null&&document.getElementById('dayFull').classList.contains('open'))showDayPage(curDayPage);}
+document.getElementById('todayWidget').addEventListener('click',function(){if(this.dataset.i!=null)openDayInline(+this.dataset.i);});
+document.getElementById('refreshBtn').addEventListener('click',function(){this.disabled=true;this.textContent='⟳ …';Promise.resolve(loadData(true)).finally(()=>{this.disabled=false;this.textContent='⟳ Odśwież dane';});});
+
+/* ============ POGODA (Open-Meteo, bez klucza) ============ */
+let WX={},WXNOW={},PLACES={},SERVER_TODAY=null,ATTRACTIONS={},HOLIDAYS={},HOURLY={},LAST_UPDATE=null;
+const hm=s=>(typeof s==='string'&&s.length>=16)?s.slice(11,16):'';
+const WX_LOC={sk:[49.120,20.063],zak:[49.299,19.949],kry:[49.422,20.961]};
+function wxIcon(c){
+  if(c===0)return['☀️','słonecznie'];
+  if(c<=2)return['🌤️','przejaśnienia'];
+  if(c===3)return['☁️','pochmurno'];
+  if(c<=48)return['🌫️','mgła'];
+  if(c<=57)return['🌦️','mżawka'];
+  if(c<=67)return['🌧️','deszcz'];
+  if(c<=77)return['🌨️','śnieg'];
+  if(c<=82)return['🌦️','przelotny deszcz'];
+  if(c<=86)return['🌨️','śnieg'];
+  return['⛈️','burza'];
+}
+function applyWeather(){
+  document.querySelectorAll('.day-wx').forEach(el=>{
+    const w=WX[el.dataset.wx];
+    if(!w||w.hi==null){el.innerHTML='';return;}
+    const ic=wxIcon(w.c)[0];
+    el.innerHTML=`<span class="wx-emoji">${ic}</span><span class="wx-temp">${Math.round(w.hi)}°</span>${w.p!=null?`<span class="wx-pop">💧${w.p}%</span>`:''}`;
+  });
+}
+async function loadData(force){
+  const cache=load(LS.weather,null);
+  if(cache){if(cache.byDate)WX=cache.byDate;if(cache.places)PLACES=cache.places;if(cache.attractions)ATTRACTIONS=cache.attractions;if(cache.holidays)HOLIDAYS=cache.holidays;if(cache.hourly)HOURLY=cache.hourly;applyWeather();updateSmartWidgets();}
+  try{
+    const apiUrl=new URL('/api/bootstrap',location.origin);
+    if(force)apiUrl.searchParams.set('fresh','1');
+    const apiToken=new URLSearchParams(location.search).get('token');
+    if(apiToken)apiUrl.searchParams.set('token',apiToken);
+    const r=await fetch(apiUrl);if(!r.ok)throw 0;
+    const d=await r.json();if(d.error)throw 0;
+    SERVER_TODAY=d.today||null;PLACES=d.places||{};ATTRACTIONS=d.attractions||{};HOLIDAYS=d.holidays||{};WXNOW={};HOURLY={};
+    const byDate={};
+    Object.entries(d.weather||{}).forEach(([k,w])=>{
+      if(!w)return;
+      if(w.current)WXNOW[k]=w.current;
+      Object.entries(w.days||{}).forEach(([date,v])=>{byDate[k+'|'+date]=v;});
+      Object.entries(w.hourly||{}).forEach(([date,arr])=>{HOURLY[k+'|'+date]=arr;});
+    });
+    if(Object.keys(byDate).length)WX=byDate;
+    LAST_UPDATE=new Date();
+    save(LS.weather,{ts:Date.now(),byDate:WX,places:PLACES,attractions:ATTRACTIONS,holidays:HOLIDAYS,hourly:HOURLY});
+    applyWeather();updateSmartWidgets();updateStamp();
+  }catch(e){await loadWeatherDirect();updateStamp();}
+}
+function updateStamp(){
+  const el=document.getElementById('dataStamp');if(!el)return;
+  if(LAST_UPDATE){el.classList.remove('loading');el.textContent='zaktualizowano '+LAST_UPDATE.toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'})+' · Open-Meteo + Wikipedia';}
+  else{el.classList.add('loading');el.textContent='⏳ pobieram pogodę, mapy i atrakcje…';}
+}
+function daySuggestion(wx,stop){
+  if(!wx||wx.hi==null)return null;
+  const p=wx.p||0,hot=wx.hi>=26,cold=wx.hi<14;
+  const L={aqua:{t:'AquaCity Poprad',u:'https://www.aquacity.sk/pl'},chocho:{t:'Termy Chochołowskie',u:'https://termychocholowskie.pl/'},buk:{t:'Termy Bukovina',u:'https://www.bukovina.pl/termy'},mapy:{t:'Szlaki w mapy.cz',u:'https://mapy.cz/turisticka'}};
+  const term=stop==='sk'?[L.aqua]:[L.chocho,L.buk];
+  if(p>=60)return{icon:'🌧️',txt:'Deszczowo — plan pod dachem: baseny termalne, sala zabaw, muzeum. Z maluchem termy to pewniak.',links:term};
+  if(p>=30)return{icon:'⛅',txt:'Zmiennie — łatwa dolina blisko schronienia albo kolejka z krótkim spacerem. Peleryna na nosidło pewna.',links:[L.mapy]};
+  if(hot)return{icon:'☀️',txt:'Ciepło — wyżej kolejką (chłodniej), cień lasu, dużo picia i SPF50. Unikaj słońca 12–15.',links:[L.mapy]};
+  if(cold)return{icon:'🧥',txt:'Chłodno — warstwy dla malucha, krótszy spacer i ciepły posiłek w schronisku.',links:[L.mapy]};
+  return{icon:'🌤️',txt:'Ładna pogoda — dobry dzień na dłuższą wycieczkę lub dolinę. Wyjście rano, powrót na drzemkę ~11.',links:[L.mapy]};
+}
+async function loadWeatherDirect(){
+  const cache=load(LS.weather,null);
+  if(cache&&cache.byDate){WX=cache.byDate;applyWeather();updateSmartWidgets();}
+  try{
+    const byDate={};
+    await Promise.all(Object.entries(WX_LOC).map(async([k,[la,lo]])=>{
+      const url=`https://api.open-meteo.com/v1/forecast?latitude=${la}&longitude=${lo}&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Europe%2FBratislava&forecast_days=16`;
+      const r=await fetch(url);if(!r.ok)throw 0;const j=await r.json();const d=j.daily;
+      d.time.forEach((t,i)=>{byDate[k+'|'+t]={c:d.weather_code[i],hi:d.temperature_2m_max[i],lo:d.temperature_2m_min[i],p:d.precipitation_probability_max[i]};});
+    }));
+    WX=byDate;LAST_UPDATE=new Date();save(LS.weather,{ts:Date.now(),byDate,places:PLACES});applyWeather();updateSmartWidgets();
+  }catch(e){/* offline — zostaje ostatnia pobrana */}
+}
+
+/* ============ KARTA AWARYJNA ============ */
+let cardData=load(LS.card,{});
+function initCard(){
+  document.querySelectorAll('[data-card]').forEach(inp=>{
+    const k=inp.dataset.card;
+    if(cardData[k]!=null)inp.value=cardData[k];
+    inp.addEventListener('input',()=>{cardData[k]=inp.value;save(LS.card,cardData);});
+  });
+  document.getElementById('printCard').addEventListener('click',()=>{
+    switchTab('card');setTimeout(()=>window.print(),250);
+  });
+}
+
+/* ============ DATA / COUNTDOWN ============ */
+const dateInput=document.getElementById('tripDate');
+dateInput.value=tripDate||'';
+dateInput.addEventListener('change',()=>{tripDate=dateInput.value;save(LS.date,tripDate);updateCountdown();});
+function updateCountdown(){
+  const el=document.getElementById('countdown');
+  if(!tripDate){el.textContent='';return;}
+  const today=new Date();today.setHours(0,0,0,0);
+  const d=new Date(tripDate+'T00:00:00');
+  const diff=Math.round((d-today)/86400000);
+  let t;
+  if(diff>1)t=`za ${diff} dni`;else if(diff===1)t='jutro!';else if(diff===0)t='dziś! 🎒';else t='udanego wyjazdu! 🏔️';
+  el.textContent='Wyjazd '+t;
+}
+
+/* ============ INIT ============ */
+/* ============ HEATMAPA 15 DNI ============ */
+function tempColor(t){return t<6?'#5a8fc0':t<11?'#5cb6c9':t<16?'#5fc98a':t<20?'#c9cf57':t<25?'#e8a23a':'#d6553f';}
+function precipColor(p){return p==null?'transparent':`rgba(49,112,173,${(Math.min(1,p/100)*0.8+0.06).toFixed(2)})`;}
+function renderHeatmap(){
+  const el=document.getElementById('heatmap');if(!el)return;
+  const wf=i=>WX[DAYS[i].stop+'|'+DAY_ISO[i]];
+  const groups=[];DAYS.forEach(d=>{const last=groups[groups.length-1];if(last&&last.stop===d.stop)last.span++;else groups.push({stop:d.stop,span:1});});
+  const segRow=groups.map(g=>{const s=SEGMENTS.find(x=>x.key===g.stop),nm=(s?s.name:g.stop).split(/[\s-]/)[0];return `<th colspan="${g.span}" class="hm-seg-c" style="--segcc:var(--${g.stop})">${s?s.flag:''} ${nm}</th>`;}).join('');
+  const head=DAYS.map((d,i)=>`<th class="hm-day${d.kind==='travel'||d.kind==='home'?' hm-trav':''}" data-i="${i}" style="border-bottom:2px solid var(${dayColorVar(d)})">${d.dnum}<small>${d.dow.replace('.','')}${d.kind==='travel'||d.kind==='home'?'🚗':''}</small></th>`).join('');
+  const cell=(txt,bg)=>`<td class="hm-c" style="background:${bg||'transparent'}">${txt!=null?txt:''}</td>`;
+  const r=(f)=>DAYS.map((d,i)=>f(wf(i))).join('');
+  el.innerHTML=`<table class="hm"><tr class="hm-seg"><th class="hm-lab"></th>${segRow}</tr>
+    <tr class="hm-h"><th class="hm-lab"></th>${head}</tr>
+    <tr><td class="hm-lab">☀️</td>${r(x=>`<td class="hm-c">${x?wxIcon(x.c)[0]:''}</td>`)}</tr>
+    <tr><td class="hm-lab">max</td>${r(x=>cell(x&&x.hi!=null?Math.round(x.hi)+'°':null,x&&x.hi!=null?tempColor(x.hi):''))}</tr>
+    <tr><td class="hm-lab">min</td>${r(x=>cell(x&&x.lo!=null?Math.round(x.lo)+'°':null,x&&x.lo!=null?tempColor(x.lo):''))}</tr>
+    <tr><td class="hm-lab">💧</td>${r(x=>cell(x&&x.p!=null?x.p+'%':null,x&&x.p!=null?precipColor(x.p):''))}</tr>
+    <tr><td class="hm-lab">UV</td>${r(x=>cell(x&&x.uv!=null?Math.round(x.uv):null,x&&x.uv!=null?uvCol(x.uv):''))}</tr></table>`;
+}
+document.getElementById('heatmap').addEventListener('click',e=>{const c=e.target.closest('td.hm-c,th.hm-day');if(!c)return;const i=c.dataset.i!=null?+c.dataset.i:c.cellIndex-1;if(i>=0)openDayFull(i);});
+
+/* ============ RYTM DNIA + PEŁNY WIDOK DNIA ============ */
+const DRIVE_WINDOW={0:[8,14],7:[10,12],13:[10,13],14:[10,14]};
+function renderRhythm(i){
+  const d=DAYS[i],iso=DAY_ISO[i],hrs=HOURLY[d.stop+'|'+iso],wx=WX[d.stop+'|'+iso];
+  if(!hrs||!hrs.length)return '<p class="rh-none">Brak danych godzinowych dla tego dnia.</p>';
+  const byH={};hrs.forEach(p=>byH[p.h]=p);
+  const tvals=hrs.map(p=>p.t).filter(v=>v!=null);
+  const tmn=tvals.length?Math.min(...tvals):0,tmx=tvals.length?Math.max(...tvals):1,tr=Math.max(1,tmx-tmn);
+  const toH=s=>(typeof s==='string'&&s.length>=16)?+s.slice(11,13):null;
+  const srH=wx&&wx.sr?toH(wx.sr):5,ssH=wx&&wx.ss?toH(wx.ss):21;
+  const startH=6,endH=21,dw=DRIVE_WINDOW[i];
+  const nowD=new Date(),nowH=nowD.getHours(),nowM=nowD.getMinutes();
+  const inNap=h=>h>=11&&h<13;
+  const ok=h=>{const p=byH[h];return p&&p.p!=null&&p.p<=30;};
+  let s=null,best=null;
+  for(let h=8;h<=18;h++){const good=ok(h)&&!inNap(h);if(good){if(s==null)s=h;}else{if(s!=null){if(!best||(h-s)>(best.e-best.s))best={s,e:h};s=null;}}}
+  if(s!=null&&(!best||(19-s)>(best.e-best.s)))best={s,e:19};
+  let sum=`<div class="rh-sum">`;
+  sum+=`<span class="rh-pill rh-pw">☀️ pobudka 6:00–8:00 (zwykle 7:00)</span>`;
+  sum+=`<span class="rh-pill rh-pn">😴 drzemka 11:00–13:00</span>`;
+  sum+=`<span class="rh-pill rh-pb">🛁 kąpiel 19:00 · 🌙 sen 19:30–20:00 (czasem do 21:00)</span>`;
+  if(dw&&dw[0]<13&&dw[1]>11)sum+=`<span class="rh-pill rh-pd">✅ przejazd w oknie drzemki — maluch prześpi część trasy</span>`;
+  if(best)sum+=`<span class="rh-pill rh-pg">👍 na dwór: ${best.s}:00–${best.e}:00</span>`;
+  sum+=`</div>`;
+  const bar=(fill,col,val)=>`<span class="rh-m"><span class="rh-mb"><i style="width:${Math.max(0,Math.min(100,fill)).toFixed(0)}%;background:${col}"></i></span><b>${val}</b></span>`;
+  let rows='';
+  for(let h=startH;h<=endH;h++){
+    const p=byH[h],isNap=inNap(h),isBed=h>=19,isWake=h>=6&&h<8,isDrive=dw&&h>=dw[0]&&h<dw[1],isNow=h===nowH,ev=[];
+    if(isNow)ev.push('🔴 teraz '+String(nowH).padStart(2,'0')+':'+String(nowM).padStart(2,'0'));
+    if(h===6)ev.push('☀️ pobudka (okno 6–8)');
+    if(h===7)ev.push('☀️ zwykle pobudka');
+    if(h===srH&&h>=startH&&h<11)ev.push('🌅 wschód');
+    if(isDrive)ev.push('🚗 przejazd');
+    if(isNap)ev.push('😴 drzemka');
+    if(best&&h>=best.s&&h<best.e&&!isNap)ev.push('👍 dobry czas na dwór');
+    if(h===19)ev.push('🛁 kąpiel → sen ~19:30');
+    if(h===20)ev.push('🌙 sen nocny');
+    if(h===21)ev.push('🌙 usypianie (czasem do 21:00)');
+    if(h===ssH&&h<=endH)ev.push('🌇 zachód');
+    const w=p?bar(p.t!=null?(p.t-tmn)/tr*100:0,p.t!=null?tempColor(p.t):'var(--border)',p.t!=null?Math.round(p.t)+'°':'—')+bar(p.p!=null?p.p:0,'var(--zak)',p.p!=null?p.p+'%':'—'):'';
+    const cls=isNap?' rh-nap':isBed?' rh-bed':isWake?' rh-wake':'';
+    rows+=`<div class="rh-row${cls}${isDrive?' rh-drive':''}${isNow?' rh-now':''}"><span class="rh-h">${String(h).padStart(2,'0')}:00</span><span class="rh-w">${w}</span><span class="rh-ev">${ev.join(' · ')}</span></div>`;
+  }
+  return sum+`<div class="rh-list">${rows}</div>`;
+}
+let curDayPage=null,nowTimer=null,lastFocus=null;
+function setAppInert(on){['.hero','.tabs','.container'].forEach(s=>{const e=document.querySelector(s);if(e)e.inert=on;});}
+function showDayPage(i){
+  curDayPage=i;
+  if(nowTimer){clearInterval(nowTimer);nowTimer=null;}
+  const d=DAYS[i],el=document.getElementById('dayFull');
+  el.style.setProperty('--dayc','var('+dayColorVar(d)+')');
+  el.innerHTML=`<div class="df-card">
+    <div class="df-bar"><button class="df-close" type="button" aria-label="Wstecz">←</button><div><div class="df-title">${d.flag} ${esc(d.loc)}</div><div class="df-date">${esc(d.full)} 2026 · ${esc(d.tag)}</div></div></div>
+    <div class="df-body"><h4 class="df-h">🕒 Rytm dnia</h4><div id="rhythmBox">${renderRhythm(i)}</div><h4 class="df-h">📋 Szczegóły dnia</h4><div class="df-detail">${dayDetailHtml(i)}</div></div></div>`;
+  el.classList.add('open');document.body.style.overflow='hidden';window.scrollTo(0,0);
+  el.querySelector('.df-close').addEventListener('click',()=>history.back());
+  el.querySelectorAll('[data-gotab]').forEach(b=>b.addEventListener('click',()=>{history.replaceState({},'',baseUrl());closeDayFull();switchTab('info');}));
+  el.querySelectorAll('[data-full]').forEach(b=>b.addEventListener('click',()=>openDayFull(+b.dataset.full)));
+  const hrs=HOURLY[d.stop+'|'+DAY_ISO[i]];if(hrs&&hrs.length)wireChart(el,hrs);
+  nowTimer=setInterval(()=>{const rb=document.getElementById('rhythmBox');if(rb)rb.innerHTML=renderRhythm(i);},60000);
+  setAppInert(true);const _cb=el.querySelector('.df-close');if(_cb)_cb.focus();
+}
+function baseUrl(){const p=new URLSearchParams(location.search);p.delete('day');const q=p.toString();return location.pathname+(q?'?'+q:'');}
+function dayUrl(i){const p=new URLSearchParams(location.search);p.set('day',i);const q=p.toString();return location.pathname+(q?'?'+q:'');}
+function openDayFull(i){lastFocus=document.activeElement;history.pushState({day:i},'',dayUrl(i));showDayPage(i);}
+function closeDayFull(){curDayPage=null;if(nowTimer){clearInterval(nowTimer);nowTimer=null;}const el=document.getElementById('dayFull');el.classList.remove('open');el.innerHTML='';document.body.style.overflow='';setAppInert(false);if(lastFocus&&lastFocus.focus)lastFocus.focus();lastFocus=null;}
+window.addEventListener('popstate',e=>{if(e.state&&e.state.day!=null)showDayPage(e.state.day);else closeDayFull();});
+
+/* ============ RADAR OPADÓW (RainViewer) ============ */
+let radarFrames=[],radarLayer=null,radarTimer=null,radarHost='';
+async function loadRadar(){try{const r=await fetch('https://api.rainviewer.com/public/weather-maps.json');if(!r.ok)return;const j=await r.json();radarHost=j.host;radarFrames=(j.radar.past||[]).concat(j.radar.nowcast||[]);}catch(e){}}
+function showRadarFrame(idx){if(!leafMap||!radarFrames[idx])return;const f=radarFrames[idx];const url=radarHost+f.path+'/256/{z}/{x}/{y}/4/1_1.png';if(radarLayer)leafMap.removeLayer(radarLayer);radarLayer=L.tileLayer(url,{opacity:.6,zIndex:450}).addTo(leafMap);const l=document.getElementById('radarTime');if(l)l.textContent='☔ '+new Date(f.time*1000).toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'});}
+function toggleRadar(btn){
+  if(!leafMap)return;
+  if(radarLayer){leafMap.removeLayer(radarLayer);radarLayer=null;if(radarTimer){clearInterval(radarTimer);radarTimer=null;}btn.classList.remove('on');const l=document.getElementById('radarTime');if(l)l.textContent='';return;}
+  if(!radarFrames.length){const l=document.getElementById('radarTime');if(l)l.textContent='brak danych';return;}
+  let idx=radarFrames.length-1;showRadarFrame(idx);btn.classList.add('on');
+  radarTimer=setInterval(()=>{idx=(idx+1)%radarFrames.length;showRadarFrame(idx);},700);
+}
+
+renderTimeline();
+updateSmartWidgets();
+renderChecklist();
+updateToolbar();
+updateCountdown();
+initCard();
+updateStamp();
+loadData();
+loadRadar();
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){const df=document.getElementById('dayFull');if(df&&df.classList.contains('open'))history.back();}});
+switchTab(activeTab);
+if(activeTab==='timeline'){const T0=computeToday();if(T0.status==='during'){setTimeout(()=>{const b=document.querySelector('.day.today');if(b)b.scrollIntoView({block:'center',behavior:'smooth'});},350);}}
+{const _pd=new URLSearchParams(location.search).get('day');history.replaceState({},'',baseUrl());if(_pd!=null&&DAYS[+_pd])openDayFull(+_pd);}
+</script>
+</body>
+</html>

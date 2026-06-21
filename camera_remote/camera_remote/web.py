@@ -114,8 +114,8 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
         return self.server.live  # type: ignore[attr-defined]
 
     @property
-    def tatry_page(self) -> Path:
-        return self.server.tatry_page  # type: ignore[attr-defined]
+    def tatry_pages(self) -> List[Path]:
+        return self.server.tatry_pages  # type: ignore[attr-defined]
 
     def log_message(self, fmt: str, *args) -> None:
         message = TOKEN_RE.sub(r"\1***", fmt % args)
@@ -143,7 +143,7 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
         elif parsed.path == "/api/capture-now":
             self._capture_now()
         elif parsed.path == "/checklista-tatry.html":
-            self._send_file(self.tatry_page)
+            self._send_tatry_page()
         elif parsed.path == "/history":
             self._send_html(self._history_index_html(parsed.query))
         elif parsed.path.startswith("/history/"):
@@ -186,6 +186,13 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
         except Exception as exc:
             log.exception("tatry bootstrap failed: %s", exc)
             self._send_json({"error": str(exc)}, HTTPStatus.INTERNAL_SERVER_ERROR)
+
+    def _send_tatry_page(self) -> None:
+        for path in self.tatry_pages:
+            if path.exists() and path.is_file():
+                self._send_file(path)
+                return
+        self._send_text("not found\n", "text/plain", HTTPStatus.NOT_FOUND)
 
     def _send_json(self, payload: dict, status: HTTPStatus = HTTPStatus.OK) -> None:
         data = json.dumps(payload, indent=2).encode("utf-8")
@@ -297,12 +304,12 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
 </head>
 <body>
   <header><nav>
-    <a href="{href('/', self.app_config.server.auth_token)}">Latest</a>
+    <a href="{href('/', self.app_config.server.auth_token)}">Kamera</a>
     <a href="{href('/live.mjpg', self.app_config.server.auth_token)}">Live</a>
-    <a href="{href('/history', self.app_config.server.auth_token)}">History</a>
+    <a href="{href('/history', self.app_config.server.auth_token)}">Historia</a>
     <a href="{href('/checklista-tatry.html', self.app_config.server.auth_token)}">Tatry</a>
     <a href="{href('/api/status', self.app_config.server.auth_token)}">Status</a>
-    <a href="{href('/api/capture-now', self.app_config.server.auth_token)}">Capture</a>
+    <a href="{href('/api/capture-now', self.app_config.server.auth_token)}">Zdjęcie</a>
   </nav></header>
   <main>{body}</main>
 </body>
@@ -404,9 +411,13 @@ class CameraServer(ThreadingHTTPServer):
         self.app_config = config
         self.storage = SnapshotStorage(config)
         self.storage.ensure_dirs()
+        self.repo_static_dir = Path(__file__).resolve().parents[1] / "static"
         self.static_dir = config.paths.data_dir / "static"
         self.static_dir.mkdir(parents=True, exist_ok=True)
-        self.tatry_page = self.static_dir / "checklista-tatry.html"
+        self.tatry_pages = [
+            self.repo_static_dir / "checklista-tatry.html",
+            self.static_dir / "checklista-tatry.html",
+        ]
         self.live = LiveSession(config)
 
     def handle_error(self, request, client_address) -> None:
