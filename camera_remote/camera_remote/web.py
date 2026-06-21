@@ -554,6 +554,7 @@ SHELL_JS = """
     theme: { background: "#0b1410", foreground: "#d6e6dd" } });
   var fit = null;
   try{ fit = new FitAddon.FitAddon(); term.loadAddon(fit); }catch(e){}
+  try{ if(window.WebLinksAddon) term.loadAddon(new WebLinksAddon.WebLinksAddon()); }catch(e){}
   term.open(el);
   function doFit(){ if(fit){ try{ fit.fit(); }catch(e){} } }
   doFit();
@@ -1323,8 +1324,9 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
 <link rel="stylesheet" href="/vendor/xterm.css"/>
 <script src="/vendor/xterm.js"></script>
 <script src="/vendor/xterm-addon-fit.js"></script>
+<script src="/vendor/xterm-addon-web-links.js"></script>
 <div class="term-wrap"><div id="term"></div></div>
-<div class="term-bar"><span class="sub">Sesja jest trwała (PTY); obsługuje sudo, debconf i długie procesy. Wygasa po ~15 min bezczynności.</span></div>
+<div class="term-bar"><span class="sub">Sesja jest trwała (PTY); obsługuje sudo, debconf i długie procesy. Linki (np. logowania Tailscale) są klikalne — stuknij, by otworzyć. Wygasa po ~15 min bezczynności.</span></div>
 <script>window.CAM_TOKEN={token_js};</script>
 <script>{SHELL_JS}</script>
 """
