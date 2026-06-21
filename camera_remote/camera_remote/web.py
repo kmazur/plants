@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import hmac
 import html
 import json
 import logging
@@ -508,25 +507,21 @@ PAGE_JS = """
 ADMIN_JS = """
 (function(){
   function withTok(p){ var t = window.CAM_TOKEN || ""; var u = new URL(p, location.origin); if(t) u.searchParams.set("token", t); return u.pathname + u.search; }
-  var KEY = "cam.admintok";
   var form = document.getElementById("execForm");
   if(!form) return;
-  var atIn = document.getElementById("adminTok"), cmdIn = document.getElementById("cmd");
+  var cmdIn = document.getElementById("cmd");
   var outEl = document.getElementById("out"), runBtn = document.getElementById("runBtn");
-  if(atIn) atIn.value = localStorage.getItem(KEY) || "";
   function setOut(t, cls){ outEl.textContent = t; outEl.className = "out " + (cls || ""); }
   form.addEventListener("submit", async function(e){
     e.preventDefault();
-    var at = atIn ? atIn.value.trim() : "", cmd = cmdIn.value;
-    if(!at){ setOut("Podaj token admina.", "err"); return; }
+    var cmd = cmdIn.value;
     if(!cmd.trim()) return;
-    localStorage.setItem(KEY, at);
     runBtn.disabled = true; var old = runBtn.textContent; runBtn.textContent = "Uruchamiam\\u2026";
     setOut("\\u2026", "");
     try{
       var r = await fetch(withTok("/api/admin/exec"), {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-Admin-Token": at },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ cmd: cmd })
       });
       var j = await r.json();
@@ -663,27 +658,15 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
         self._send_json({"ok": True, "path": str(result.path), "timestamp": result.timestamp.isoformat()})
 
     def _admin_enabled(self) -> bool:
-        return bool(self.app_config.server.admin_token)
-
-    def _admin_authorized(self) -> bool:
-        token = self.app_config.server.admin_token
-        if not token:
-            return False
-        provided = self.headers.get("X-Admin-Token", "")
-        return bool(provided) and hmac.compare_digest(provided, token)
+        return bool(self.app_config.server.admin_enabled)
 
     def _admin_exec(self, query: str) -> None:
         if not self._admin_enabled():
             self._send_json({"error": "admin panel disabled"}, HTTPStatus.FORBIDDEN)
             return
-        # Defence in depth: require both the view token (query/cookie) and the
-        # separate admin token (header), compared in constant time.
+        # Same token / cookie as the rest of the site.
         if not self._authorized(query):
             self._send_json({"error": "unauthorized"}, HTTPStatus.UNAUTHORIZED)
-            return
-        if not self._admin_authorized():
-            log.warning("ADMIN exec rejected (bad admin token) from %s", self.address_string())
-            self._send_json({"error": "bad admin token"}, HTTPStatus.UNAUTHORIZED)
             return
         try:
             length = int(self.headers.get("Content-Length", "0") or "0")
@@ -837,8 +820,8 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             ("/history", "Historia"),
             ("/checklista-tatry.html", "Tatry"),
         ]
-        if self.app_config.server.admin_token:
-            items.append(("/admin", "Admin"))
+        if self.app_config.server.admin_enabled:
+            items.append(("/admin", "Shell"))
         links = []
         for path, label in items:
             current = ' aria-current="page"' if path == active else ""
@@ -1062,20 +1045,19 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
     def _admin_page(self, query: str) -> str:
         if not self._admin_enabled():
             body = (
-                '<h1 class="h">Panel admina</h1>'
+                '<h1 class="h">Shell</h1>'
                 '<div class="card pad"><p class="danger-note">Panel jest wyłączony. '
-                'Ustaw <code>admin_token</code> w sekcji <code>[server]</code> pliku '
+                'Ustaw <code>admin_enabled = true</code> w sekcji <code>[server]</code> pliku '
                 '<code>/etc/camera-remote/config.ini</code> i zrestartuj usługę '
                 '<code>camera-remote.service</code>.</p></div>'
             )
-            return self._layout("Admin", body, active="/admin")
+            return self._layout("Shell", body, active="/admin")
         body = f"""
-<h1 class="h">Panel admina — zdalne polecenia</h1>
+<h1 class="h">Shell — zdalne polecenia</h1>
 <div class="card pad">
   <p class="danger-note">⚠️ Wykonuje dowolne polecenia powłoki na Pi jako użytkownik usługi.
-  Token admina jest wysyłany tylko w nagłówku i trzymany w tej przeglądarce. Trzymaj go w tajemnicy.</p>
+  Autoryzacja tym samym tokenem co reszta strony.</p>
   <form id="execForm" class="admin-form" autocomplete="off">
-    <input id="adminTok" type="password" placeholder="Token admina" autocomplete="off">
     <textarea id="cmd" placeholder="np.  uptime  ·  tailscale status  ·  sudo systemctl restart camera-remote.service"></textarea>
     <div class="actions"><button id="runBtn" class="btn btn-primary" type="submit">▶ Uruchom (Ctrl+Enter)</button></div>
   </form>
@@ -1083,7 +1065,7 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
 </div>
 <script>{ADMIN_JS}</script>
 """
-        return self._layout("Admin", body, active="/admin")
+        return self._layout("Shell", body, active="/admin")
 
 
 class CameraServer(ThreadingHTTPServer):

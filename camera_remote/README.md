@@ -95,30 +95,28 @@ For compatibility, a runtime copy at
 `/home/user/camera-remote-data/static/checklista-tatry.html` is still accepted
 as a fallback if the repo copy is missing.
 
-## Admin Panel (remote shell)
+## Admin Shell
 
-A token-gated page at `/admin` can run shell commands on the Pi as the service
-user. It is **disabled by default**. Enable it by setting a strong, separate
-token in `/etc/camera-remote/config.ini`:
+A page at `/admin` can run shell commands on the Pi as the service user. It is
+**disabled by default**. Enable it in `/etc/camera-remote/config.ini`:
 
 ```ini
 [server]
-admin_token = <python3 -c "import secrets;print(secrets.token_hex(24))">
+admin_enabled = true
 admin_timeout = 60
 ```
 
-Then restart `camera-remote.service`. The page appears in the nav as `Admin`.
+Then restart `camera-remote.service`. A `Shell` link appears in the nav.
 
 Security model:
 
-- The admin token is **separate** from the view `auth_token` and is sent only
-  in the `X-Admin-Token` header (kept in the browser's `localStorage`, never in
-  a link). It is compared in constant time.
-- `/api/admin/exec` requires **both** the view token (query/cookie) and the
-  admin token, and returns 403 when the panel is disabled.
+- It uses the **same `auth_token` / cookie** as the rest of the site — no
+  separate token. That means anyone who can view the camera can also run
+  commands, so only enable it behind the local bind/tunnel.
+- `/api/admin/exec` returns 403 when `admin_enabled` is false, and 401 without
+  a valid token/cookie.
 - Every command is logged (`ADMIN exec from <ip>: <cmd>`) and killed after
-  `admin_timeout` seconds.
-- Keep this behind the local bind/tunnel; do not expose the service directly.
+  `admin_timeout` seconds; stdout/stderr are returned as JSON (capped).
 
 ## Services
 

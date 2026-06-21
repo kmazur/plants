@@ -12,7 +12,7 @@ class ServerConfig:
     host: str
     port: int
     auth_token: str
-    admin_token: str
+    admin_enabled: bool
     admin_timeout: int
 
 
@@ -85,7 +85,7 @@ def load_config(path: Union[str, Path]) -> AppConfig:
         host=_get_str(parser, "server", "host", "0.0.0.0"),
         port=_get_int(parser, "server", "port", 8090),
         auth_token=_get_str(parser, "server", "auth_token", ""),
-        admin_token=_get_str(parser, "server", "admin_token", ""),
+        admin_enabled=_get_bool(parser, "server", "admin_enabled", False),
         admin_timeout=_get_int(parser, "server", "admin_timeout", 60),
     )
     camera = CameraConfig(
