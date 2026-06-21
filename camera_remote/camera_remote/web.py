@@ -5,7 +5,9 @@ import html
 import json
 import logging
 import mimetypes
+import os
 import re
+import shutil
 import signal
 import sys
 import threading
@@ -101,6 +103,46 @@ def _clamp(value: int, minimum: int, maximum: int) -> int:
     return max(minimum, min(maximum, value))
 
 
+def read_system_stats(data_dir) -> dict:
+    """Best-effort Raspberry Pi health snapshot. Every field is optional."""
+    stats: dict = {}
+    try:
+        zone = Path("/sys/class/thermal/thermal_zone0/temp")
+        if zone.exists():
+            stats["cpu_temp_c"] = round(int(zone.read_text().strip()) / 1000.0, 1)
+    except Exception:
+        pass
+    try:
+        stats["load"] = [round(x, 2) for x in os.getloadavg()]
+        stats["cpu_count"] = os.cpu_count()
+    except Exception:
+        pass
+    try:
+        info = {}
+        for line in Path("/proc/meminfo").read_text().splitlines():
+            key, _, value = line.partition(":")
+            info[key.strip()] = value.strip()
+        total = int(info["MemTotal"].split()[0]) * 1024
+        avail_raw = info.get("MemAvailable") or info.get("MemFree") or "0 kB"
+        avail = int(avail_raw.split()[0]) * 1024
+        stats["mem_total"] = total
+        stats["mem_used"] = max(0, total - avail)
+    except Exception:
+        pass
+    try:
+        usage = shutil.disk_usage(str(data_dir))
+        stats["disk_total"] = usage.total
+        stats["disk_used"] = usage.used
+        stats["disk_free"] = usage.free
+    except Exception:
+        pass
+    try:
+        stats["uptime_s"] = int(float(Path("/proc/uptime").read_text().split()[0]))
+    except Exception:
+        pass
+    return stats
+
+
 PAGE_CSS = """
 :root{
   --bg:#f3f6f4; --card:#ffffff; --ink:#1d2b24; --muted:#698075;
@@ -109,12 +151,18 @@ PAGE_CSS = """
   --shadow:0 1px 2px rgba(20,40,30,.05), 0 6px 18px rgba(20,40,30,.05);
 }
 @media (prefers-color-scheme:dark){
-  :root{
+  :root:not([data-theme="light"]){
     --bg:#101a16; --card:#172620; --ink:#e7efe9; --muted:#9bb1a6;
     --border:#243730; --border-strong:#365045; --primary:#4eb389; --primary-ink:#0b1812;
     --accent:#f0a85a; --ring:rgba(78,179,137,.4);
     --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 22px rgba(0,0,0,.25);
   }
+}
+:root[data-theme="dark"]{
+  --bg:#101a16; --card:#172620; --ink:#e7efe9; --muted:#9bb1a6;
+  --border:#243730; --border-strong:#365045; --primary:#4eb389; --primary-ink:#0b1812;
+  --accent:#f0a85a; --ring:rgba(78,179,137,.4);
+  --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 22px rgba(0,0,0,.25);
 }
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
@@ -197,6 +245,52 @@ a:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible{
 .foot{text-align:center;color:var(--muted);font-size:.76rem;margin-top:1.8rem}
 .foot a{color:var(--muted)}
 @media (prefers-reduced-motion:reduce){*{animation-duration:.001ms!important;transition-duration:.001ms!important}}
+
+/* theme toggle button */
+.icon-btn{flex:0 0 auto;display:inline-grid;place-items:center;width:34px;height:34px;font-size:1rem;
+  border:1px solid var(--border);border-radius:.55rem;background:var(--card);color:var(--ink);cursor:pointer}
+.icon-btn:hover{border-color:var(--border-strong)}
+
+/* stale snapshot health on the timestamp badge */
+.badge.stale{color:var(--accent)}
+.badge.dead{color:#e0533f}
+
+/* system stats strip */
+.sysstrip{display:flex;flex-wrap:wrap;gap:.5rem;margin:.8rem 0 0}
+.sysstrip:empty{display:none}
+.chip{display:flex;flex-direction:column;gap:.05rem;min-width:84px;background:var(--card);
+  border:1px solid var(--border);border-left:4px solid var(--border-strong);border-radius:11px;
+  padding:.45rem .65rem;box-shadow:var(--shadow)}
+.chip-v{font-weight:800;font-size:.95rem;font-variant-numeric:tabular-nums}
+.chip-l{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.chip.green{border-left-color:#3aa17a}
+.chip.amber{border-left-color:var(--accent)}
+.chip.red{border-left-color:#e0533f}
+.chip.red .chip-v{color:#e0533f}
+
+/* control rows */
+.ctrlrow{display:flex;flex-wrap:wrap;align-items:center;gap:.7rem;margin:.8rem 0 0;font-size:.85rem;color:var(--muted)}
+.switch{display:inline-flex;align-items:center;gap:.45rem;cursor:pointer;user-select:none}
+.mini{font:inherit;font-size:.84rem;color:var(--ink);background:var(--card);
+  border:1px solid var(--border-strong);border-radius:.55rem;padding:.4rem .55rem}
+
+/* history scrubber + player */
+.scrubber{margin:.7rem 0 .2rem}
+.scrubber input[type=range]{width:100%;accent-color:var(--primary);height:26px}
+.player{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin:.2rem 0 .4rem}
+
+/* lightbox */
+.lightbox{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;
+  background:rgba(5,10,8,.94);padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+.lightbox.open{display:flex}
+.lightbox img{max-width:96vw;max-height:90vh;width:auto;height:auto;border-radius:8px;object-fit:contain}
+.lb-btn{position:absolute;top:50%;transform:translateY(-50%);width:48px;height:48px;border-radius:50%;
+  border:0;background:rgba(255,255,255,.14);color:#fff;font-size:1.5rem;cursor:pointer}
+.lb-btn:hover{background:rgba(255,255,255,.26)}
+.lb-prev{left:12px}.lb-next{right:12px}
+.lb-close{position:absolute;top:12px;right:14px;width:40px;height:40px;border-radius:50%;border:0;
+  background:rgba(255,255,255,.14);color:#fff;font-size:1.3rem;cursor:pointer}
+.lb-hint{position:absolute;bottom:14px;left:0;right:0;text-align:center;color:rgba(255,255,255,.7);font-size:.78rem}
 """
 
 PAGE_JS = """
@@ -207,14 +301,35 @@ PAGE_JS = """
     if(tok) u.searchParams.set("token", tok);
     return u.pathname + u.search;
   }
+  function $(s, r){ return (r || document).querySelector(s); }
+  function $all(s, r){ return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
+
   function toast(msg, kind){
-    var t = document.getElementById("toast");
+    var t = $("#toast");
     if(!t) return;
     t.textContent = msg;
     t.className = "toast show" + (kind ? " " + kind : "");
     clearTimeout(window.__toastT);
     window.__toastT = setTimeout(function(){ t.className = "toast"; }, 2600);
   }
+
+  /* ---- Feature: theme toggle (auto / light / dark) ---- */
+  (function(){
+    var btn = $("#themeBtn"), KEY = "cam.theme";
+    var modes = ["auto", "light", "dark"], icon = { auto: "\\u{1F317}", light: "\\u2600\\uFE0F", dark: "\\u{1F319}" };
+    function apply(m){
+      if(m === "auto") document.documentElement.removeAttribute("data-theme");
+      else document.documentElement.setAttribute("data-theme", m);
+      if(btn){ btn.textContent = icon[m]; btn.title = "Motyw: " + m; }
+    }
+    var cur = localStorage.getItem(KEY) || "auto"; apply(cur);
+    if(btn) btn.addEventListener("click", function(){
+      cur = modes[(modes.indexOf(cur) + 1) % modes.length];
+      localStorage.setItem(KEY, cur); apply(cur); toast("Motyw: " + cur);
+    });
+  })();
+
+  /* ---- Feature: relative time + stale-snapshot health ---- */
   function fmtAgo(iso){
     var d = new Date(iso); if(isNaN(d.getTime())) return "";
     var s = Math.max(0, Math.round((Date.now() - d.getTime())/1000));
@@ -223,42 +338,154 @@ PAGE_JS = """
     var h = Math.round(m/60); if(h < 24) return h + " h temu";
     return Math.round(h/24) + " dni temu";
   }
+  function ageSec(iso){ var d = new Date(iso); return isNaN(d.getTime()) ? null : (Date.now() - d.getTime())/1000; }
   function paintAgo(){
-    document.querySelectorAll("[data-ts]").forEach(function(el){
-      var a = fmtAgo(el.getAttribute("data-ts"));
-      if(a) el.textContent = a;
+    $all("[data-ts]").forEach(function(el){
+      var iso = el.getAttribute("data-ts"); var a = fmtAgo(iso); if(a) el.textContent = a;
+      var age = ageSec(iso), badge = el.closest(".badge");
+      if(badge){ badge.classList.toggle("stale", age != null && age > 180); badge.classList.toggle("dead", age != null && age > 600); }
     });
   }
   paintAgo(); setInterval(paintAgo, 10000);
 
+  /* ---- Feature: fullscreen lightbox ---- */
+  var lb = $("#lightbox"), lbImg = lb ? $("#lbImg") : null, lbHint = lb ? $("#lbHint") : null;
+  var lbUrls = null, lbIdx = 0;
+  function openLB(urls, idx){
+    if(!lb) return;
+    lbUrls = urls; lbIdx = idx; lbImg.src = urls[idx];
+    if(lbHint) lbHint.style.display = urls.length > 1 ? "" : "none";
+    lb.classList.add("open"); document.body.style.overflow = "hidden";
+  }
+  function closeLB(){ if(!lb) return; lb.classList.remove("open"); document.body.style.overflow = ""; }
+  function lbStep(d){ if(!lbUrls || lbUrls.length < 2) return; lbIdx = (lbIdx + d + lbUrls.length) % lbUrls.length; lbImg.src = lbUrls[lbIdx]; }
+  if(lb){
+    lb.addEventListener("click", function(e){ if(e.target === lb || e.target.dataset.close != null) closeLB(); });
+    var p = $("#lbPrev"), n = $("#lbNext");
+    if(p) p.addEventListener("click", function(e){ e.stopPropagation(); lbStep(-1); });
+    if(n) n.addEventListener("click", function(e){ e.stopPropagation(); lbStep(1); });
+  }
+
+  /* ---- snapshot refresh + capture ---- */
   function refreshHero(){
-    var hero = document.getElementById("hero");
+    var hero = $("#hero");
     if(!hero) return;
     hero.src = withTok("/latest.jpg?cache=" + Date.now());
     fetch(withTok("/api/status")).then(function(r){ return r.json(); }).then(function(s){
-      var ts = s && s.latest && s.latest.timestamp;
-      var el = document.getElementById("heroTs");
-      if(ts && el){ el.setAttribute("data-ts", ts); el.textContent = fmtAgo(ts); }
+      var ts = s && s.latest && s.latest.timestamp, el = $("#heroTs");
+      if(ts && el){ el.setAttribute("data-ts", ts); }
+      paintAgo();
     }).catch(function(){});
   }
-
-  document.querySelectorAll("[data-capture]").forEach(function(btn){
+  $all("[data-capture]").forEach(function(btn){
     btn.addEventListener("click", async function(){
-      btn.disabled = true;
-      var old = btn.textContent;
-      btn.textContent = "📸 Robię…";
+      btn.disabled = true; var old = btn.textContent; btn.textContent = "\\uD83D\\uDCF8 Robi\\u0119\\u2026";
       try{
         var r = await fetch(withTok("/api/capture-now"), { headers: { "Accept": "application/json" } });
         var j = await r.json();
-        if(j.ok){ toast("Zdjęcie zrobione", "ok"); refreshHero(); }
-        else { toast(j.message ? ("Pominięto: " + j.message) : "Kamera zajęta", "warn"); }
-      }catch(e){ toast("Nie udało się zrobić zdjęcia", "warn"); }
+        if(j.ok){ toast("Zdj\\u0119cie zrobione", "ok"); refreshHero(); }
+        else { toast(j.message ? ("Pomini\\u0119to: " + j.message) : "Kamera zaj\\u0119ta", "warn"); }
+      }catch(e){ toast("Nie uda\\u0142o si\\u0119 zrobi\\u0107 zdj\\u0119cia", "warn"); }
       finally{ btn.disabled = false; btn.textContent = old; }
     });
   });
 
-  var hero = document.getElementById("hero");
-  if(hero && hero.dataset.auto === "1"){ setInterval(refreshHero, 15000); }
+  /* ---- index page: lightbox + download + auto-refresh controls ---- */
+  var hero = $("#hero");
+  if(hero){
+    hero.style.cursor = "zoom-in";
+    hero.addEventListener("click", function(){ openLB([hero.src], 0); });
+    var dl = $("#downloadBtn");
+    if(dl) dl.addEventListener("click", function(){
+      var a = document.createElement("a"); a.href = hero.src; a.download = "kamera-" + Date.now() + ".jpg";
+      document.body.appendChild(a); a.click(); a.remove();
+    });
+    var KEY = "cam.auto";
+    var saved; try{ saved = JSON.parse(localStorage.getItem(KEY)); }catch(e){}
+    if(!saved) saved = { on: true, ms: 15000 };
+    var chk = $("#autoChk"), sel = $("#autoSel"), timer = null;
+    function arm(){ if(timer){ clearInterval(timer); timer = null; } if(saved.on) timer = setInterval(function(){ if(!document.hidden) refreshHero(); }, saved.ms); }
+    if(chk){ chk.checked = saved.on; chk.addEventListener("change", function(){ saved.on = chk.checked; localStorage.setItem(KEY, JSON.stringify(saved)); arm(); }); }
+    if(sel){ sel.value = String(saved.ms); sel.addEventListener("change", function(){ saved.ms = parseInt(sel.value, 10); localStorage.setItem(KEY, JSON.stringify(saved)); arm(); }); }
+    arm();
+    document.addEventListener("visibilitychange", function(){ if(!document.hidden && saved.on) refreshHero(); });
+  }
+
+  /* ---- Feature: live Raspberry Pi system stats ---- */
+  var sys = $("#sysStrip");
+  if(sys){
+    function human(b){ if(b == null) return "\\u2014"; var u = ["B","kB","MB","GB","TB"], i = 0; while(b >= 1024 && i < u.length - 1){ b /= 1024; i++; } return b.toFixed(b < 10 && i > 0 ? 1 : 0) + " " + u[i]; }
+    function dur(s){ if(s == null) return "\\u2014"; var d = Math.floor(s/86400), h = Math.floor((s%86400)/3600), m = Math.floor((s%3600)/60); return (d ? d + "d " : "") + (h ? h + "h " : "") + m + "m"; }
+    function chip(label, val, cls){ return '<div class="chip ' + (cls || "") + '"><span class="chip-v">' + val + '</span><span class="chip-l">' + label + '</span></div>'; }
+    function loadSys(){
+      fetch(withTok("/api/system")).then(function(r){ return r.json(); }).then(function(s){
+        var out = "";
+        if(s.cpu_temp_c != null){ var t = s.cpu_temp_c, cls = t >= 70 ? "red" : (t >= 60 ? "amber" : "green"); out += chip("temp CPU", t.toFixed(1) + "\\u00B0C", cls); }
+        if(s.load){ var pct = s.cpu_count ? Math.round(100 * s.load[0] / s.cpu_count) : null; out += chip("obci\\u0105\\u017cenie", pct != null ? pct + "%" : s.load[0]); }
+        if(s.mem_total){ out += chip("RAM", human(s.mem_used) + " / " + human(s.mem_total)); }
+        if(s.disk_total){ var dp = Math.round(100 * s.disk_used / s.disk_total); out += chip("dysk", dp + "% \\u00B7 " + human(s.disk_free), dp >= 90 ? "red" : (dp >= 75 ? "amber" : "")); }
+        if(s.uptime_s != null){ out += chip("uptime", dur(s.uptime_s)); }
+        sys.innerHTML = out || '<span class="sub">brak danych systemowych</span>';
+      }).catch(function(){ sys.innerHTML = '<span class="sub">brak danych systemowych</span>'; });
+    }
+    loadSys(); setInterval(function(){ if(!document.hidden) loadSys(); }, 30000);
+  }
+
+  /* ---- Feature: history scrubber + timelapse + client-side nav + keyboard ---- */
+  var day = window.CAM_DAY;
+  if(day && day.frames && day.frames.length){
+    var frames = day.frames, idx = day.index || 0;
+    var viewer = $("#viewer"), scrub = $("#scrub"), counter = $("#counter"), frameSel = $("#frameSel");
+    var playBtn = $("#playBtn"), speedSel = $("#speedSel"), dlDay = $("#dlDay"), thumbs = $("#thumbs");
+    function urlFor(f){ return withTok("/history/" + encodeURIComponent(day.day) + "/" + encodeURIComponent(f.n)); }
+    var playT = null;
+    function stop(){ if(!playT) return; clearInterval(playT); playT = null; if(playBtn) playBtn.textContent = "\\u25B6 Odtw\\u00F3rz"; }
+    function play(){ if(playT) return; if(playBtn) playBtn.textContent = "\\u23F8 Pauza"; playT = setInterval(function(){ setIdx(idx + 1); }, speedSel ? parseInt(speedSel.value, 10) : 300); }
+    function toggle(){ playT ? stop() : play(); }
+    function setIdx(i){
+      idx = (i + frames.length) % frames.length;
+      var f = frames[idx], u = urlFor(f);
+      if(viewer) viewer.src = u;
+      if(scrub) scrub.value = String(idx);
+      if(counter) counter.textContent = (idx + 1) + "/" + frames.length + " \\u00B7 " + f.l;
+      if(frameSel) frameSel.value = f.n;
+      if(dlDay){ dlDay.href = u; dlDay.setAttribute("download", f.n); }
+      if(thumbs) $all(".thumb", thumbs).forEach(function(t){ t.classList.toggle("active", t.getAttribute("data-name") === f.n); });
+      var nx = frames[(idx + 1) % frames.length]; if(nx){ var im = new Image(); im.src = urlFor(nx); }
+      if(lb && lb.classList.contains("open")){ lbUrls = frames.map(urlFor); lbIdx = idx; lbImg.src = u; }
+    }
+    if(scrub){ scrub.max = String(frames.length - 1); scrub.value = String(idx); scrub.addEventListener("input", function(){ stop(); setIdx(parseInt(scrub.value, 10)); }); }
+    if(frameSel) frameSel.addEventListener("change", function(){ var i = frames.findIndex(function(f){ return f.n === frameSel.value; }); if(i >= 0){ stop(); setIdx(i); } });
+    if(playBtn) playBtn.addEventListener("click", toggle);
+    if(speedSel) speedSel.addEventListener("change", function(){ if(playT){ stop(); play(); } });
+    if(viewer){ viewer.style.cursor = "zoom-in"; viewer.addEventListener("click", function(){ openLB(frames.map(urlFor), idx); }); }
+    if(thumbs) $all(".thumb", thumbs).forEach(function(t){
+      t.addEventListener("click", function(e){
+        var i = frames.findIndex(function(f){ return f.n === t.getAttribute("data-name"); });
+        if(i >= 0){ e.preventDefault(); stop(); setIdx(i); window.scrollTo({ top: 0, behavior: "smooth" }); }
+      });
+    });
+    document.addEventListener("keydown", function(e){
+      var tag = e.target.tagName;
+      if(tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") return;
+      if(e.key === "ArrowRight"){ stop(); setIdx(idx + 1); e.preventDefault(); }
+      else if(e.key === "ArrowLeft"){ stop(); setIdx(idx - 1); e.preventDefault(); }
+      else if(e.key === "Home"){ stop(); setIdx(0); e.preventDefault(); }
+      else if(e.key === "End"){ stop(); setIdx(frames.length - 1); e.preventDefault(); }
+      else if(e.key === " "){ toggle(); e.preventDefault(); }
+      else if(e.key === "f" || e.key === "F"){ if(viewer) openLB(frames.map(urlFor), idx); }
+      else if(e.key === "Escape"){ stop(); closeLB(); }
+    });
+    setIdx(idx);
+  } else {
+    document.addEventListener("keydown", function(e){
+      var tag = e.target.tagName; if(tag === "INPUT" || tag === "SELECT") return;
+      if(e.key === "Escape") closeLB();
+      if(lb && lb.classList.contains("open")){ if(e.key === "ArrowRight") lbStep(1); if(e.key === "ArrowLeft") lbStep(-1); }
+      if(e.key === "c" || e.key === "C"){ var b = $("[data-capture]"); if(b) b.click(); }
+      if((e.key === "f" || e.key === "F") && hero){ openLB([hero.src], 0); }
+    });
+  }
 })();
 """
 
@@ -317,6 +544,8 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             self._send_mjpeg()
         elif parsed.path == "/api/status":
             self._send_json(self._status())
+        elif parsed.path == "/api/system":
+            self._send_json(read_system_stats(self.storage.data_dir))
         elif parsed.path == "/api/bootstrap":
             self._send_tatry_bootstrap(parsed.query)
         elif parsed.path == "/api/capture-now":
@@ -494,9 +723,17 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
 <header class="topbar"><div class="topbar-in">
   <span class="brand"><span class="dot"></span>Budka · Kamera</span>
   <nav class="nav">{self._nav(active)}</nav>
+  <button id="themeBtn" class="icon-btn" type="button" aria-label="Zmień motyw">🌗</button>
 </div></header>
 <main class="wrap">{body}</main>
 <footer class="foot">Plants · kamera Raspberry Pi · <a href="{href('/api/status', token)}">status</a></footer>
+<div id="lightbox" class="lightbox" aria-hidden="true">
+  <button id="lbClose" class="lb-close" type="button" data-close aria-label="Zamknij">✕</button>
+  <button id="lbPrev" class="lb-btn lb-prev" type="button" aria-label="Poprzednie">‹</button>
+  <img id="lbImg" alt="Podgląd pełnoekranowy">
+  <button id="lbNext" class="lb-btn lb-next" type="button" aria-label="Następne">›</button>
+  <div id="lbHint" class="lb-hint">← → klawisze · Esc zamyka</div>
+</div>
 <div id="toast" class="toast"></div>
 <script>window.CAM_TOKEN={token_js};</script>
 <script>{PAGE_JS}</script>
@@ -524,10 +761,22 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
     <span class="badge">{stamp}</span>
   </div>
 </div>
+<div id="sysStrip" class="sysstrip"></div>
 <div class="actions">
   <button class="btn btn-accent" data-capture type="button">📸 Zrób zdjęcie</button>
   <a class="btn btn-primary" href="{href('/live', token)}">🔴 Podgląd na żywo</a>
   <a class="btn" href="{href('/history', token)}">🗂️ Historia{days_label}</a>
+  <button id="downloadBtn" class="btn" type="button">⬇️ Pobierz</button>
+</div>
+<div class="ctrlrow">
+  <label class="switch"><input type="checkbox" id="autoChk"> Auto-odświeżanie</label>
+  <select id="autoSel" class="mini" aria-label="Częstotliwość odświeżania">
+    <option value="5000">co 5 s</option>
+    <option value="15000">co 15 s</option>
+    <option value="30000">co 30 s</option>
+    <option value="60000">co 60 s</option>
+  </select>
+  <span class="sub">· kliknij zdjęcie, by powiększyć</span>
 </div>
 """
         return self._layout("Kamera", body, active="/")
@@ -628,27 +877,47 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
                 token,
             )
             items.append(
-                f'<a class="thumb{active}" href="{select_url}">'
+                f'<a class="thumb{active}" href="{select_url}" data-name="{html.escape(image_path.name)}">'
                 f'<img src="{url}" alt="{label}" loading="lazy"><span>{label}</span></a>'
             )
+
+        day_data = json.dumps({
+            "day": day,
+            "index": selected_index,
+            "frames": [{"n": p.name, "l": p.stem.replace("-", ":")} for p in images],
+        })
 
         day_h = html.escape(day)
         body = f"""
 <h1 class="h">{day_h}</h1>
-<p class="sub">{selected_label} · {selected_index + 1}/{len(images)}</p>
-<div class="card hero-card"><img class="viewer" src="{selected_url}" alt="{selected_label}"></div>
+<p class="sub" id="counter">{selected_label} · {selected_index + 1}/{len(images)}</p>
+<div class="card hero-card"><img id="viewer" class="viewer" src="{selected_url}" alt="{selected_label}"></div>
+<div class="scrubber">
+  <input id="scrub" type="range" min="0" max="{len(images) - 1}" value="{selected_index}" aria-label="Przewijaj klatki">
+</div>
+<div class="player">
+  <button class="btn btn-primary" id="playBtn" type="button">▶ Odtwórz</button>
+  <select id="speedSel" class="mini" aria-label="Prędkość">
+    <option value="600">wolno</option>
+    <option value="300" selected>normalnie</option>
+    <option value="120">szybko</option>
+  </select>
+  <span class="spacer"></span>
+  <a class="btn" id="dlDay" href="{selected_url}" download="{html.escape(selected_path.name)}">⬇️ Pobierz</a>
+</div>
 <form class="controls" method="get" action="/history/{quote(day)}">
   <input type="hidden" name="token" value="{html.escape(token)}">
   <label class="field">Klatka
-    <select name="at" onchange="this.form.submit()">{options}</select>
+    <select id="frameSel" name="at">{options}</select>
   </label>
-  <label class="field">Przed/po
+  <label class="field">Przed/po (miniatury)
     <input name="around" type="number" min="1" max="12" value="{around}">
   </label>
-  <button class="btn btn-primary" type="submit">Pokaż</button>
+  <button class="btn" type="submit">Pokaż więcej</button>
 </form>
 <div class="navrow">{prev_link}{next_link}</div>
-<div class="thumbs">{''.join(items)}</div>
+<div class="thumbs" id="thumbs">{''.join(items)}</div>
+<script>window.CAM_DAY={day_data};</script>
 """
         return self._layout(day, body, active="/history")
 
