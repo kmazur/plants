@@ -99,6 +99,12 @@ the systemd units, and restarts `camera-remote.service`.
 The updater refuses to run if the Pi working tree has local changes. Commit and
 push from another machine; the Pi should only pull.
 
+To trigger a check immediately:
+
+```bash
+sudo systemctl start camera-remote-update.service
+```
+
 Snapshot now:
 
 ```bash
