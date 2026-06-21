@@ -10,4 +10,4 @@ Group=user
 WorkingDirectory=/home/user/IdeaProjects/plants
 Environment=PYTHONUNBUFFERED=1
 ExecStart=/home/user/IdeaProjects/plants/camera_remote/scripts/update_from_git.sh
-TimeoutStartSec=120
+TimeoutStartSec=240

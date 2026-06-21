@@ -112,6 +112,11 @@ the systemd units, and restarts `camera-remote.service`.
 The updater refuses to run if the Pi working tree has local changes. Commit and
 push from another machine; the Pi should only pull.
 
+After each update, the updater validates Python syntax, restarts the stack, and
+checks `http://127.0.0.1:8090/healthz`. If the new commit does not pass that
+health check, it resets the Pi checkout back to the previous commit and restarts
+the last working version.
+
 To trigger a check immediately:
 
 ```bash
