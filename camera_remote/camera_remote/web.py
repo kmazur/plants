@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import hmac
 import html
 import json
 import logging
@@ -9,6 +10,7 @@ import os
 import re
 import shutil
 import signal
+import subprocess
 import sys
 import threading
 import time
@@ -291,6 +293,20 @@ a:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible{
 .lb-close{position:absolute;top:12px;right:14px;width:40px;height:40px;border-radius:50%;border:0;
   background:rgba(255,255,255,.14);color:#fff;font-size:1.3rem;cursor:pointer}
 .lb-hint{position:absolute;bottom:14px;left:0;right:0;text-align:center;color:rgba(255,255,255,.7);font-size:.78rem}
+
+/* admin panel */
+.admin-form{display:flex;flex-direction:column;gap:.6rem;margin-top:.7rem}
+.admin-form textarea{font:13px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--ink);
+  background:var(--card);border:1px solid var(--border-strong);border-radius:.6rem;padding:.6rem .7rem;min-height:90px;resize:vertical}
+.admin-form input[type=password]{font:inherit;color:var(--ink);background:var(--card);
+  border:1px solid var(--border-strong);border-radius:.6rem;padding:.5rem .6rem}
+.out{white-space:pre-wrap;word-break:break-word;font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  background:#0b1410;color:#d6e6dd;border:1px solid var(--border);border-radius:.6rem;padding:.7rem .8rem;margin-top:.7rem;max-height:55vh;overflow:auto}
+.out.err{color:#ffb3a6}
+.out:empty{display:none}
+.danger-note{background:rgba(178,59,46,.12);border:1px solid var(--border);border-radius:.6rem;
+  padding:.6rem .8rem;font-size:.84rem;line-height:1.5;color:var(--ink);margin:0 0 .2rem}
+.danger-note code{background:rgba(0,0,0,.18);padding:.05rem .3rem;border-radius:5px}
 """
 
 PAGE_JS = """
@@ -489,6 +505,44 @@ PAGE_JS = """
 })();
 """
 
+ADMIN_JS = """
+(function(){
+  function withTok(p){ var t = window.CAM_TOKEN || ""; var u = new URL(p, location.origin); if(t) u.searchParams.set("token", t); return u.pathname + u.search; }
+  var KEY = "cam.admintok";
+  var form = document.getElementById("execForm");
+  if(!form) return;
+  var atIn = document.getElementById("adminTok"), cmdIn = document.getElementById("cmd");
+  var outEl = document.getElementById("out"), runBtn = document.getElementById("runBtn");
+  if(atIn) atIn.value = localStorage.getItem(KEY) || "";
+  function setOut(t, cls){ outEl.textContent = t; outEl.className = "out " + (cls || ""); }
+  form.addEventListener("submit", async function(e){
+    e.preventDefault();
+    var at = atIn ? atIn.value.trim() : "", cmd = cmdIn.value;
+    if(!at){ setOut("Podaj token admina.", "err"); return; }
+    if(!cmd.trim()) return;
+    localStorage.setItem(KEY, at);
+    runBtn.disabled = true; var old = runBtn.textContent; runBtn.textContent = "Uruchamiam\\u2026";
+    setOut("\\u2026", "");
+    try{
+      var r = await fetch(withTok("/api/admin/exec"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Admin-Token": at },
+        body: JSON.stringify({ cmd: cmd })
+      });
+      var j = await r.json();
+      if(j.error){ setOut("B\\u0142\\u0105d: " + j.error, "err"); }
+      else{
+        var head = "$ " + cmd + "\\n[kod " + j.code + (j.timed_out ? " \\u2022 TIMEOUT" : "") + " \\u2022 " + j.duration + "s]\\n\\n";
+        var tail = (j.stdout || "") + (j.stderr ? ("\\n--- stderr ---\\n" + j.stderr) : "");
+        setOut(head + tail, j.ok ? "ok" : "err");
+      }
+    }catch(err){ setOut("B\\u0142\\u0105d sieci", "err"); }
+    finally{ runBtn.disabled = false; runBtn.textContent = old; }
+  });
+  if(cmdIn) cmdIn.addEventListener("keydown", function(e){ if((e.ctrlKey || e.metaKey) && e.key === "Enter"){ form.requestSubmit(); } });
+})();
+"""
+
 
 class CameraRequestHandler(BaseHTTPRequestHandler):
     server_version = "CameraRemote/0.1"
@@ -546,6 +600,8 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             self._send_json(self._status())
         elif parsed.path == "/api/system":
             self._send_json(read_system_stats(self.storage.data_dir))
+        elif parsed.path == "/admin":
+            self._send_html(self._admin_page(parsed.query))
         elif parsed.path == "/api/bootstrap":
             self._send_tatry_bootstrap(parsed.query)
         elif parsed.path == "/api/capture-now":
@@ -556,6 +612,14 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             self._send_html(self._history_index_html(parsed.query))
         elif parsed.path.startswith("/history/"):
             self._handle_history(parsed.path, parsed.query)
+        else:
+            self._send_text("not found\n", "text/plain", HTTPStatus.NOT_FOUND)
+
+    def do_POST(self) -> None:
+        self._cookie_token = None
+        parsed = urlparse(self.path)
+        if parsed.path == "/api/admin/exec":
+            self._admin_exec(parsed.query)
         else:
             self._send_text("not found\n", "text/plain", HTTPStatus.NOT_FOUND)
 
@@ -597,6 +661,78 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             self._send_json({"ok": False, "skipped": True, "message": result.message}, HTTPStatus.CONFLICT)
             return
         self._send_json({"ok": True, "path": str(result.path), "timestamp": result.timestamp.isoformat()})
+
+    def _admin_enabled(self) -> bool:
+        return bool(self.app_config.server.admin_token)
+
+    def _admin_authorized(self) -> bool:
+        token = self.app_config.server.admin_token
+        if not token:
+            return False
+        provided = self.headers.get("X-Admin-Token", "")
+        return bool(provided) and hmac.compare_digest(provided, token)
+
+    def _admin_exec(self, query: str) -> None:
+        if not self._admin_enabled():
+            self._send_json({"error": "admin panel disabled"}, HTTPStatus.FORBIDDEN)
+            return
+        # Defence in depth: require both the view token (query/cookie) and the
+        # separate admin token (header), compared in constant time.
+        if not self._authorized(query):
+            self._send_json({"error": "unauthorized"}, HTTPStatus.UNAUTHORIZED)
+            return
+        if not self._admin_authorized():
+            log.warning("ADMIN exec rejected (bad admin token) from %s", self.address_string())
+            self._send_json({"error": "bad admin token"}, HTTPStatus.UNAUTHORIZED)
+            return
+        try:
+            length = int(self.headers.get("Content-Length", "0") or "0")
+        except ValueError:
+            length = 0
+        if length <= 0 or length > 64 * 1024:
+            self._send_json({"error": "missing or oversized body"}, HTTPStatus.BAD_REQUEST)
+            return
+        try:
+            payload = json.loads(self.rfile.read(length).decode("utf-8"))
+            cmd = payload.get("cmd", "")
+        except Exception:
+            self._send_json({"error": "invalid json"}, HTTPStatus.BAD_REQUEST)
+            return
+        if not isinstance(cmd, str) or not cmd.strip():
+            self._send_json({"error": "empty command"}, HTTPStatus.BAD_REQUEST)
+            return
+
+        timeout = max(1, int(self.app_config.server.admin_timeout))
+        log.warning("ADMIN exec from %s: %s", self.address_string(), cmd)
+        started = time.time()
+        timed_out = False
+        try:
+            proc = subprocess.run(
+                cmd,
+                shell=True,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+            )
+            stdout, stderr, code = proc.stdout, proc.stderr, proc.returncode
+        except subprocess.TimeoutExpired as exc:
+            timed_out = True
+            code = 124
+            stdout = exc.stdout if isinstance(exc.stdout, str) else (exc.stdout or b"").decode("utf-8", "replace")
+            stderr = exc.stderr if isinstance(exc.stderr, str) else (exc.stderr or b"").decode("utf-8", "replace")
+        except Exception as exc:
+            self._send_json({"error": f"exec failed: {exc}"}, HTTPStatus.INTERNAL_SERVER_ERROR)
+            return
+
+        cap = 200_000
+        self._send_json({
+            "ok": code == 0 and not timed_out,
+            "code": code,
+            "timed_out": timed_out,
+            "duration": round(time.time() - started, 2),
+            "stdout": (stdout or "")[-cap:],
+            "stderr": (stderr or "")[-cap:],
+        })
 
     def _send_tatry_bootstrap(self, query: str) -> None:
         params = parse_qs(query)
@@ -701,6 +837,8 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             ("/history", "Historia"),
             ("/checklista-tatry.html", "Tatry"),
         ]
+        if self.app_config.server.admin_token:
+            items.append(("/admin", "Admin"))
         links = []
         for path, label in items:
             current = ' aria-current="page"' if path == active else ""
@@ -920,6 +1058,32 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
 <script>window.CAM_DAY={day_data};</script>
 """
         return self._layout(day, body, active="/history")
+
+    def _admin_page(self, query: str) -> str:
+        if not self._admin_enabled():
+            body = (
+                '<h1 class="h">Panel admina</h1>'
+                '<div class="card pad"><p class="danger-note">Panel jest wyłączony. '
+                'Ustaw <code>admin_token</code> w sekcji <code>[server]</code> pliku '
+                '<code>/etc/camera-remote/config.ini</code> i zrestartuj usługę '
+                '<code>camera-remote.service</code>.</p></div>'
+            )
+            return self._layout("Admin", body, active="/admin")
+        body = f"""
+<h1 class="h">Panel admina — zdalne polecenia</h1>
+<div class="card pad">
+  <p class="danger-note">⚠️ Wykonuje dowolne polecenia powłoki na Pi jako użytkownik usługi.
+  Token admina jest wysyłany tylko w nagłówku i trzymany w tej przeglądarce. Trzymaj go w tajemnicy.</p>
+  <form id="execForm" class="admin-form" autocomplete="off">
+    <input id="adminTok" type="password" placeholder="Token admina" autocomplete="off">
+    <textarea id="cmd" placeholder="np.  uptime  ·  tailscale status  ·  sudo systemctl restart camera-remote.service"></textarea>
+    <div class="actions"><button id="runBtn" class="btn btn-primary" type="submit">▶ Uruchom (Ctrl+Enter)</button></div>
+  </form>
+  <pre id="out" class="out"></pre>
+</div>
+<script>{ADMIN_JS}</script>
+"""
+        return self._layout("Admin", body, active="/admin")
 
 
 class CameraServer(ThreadingHTTPServer):

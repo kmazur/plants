@@ -95,6 +95,31 @@ For compatibility, a runtime copy at
 `/home/user/camera-remote-data/static/checklista-tatry.html` is still accepted
 as a fallback if the repo copy is missing.
 
+## Admin Panel (remote shell)
+
+A token-gated page at `/admin` can run shell commands on the Pi as the service
+user. It is **disabled by default**. Enable it by setting a strong, separate
+token in `/etc/camera-remote/config.ini`:
+
+```ini
+[server]
+admin_token = <python3 -c "import secrets;print(secrets.token_hex(24))">
+admin_timeout = 60
+```
+
+Then restart `camera-remote.service`. The page appears in the nav as `Admin`.
+
+Security model:
+
+- The admin token is **separate** from the view `auth_token` and is sent only
+  in the `X-Admin-Token` header (kept in the browser's `localStorage`, never in
+  a link). It is compared in constant time.
+- `/api/admin/exec` requires **both** the view token (query/cookie) and the
+  admin token, and returns 403 when the panel is disabled.
+- Every command is logged (`ADMIN exec from <ip>: <cmd>`) and killed after
+  `admin_timeout` seconds.
+- Keep this behind the local bind/tunnel; do not expose the service directly.
+
 ## Services
 
 ```bash
