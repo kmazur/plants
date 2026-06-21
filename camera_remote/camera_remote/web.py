@@ -20,6 +20,7 @@ from .camera import LiveCamera
 from .config import AppConfig, load_config
 from .locking import CameraBusy, CameraLock
 from .storage import SnapshotStorage
+from .tatry import get_bootstrap
 
 log = logging.getLogger(__name__)
 TOKEN_RE = re.compile(r"([?&]token=)[^&\s\"]+")
@@ -112,6 +113,10 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
     def live(self) -> LiveSession:
         return self.server.live  # type: ignore[attr-defined]
 
+    @property
+    def tatry_page(self) -> Path:
+        return self.server.tatry_page  # type: ignore[attr-defined]
+
     def log_message(self, fmt: str, *args) -> None:
         message = TOKEN_RE.sub(r"\1***", fmt % args)
         log.info("%s - %s", self.address_string(), message)
@@ -133,8 +138,12 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             self._send_mjpeg()
         elif parsed.path == "/api/status":
             self._send_json(self._status())
+        elif parsed.path == "/api/bootstrap":
+            self._send_tatry_bootstrap(parsed.query)
         elif parsed.path == "/api/capture-now":
             self._capture_now()
+        elif parsed.path == "/checklista-tatry.html":
+            self._send_file(self.tatry_page)
         elif parsed.path == "/history":
             self._send_html(self._history_index_html(parsed.query))
         elif parsed.path.startswith("/history/"):
@@ -168,6 +177,15 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             self._send_json({"ok": False, "skipped": True, "message": result.message}, HTTPStatus.CONFLICT)
             return
         self._send_json({"ok": True, "path": str(result.path), "timestamp": result.timestamp.isoformat()})
+
+    def _send_tatry_bootstrap(self, query: str) -> None:
+        params = parse_qs(query)
+        fresh = params.get("fresh", [""])[0] == "1"
+        try:
+            self._send_json(get_bootstrap(fresh=fresh))
+        except Exception as exc:
+            log.exception("tatry bootstrap failed: %s", exc)
+            self._send_json({"error": str(exc)}, HTTPStatus.INTERNAL_SERVER_ERROR)
 
     def _send_json(self, payload: dict, status: HTTPStatus = HTTPStatus.OK) -> None:
         data = json.dumps(payload, indent=2).encode("utf-8")
@@ -282,6 +300,7 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
     <a href="{href('/', self.app_config.server.auth_token)}">Latest</a>
     <a href="{href('/live.mjpg', self.app_config.server.auth_token)}">Live</a>
     <a href="{href('/history', self.app_config.server.auth_token)}">History</a>
+    <a href="{href('/checklista-tatry.html', self.app_config.server.auth_token)}">Tatry</a>
     <a href="{href('/api/status', self.app_config.server.auth_token)}">Status</a>
     <a href="{href('/api/capture-now', self.app_config.server.auth_token)}">Capture</a>
   </nav></header>
@@ -385,6 +404,9 @@ class CameraServer(ThreadingHTTPServer):
         self.app_config = config
         self.storage = SnapshotStorage(config)
         self.storage.ensure_dirs()
+        self.static_dir = config.paths.data_dir / "static"
+        self.static_dir.mkdir(parents=True, exist_ok=True)
+        self.tatry_page = self.static_dir / "checklista-tatry.html"
         self.live = LiveSession(config)
 
     def handle_error(self, request, client_address) -> None:
