@@ -30,7 +30,16 @@ require_stack() {
 validate_stack() {
   require_stack
   bash -n "$STACK_DIR/scripts/update_from_git.sh"
-  python3 -m compileall -q "$STACK_DIR/camera_remote"
+  python3 - "$STACK_DIR/camera_remote" <<'PY'
+import pathlib
+import sys
+
+root = pathlib.Path(sys.argv[1])
+for path in sorted(root.rglob("*.py")):
+    source = path.read_text(encoding="utf-8")
+    compile(source, str(path), "exec")
+print("python syntax ok")
+PY
 }
 
 install_units() {
