@@ -1,0 +1,12 @@
+[Unit]
+Description=Capture camera snapshot periodically
+
+[Timer]
+OnBootSec=45s
+OnUnitInactiveSec=60s
+AccuracySec=5s
+Persistent=true
+Unit=camera-snapshot.service
+
+[Install]
+WantedBy=timers.target

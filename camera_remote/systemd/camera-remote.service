@@ -1,0 +1,18 @@
+[Unit]
+Description=Camera Remote web UI and on-demand live view
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=user
+Group=user
+WorkingDirectory=/home/user/IdeaProjects/plants/camera_remote
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 -m camera_remote.web --config /etc/camera-remote/config.ini
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+

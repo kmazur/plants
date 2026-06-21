@@ -1,0 +1,13 @@
+[Unit]
+Description=Update Camera Remote stack from Git
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=user
+Group=user
+WorkingDirectory=/home/user/IdeaProjects/plants
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/home/user/IdeaProjects/plants/camera_remote/scripts/update_from_git.sh
+TimeoutStartSec=120

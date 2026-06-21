@@ -1,0 +1,13 @@
+[Unit]
+Description=Camera Remote snapshot capture
+After=camera-remote.service
+
+[Service]
+Type=oneshot
+User=user
+Group=user
+WorkingDirectory=/home/user/IdeaProjects/plants/camera_remote
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 -m camera_remote.capture --config /etc/camera-remote/config.ini --once
+TimeoutStartSec=45
+KillMode=control-group
