@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import html
 import json
 import logging
@@ -23,6 +24,7 @@ from urllib.parse import parse_qs, quote, unquote, urlparse
 from .camera import LiveCamera
 from .config import AppConfig, load_config
 from .locking import CameraBusy, CameraLock
+from .shellsession import ShellManager
 from .storage import SnapshotStorage
 from .tatry import get_bootstrap
 
@@ -341,6 +343,9 @@ a:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible{
 .danger-note{background:rgba(178,59,46,.12);border:1px solid var(--border);border-radius:.6rem;
   padding:.6rem .8rem;font-size:.84rem;line-height:1.5;color:var(--ink);margin:0 0 .2rem}
 .danger-note code{background:rgba(0,0,0,.18);padding:.05rem .3rem;border-radius:5px}
+.term-wrap{background:#0b1410;border:1px solid var(--border);border-radius:12px;padding:8px;box-shadow:var(--shadow);margin-top:.6rem}
+#term{height:64vh;width:100%}
+.term-bar{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin:.6rem 0 0}
 """
 
 PAGE_JS = """
@@ -539,37 +544,51 @@ PAGE_JS = """
 })();
 """
 
-ADMIN_JS = """
+SHELL_JS = """
 (function(){
   function withTok(p){ var t = window.CAM_TOKEN || ""; var u = new URL(p, location.origin); if(t) u.searchParams.set("token", t); return u.pathname + u.search; }
-  var form = document.getElementById("execForm");
-  if(!form) return;
-  var cmdIn = document.getElementById("cmd");
-  var outEl = document.getElementById("out"), runBtn = document.getElementById("runBtn");
-  function setOut(t, cls){ outEl.textContent = t; outEl.className = "out " + (cls || ""); }
-  form.addEventListener("submit", async function(e){
-    e.preventDefault();
-    var cmd = cmdIn.value;
-    if(!cmd.trim()) return;
-    runBtn.disabled = true; var old = runBtn.textContent; runBtn.textContent = "Uruchamiam\\u2026";
-    setOut("\\u2026", "");
-    try{
-      var r = await fetch(withTok("/api/admin/exec"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cmd: cmd })
-      });
-      var j = await r.json();
-      if(j.error){ setOut("B\\u0142\\u0105d: " + j.error, "err"); }
-      else{
-        var head = "$ " + cmd + "\\n[kod " + j.code + (j.timed_out ? " \\u2022 TIMEOUT" : "") + " \\u2022 " + j.duration + "s]\\n\\n";
-        var tail = (j.stdout || "") + (j.stderr ? ("\\n--- stderr ---\\n" + j.stderr) : "");
-        setOut(head + tail, j.ok ? "ok" : "err");
-      }
-    }catch(err){ setOut("B\\u0142\\u0105d sieci", "err"); }
-    finally{ runBtn.disabled = false; runBtn.textContent = old; }
+  var el = document.getElementById("term");
+  if(!el) return;
+  if(!window.Terminal){ el.textContent = "Nie udało się załadować xterm.js (sprawdź połączenie z unpkg)."; return; }
+  var term = new Terminal({ fontSize: 13, cursorBlink: true, scrollback: 5000,
+    theme: { background: "#0b1410", foreground: "#d6e6dd" } });
+  var fit = null;
+  try{ fit = new FitAddon.FitAddon(); term.loadAddon(fit); }catch(e){}
+  term.open(el);
+  function doFit(){ if(fit){ try{ fit.fit(); }catch(e){} } }
+  doFit();
+  var sid = null, pos = 0, alive = true;
+  function b64ToBytes(b){ var s = atob(b), u = new Uint8Array(s.length); for(var i=0;i<s.length;i++) u[i]=s.charCodeAt(i); return u; }
+  function bytesToB64(u){ var s=""; for(var i=0;i<u.length;i++) s+=String.fromCharCode(u[i]); return btoa(s); }
+  async function post(path, body){
+    var r = await fetch(withTok(path), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body||{}) });
+    return r.json();
+  }
+  term.onData(function(data){
+    if(!sid) return;
+    post("/api/shell/input", { sid: sid, data: bytesToB64(new TextEncoder().encode(data)) });
   });
-  if(cmdIn) cmdIn.addEventListener("keydown", function(e){ if((e.ctrlKey || e.metaKey) && e.key === "Enter"){ form.requestSubmit(); } });
+  term.onResize(function(sz){ if(sid) post("/api/shell/resize", { sid: sid, rows: sz.rows, cols: sz.cols }); });
+  window.addEventListener("resize", doFit);
+  async function loop(){
+    while(alive){
+      try{
+        var r = await fetch(withTok("/api/shell/read?sid=" + sid + "&pos=" + pos));
+        var j = await r.json();
+        if(j.error){ term.write("\\r\\n[" + j.error + "]\\r\\n"); break; }
+        if(j.data) term.write(b64ToBytes(j.data));
+        pos = j.pos;
+        if(!j.alive){ term.write("\\r\\n[sesja zakończona]\\r\\n"); alive = false; break; }
+      }catch(e){ await new Promise(function(res){ setTimeout(res, 1000); }); }
+    }
+  }
+  (async function start(){
+    var j = await post("/api/shell/open", { rows: term.rows, cols: term.cols });
+    if(j.error){ term.write("\\r\\n[nie można otworzyć sesji: " + j.error + "]\\r\\n"); return; }
+    sid = j.sid;
+    term.focus();
+    loop();
+  })();
 })();
 """
 
@@ -675,6 +694,8 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             self._send_json(read_system_stats(self.storage.data_dir))
         elif parsed.path == "/admin":
             self._send_html(self._admin_page(parsed.query))
+        elif parsed.path == "/api/shell/read":
+            self._shell_read(parsed.query)
         elif parsed.path == "/api/bootstrap":
             self._send_tatry_bootstrap(parsed.query)
         elif parsed.path == "/api/capture-now":
@@ -693,6 +714,14 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         if parsed.path == "/api/admin/exec":
             self._admin_exec(parsed.query)
+        elif parsed.path == "/api/shell/open":
+            self._shell_open(parsed.query)
+        elif parsed.path == "/api/shell/input":
+            self._shell_input(parsed.query)
+        elif parsed.path == "/api/shell/resize":
+            self._shell_resize(parsed.query)
+        elif parsed.path == "/api/shell/close":
+            self._shell_close(parsed.query)
         else:
             self._send_text("not found\n", "text/plain", HTTPStatus.NOT_FOUND)
 
@@ -737,6 +766,109 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
 
     def _admin_enabled(self) -> bool:
         return bool(self.app_config.server.admin_enabled)
+
+    def _admin_guard(self, query: str) -> bool:
+        if not self._admin_enabled():
+            self._send_json({"error": "admin panel disabled"}, HTTPStatus.FORBIDDEN)
+            return False
+        if not self._authorized(query):
+            self._send_json({"error": "unauthorized"}, HTTPStatus.UNAUTHORIZED)
+            return False
+        return True
+
+    def _read_json_body(self, limit: int = 64 * 1024) -> Optional[dict]:
+        try:
+            length = int(self.headers.get("Content-Length", "0") or "0")
+        except ValueError:
+            return None
+        if length <= 0 or length > limit:
+            return None
+        try:
+            payload = json.loads(self.rfile.read(length).decode("utf-8"))
+            return payload if isinstance(payload, dict) else None
+        except Exception:
+            return None
+
+    @property
+    def shell(self) -> ShellManager:
+        return self.server.shell  # type: ignore[attr-defined]
+
+    def _shell_open(self, query: str) -> None:
+        if not self._admin_guard(query):
+            return
+        body = self._read_json_body() or {}
+        try:
+            rows, cols = int(body.get("rows", 24)), int(body.get("cols", 80))
+        except (TypeError, ValueError):
+            rows, cols = 24, 80
+        try:
+            session = self.shell.open(rows=rows, cols=cols)
+        except RuntimeError as exc:
+            self._send_json({"error": str(exc)}, HTTPStatus.CONFLICT)
+            return
+        except Exception as exc:
+            log.exception("shell open failed: %s", exc)
+            self._send_json({"error": "shell open failed"}, HTTPStatus.INTERNAL_SERVER_ERROR)
+            return
+        log.warning("SHELL session %s opened from %s", session.sid, self.address_string())
+        self._send_json({"sid": session.sid})
+
+    def _shell_input(self, query: str) -> None:
+        if not self._admin_guard(query):
+            return
+        body = self._read_json_body() or {}
+        session = self.shell.get(body.get("sid", ""))
+        if session is None:
+            self._send_json({"error": "no session"}, HTTPStatus.NOT_FOUND)
+            return
+        try:
+            data = base64.b64decode(body.get("data", "")) if body.get("data") else b""
+        except Exception:
+            self._send_json({"error": "bad data"}, HTTPStatus.BAD_REQUEST)
+            return
+        session.write(data)
+        self._send_json({"ok": True})
+
+    def _shell_resize(self, query: str) -> None:
+        if not self._admin_guard(query):
+            return
+        body = self._read_json_body() or {}
+        session = self.shell.get(body.get("sid", ""))
+        if session is None:
+            self._send_json({"error": "no session"}, HTTPStatus.NOT_FOUND)
+            return
+        try:
+            session.resize(int(body.get("rows", 24)), int(body.get("cols", 80)))
+        except (TypeError, ValueError):
+            pass
+        self._send_json({"ok": True})
+
+    def _shell_close(self, query: str) -> None:
+        if not self._admin_guard(query):
+            return
+        body = self._read_json_body() or {}
+        self.shell.close(body.get("sid", ""))
+        self._send_json({"ok": True})
+
+    def _shell_read(self, query: str) -> None:
+        if not self._admin_guard(query):
+            return
+        params = parse_qs(query)
+        sid = params.get("sid", [""])[0]
+        try:
+            pos = int(params.get("pos", ["0"])[0])
+        except ValueError:
+            pos = 0
+        session = self.shell.get(sid)
+        if session is None:
+            self._send_json({"error": "no session"}, HTTPStatus.NOT_FOUND)
+            return
+        data, new_pos, alive = session.read_since(pos)
+        self._send_json({
+            "data": base64.b64encode(data).decode("ascii"),
+            "pos": new_pos,
+            "alive": alive,
+        })
 
     def _admin_exec(self, query: str) -> None:
         if not self._admin_enabled():
@@ -1168,18 +1300,17 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
                 '<code>camera-remote.service</code>.</p></div>'
             )
             return self._layout("Shell", body, active="/admin")
+        token_js = json.dumps(self.app_config.server.auth_token)
         body = f"""
-<h1 class="h">Shell — zdalne polecenia</h1>
-<div class="card pad">
-  <p class="danger-note">⚠️ Wykonuje dowolne polecenia powłoki na Pi jako użytkownik usługi.
-  Autoryzacja tym samym tokenem co reszta strony.</p>
-  <form id="execForm" class="admin-form" autocomplete="off">
-    <textarea id="cmd" placeholder="np.  uptime  ·  tailscale status  ·  sudo systemctl restart camera-remote.service"></textarea>
-    <div class="actions"><button id="runBtn" class="btn btn-primary" type="submit">▶ Uruchom (Ctrl+Enter)</button></div>
-  </form>
-  <pre id="out" class="out"></pre>
-</div>
-<script>{ADMIN_JS}</script>
+<h1 class="h">Shell — terminal</h1>
+<p class="danger-note">⚠️ Pełny, interaktywny terminal (PTY) na Pi jako użytkownik usługi. Autoryzacja tym samym tokenem co reszta strony.</p>
+<link rel="stylesheet" href="https://unpkg.com/xterm@5.3.0/css/xterm.css"/>
+<script src="https://unpkg.com/xterm@5.3.0/lib/xterm.js"></script>
+<script src="https://unpkg.com/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+<div class="term-wrap"><div id="term"></div></div>
+<div class="term-bar"><span class="sub">Sesja jest trwała (PTY); obsługuje sudo, debconf i długie procesy. Wygasa po ~15 min bezczynności.</span></div>
+<script>window.CAM_TOKEN={token_js};</script>
+<script>{SHELL_JS}</script>
 """
         return self._layout("Shell", body, active="/admin")
 
@@ -1200,6 +1331,7 @@ class CameraServer(ThreadingHTTPServer):
             self.static_dir / "checklista-tatry.html",
         ]
         self.live = LiveSession(config)
+        self.shell = ShellManager()
 
     def handle_error(self, request, client_address) -> None:
         exc_type, exc, _ = sys.exc_info()
