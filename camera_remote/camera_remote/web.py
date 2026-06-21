@@ -674,6 +674,9 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
         if parsed.path == "/healthz":
             self._send_text("ok\n", "text/plain")
             return
+        if parsed.path.startswith("/vendor/"):
+            self._send_vendor(parsed.path)
+            return
         if not self._authorized(parsed.query):
             self._send_text("unauthorized\n", "text/plain", HTTPStatus.UNAUTHORIZED)
             return
@@ -962,7 +965,7 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
     def _send_html(self, text: str, status: HTTPStatus = HTTPStatus.OK) -> None:
         self._send_text(text, "text/html", status)
 
-    def _send_file(self, path: Path) -> None:
+    def _send_file(self, path: Path, cache: bool = False) -> None:
         if not path.exists() or not path.is_file():
             self._send_text("not found\n", "text/plain", HTTPStatus.NOT_FOUND)
             return
@@ -970,7 +973,7 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(path.stat().st_size))
-        self.send_header("Cache-Control", "no-store")
+        self.send_header("Cache-Control", "public, max-age=86400" if cache else "no-store")
         self.end_headers()
         with path.open("rb") as fh:
             while True:
@@ -978,6 +981,19 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
                 if not chunk:
                     break
                 self.wfile.write(chunk)
+
+    def _send_vendor(self, path: str) -> None:
+        """Serve vendored static assets (xterm.js, ...) without auth — they
+        contain no secrets and must load before any token cookie is set."""
+        rel = path[len("/vendor/"):]
+        vendor_dir = self.server.vendor_dir  # type: ignore[attr-defined]
+        target = vendor_dir / rel
+        try:
+            target.resolve().relative_to(vendor_dir.resolve())
+        except ValueError:
+            self._send_text("bad path\n", "text/plain", HTTPStatus.BAD_REQUEST)
+            return
+        self._send_file(target, cache=True)
 
     def _send_live_frame(self) -> None:
         """Single current frame for the adaptive pull-based live view."""
@@ -1304,9 +1320,9 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
         body = f"""
 <h1 class="h">Shell — terminal</h1>
 <p class="danger-note">⚠️ Pełny, interaktywny terminal (PTY) na Pi jako użytkownik usługi. Autoryzacja tym samym tokenem co reszta strony.</p>
-<link rel="stylesheet" href="https://unpkg.com/xterm@5.3.0/css/xterm.css"/>
-<script src="https://unpkg.com/xterm@5.3.0/lib/xterm.js"></script>
-<script src="https://unpkg.com/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+<link rel="stylesheet" href="/vendor/xterm.css"/>
+<script src="/vendor/xterm.js"></script>
+<script src="/vendor/xterm-addon-fit.js"></script>
 <div class="term-wrap"><div id="term"></div></div>
 <div class="term-bar"><span class="sub">Sesja jest trwała (PTY); obsługuje sudo, debconf i długie procesy. Wygasa po ~15 min bezczynności.</span></div>
 <script>window.CAM_TOKEN={token_js};</script>
@@ -1324,6 +1340,7 @@ class CameraServer(ThreadingHTTPServer):
         self.storage = SnapshotStorage(config)
         self.storage.ensure_dirs()
         self.repo_static_dir = Path(__file__).resolve().parents[1] / "static"
+        self.vendor_dir = self.repo_static_dir / "vendor"
         self.static_dir = config.paths.data_dir / "static"
         self.static_dir.mkdir(parents=True, exist_ok=True)
         self.tatry_pages = [
