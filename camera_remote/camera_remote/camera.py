@@ -92,6 +92,13 @@ class LiveCamera:
             transform=_transform(self.config),
         )
         picam.configure(video_config)
+        # Smaller, lighter JPEGs so a constrained Pi/tunnel can keep up.
+        quality = getattr(self.config, "live_quality", 0)
+        if quality:
+            try:
+                picam.options["quality"] = int(quality)
+            except Exception as exc:
+                log.warning("could not set live jpeg quality: %s", exc)
         picam.start()
         time.sleep(self.config.warmup_seconds)
         self._picam = picam
@@ -115,6 +122,9 @@ class LiveCamera:
             raise RuntimeError("live camera is not started")
         buf = io.BytesIO()
         self._picam.capture_file(buf, format="jpeg")
-        time.sleep(self._frame_interval)
         return buf.getvalue()
+
+    @property
+    def frame_interval(self) -> float:
+        return self._frame_interval
 

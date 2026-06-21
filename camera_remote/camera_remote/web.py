@@ -40,45 +40,80 @@ def configure_logging() -> None:
 
 
 class LiveSession:
+    """Shared warm live camera for both the MJPEG stream and the pull endpoint.
+
+    MJPEG holds an open connection (reference counted via ``acquire``/
+    ``release``). The pull endpoint (``grab_frame``) keeps the camera warm for
+    ``live_idle_timeout`` seconds after the last frame so each short request
+    does not restart the sensor. A background watchdog stops the camera once
+    there are no MJPEG clients and the pull idle deadline has passed.
+    """
+
     def __init__(self, config: AppConfig):
         self.config = config
         self._state_lock = threading.Lock()
+        self._capture_lock = threading.Lock()
         self._camera_lock_ctx = None
         self._camera = None
         self._clients = 0
+        self._idle_deadline = 0.0
+        self._idle_timeout = max(1.0, float(getattr(config.camera, "live_idle_timeout", 8.0)))
+        self._stop = False
+        self._watchdog = threading.Thread(target=self._watchdog_loop, daemon=True)
+        self._watchdog.start()
+
+    def _start_locked(self) -> None:
+        if self._camera is not None:
+            return
+        self._camera_lock_ctx = CameraLock(self.config.paths.lock_file, blocking=False)
+        try:
+            self._camera_lock_ctx.__enter__()
+        except CameraBusy:
+            self._camera_lock_ctx = None
+            raise
+        self._camera = LiveCamera(self.config.camera)
+        self._camera.start()
+        log.info("live camera started")
+
+    def _stop_locked(self):
+        camera = self._camera
+        lock_ctx = self._camera_lock_ctx
+        self._camera = None
+        self._camera_lock_ctx = None
+        return camera, lock_ctx
 
     def acquire(self) -> LiveCamera:
         with self._state_lock:
+            self._start_locked()  # raises CameraBusy
             self._clients += 1
-            if self._camera is None:
-                self._camera_lock_ctx = CameraLock(self.config.paths.lock_file, blocking=False)
-                try:
-                    self._camera_lock_ctx.__enter__()
-                except CameraBusy:
-                    self._clients -= 1
-                    self._camera_lock_ctx = None
-                    raise
-                self._camera = LiveCamera(self.config.camera)
-                self._camera.start()
-                log.info("live camera started")
             return self._camera
 
     def release(self) -> None:
         with self._state_lock:
             self._clients = max(0, self._clients - 1)
-            if self._clients == 0:
-                camera = self._camera
-                lock_ctx = self._camera_lock_ctx
-                self._camera = None
-                self._camera_lock_ctx = None
-            else:
-                camera = None
-                lock_ctx = None
-        if camera is not None:
-            camera.stop()
-            log.info("live camera stopped")
-        if lock_ctx is not None:
-            lock_ctx.__exit__(None, None, None)
+
+    def grab_frame(self) -> bytes:
+        with self._state_lock:
+            self._start_locked()  # raises CameraBusy
+            camera = self._camera
+            self._idle_deadline = time.monotonic() + self._idle_timeout
+        with self._capture_lock:
+            return camera.capture_jpeg_bytes()
+
+    def _watchdog_loop(self) -> None:
+        while not self._stop:
+            time.sleep(1.0)
+            with self._state_lock:
+                if self._camera is None:
+                    continue
+                if self._clients > 0 or time.monotonic() < self._idle_deadline:
+                    continue
+                camera, lock_ctx = self._stop_locked()
+            if camera is not None:
+                camera.stop()
+                log.info("live camera stopped (idle)")
+            if lock_ctx is not None:
+                lock_ctx.__exit__(None, None, None)
 
     @property
     def clients(self) -> int:
@@ -538,6 +573,47 @@ ADMIN_JS = """
 })();
 """
 
+LIVE_JS = """
+(function(){
+  function withTok(p){ var t = window.CAM_TOKEN || ""; var u = new URL(p, location.origin); if(t) u.searchParams.set("token", t); return u.pathname + u.search; }
+  var img = document.getElementById("liveImg");
+  if(!img) return;
+  var statusEl = document.getElementById("liveStatus");
+  var fpsEl = document.getElementById("liveFps");
+  var pauseBtn = document.getElementById("livePause");
+  var rateSel = document.getElementById("liveRate");
+  var running = true;
+  var minInterval = parseInt((rateSel && rateSel.value) || "200", 10);
+  var lastStart = 0, frames = 0, fpsWindow = performance.now();
+  function schedule(delay){ if(running) setTimeout(loadNext, Math.max(0, delay)); }
+  function loadNext(){
+    if(!running) return;
+    if(document.hidden){ schedule(500); return; }   // don't burn the Pi/bandwidth in a background tab
+    lastStart = performance.now();
+    img.src = withTok("/live.jpg?t=" + Date.now());
+  }
+  img.addEventListener("load", function(){
+    var took = performance.now() - lastStart;
+    frames++;
+    var now = performance.now();
+    if(now - fpsWindow >= 1000){ if(fpsEl) fpsEl.textContent = (frames * 1000 / (now - fpsWindow)).toFixed(1) + " fps"; frames = 0; fpsWindow = now; }
+    if(statusEl) statusEl.className = "badge";
+    schedule(minInterval - took);
+  });
+  img.addEventListener("error", function(){
+    if(statusEl) statusEl.className = "badge dead";
+    schedule(1000);   // backoff on hiccup / camera busy
+  });
+  if(pauseBtn) pauseBtn.addEventListener("click", function(){
+    running = !running;
+    pauseBtn.textContent = running ? "\\u23F8 Pauza" : "\\u25B6 Wzn\\u00F3w";
+    if(running) loadNext();
+  });
+  if(rateSel) rateSel.addEventListener("change", function(){ minInterval = parseInt(rateSel.value, 10); });
+  loadNext();
+})();
+"""
+
 
 class CameraRequestHandler(BaseHTTPRequestHandler):
     server_version = "CameraRemote/0.1"
@@ -589,6 +665,8 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             self._send_file(self.storage.latest_path)
         elif parsed.path == "/live":
             self._send_html(self._live_html(parsed.query))
+        elif parsed.path == "/live.jpg":
+            self._send_live_frame()
         elif parsed.path == "/live.mjpg":
             self._send_mjpeg()
         elif parsed.path == "/api/status":
@@ -769,12 +847,34 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
                     break
                 self.wfile.write(chunk)
 
+    def _send_live_frame(self) -> None:
+        """Single current frame for the adaptive pull-based live view."""
+        try:
+            frame = self.live.grab_frame()
+        except CameraBusy:
+            self._send_text("camera busy\n", "text/plain", HTTPStatus.CONFLICT)
+            return
+        except Exception as exc:
+            log.exception("live frame failed: %s", exc)
+            self._send_text("live error\n", "text/plain", HTTPStatus.INTERNAL_SERVER_ERROR)
+            return
+        try:
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", "image/jpeg")
+            self.send_header("Content-Length", str(len(frame)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(frame)
+        except (BrokenPipeError, ConnectionResetError):
+            pass
+
     def _send_mjpeg(self) -> None:
         try:
             camera = self.live.acquire()
         except CameraBusy:
             self._send_text("camera busy\n", "text/plain", HTTPStatus.CONFLICT)
             return
+        interval = getattr(camera, "frame_interval", 0.2)
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", "multipart/x-mixed-replace; boundary=frame")
         self.send_header("Cache-Control", "no-store")
@@ -788,6 +888,7 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
                 self.wfile.write(frame)
                 self.wfile.write(b"\r\n")
                 self.wfile.flush()
+                time.sleep(interval)
         except (BrokenPipeError, ConnectionResetError):
             pass
         except Exception as exc:
@@ -904,17 +1005,32 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
 
     def _live_html(self, query: str) -> str:
         token = self.app_config.server.auth_token
-        stream_url = href("/live.mjpg", token)
+        token_js = json.dumps(token)
         body = f"""
 <div class="card hero-card">
-  <div class="live-frame"><img src="{stream_url}" alt="Podgląd na żywo"></div>
+  <div class="live-frame"><img id="liveImg" alt="Podgląd na żywo"></div>
   <div class="hero-bar">
-    <span class="badge"><span class="live-dot"></span>Strumień na żywo</span>
+    <span id="liveStatus" class="badge"><span class="live-dot"></span>Na żywo</span>
+    <span id="liveFps" class="badge">… fps</span>
     <span class="spacer"></span>
     <a class="btn" href="{href('/', token)}">← Wróć</a>
   </div>
 </div>
-<p class="note">Podgląd używa kamery na wyłączność — gdy ta strona jest otwarta, zdjęcia w tle mogą być pomijane. Zamknij ją, gdy skończysz oglądać.</p>
+<div class="ctrlrow">
+  <button id="livePause" class="btn" type="button">⏸ Pauza</button>
+  <label class="switch">Płynność
+    <select id="liveRate" class="mini" aria-label="Płynność podglądu">
+      <option value="500">~2 fps (oszczędnie)</option>
+      <option value="200" selected>~5 fps</option>
+      <option value="100">~10 fps (płynnie)</option>
+      <option value="0">maks (ile łącze da)</option>
+    </select>
+  </label>
+  <a class="btn" href="{href('/live.mjpg', token)}">Tryb MJPEG</a>
+</div>
+<p class="note">Podgląd pobiera klatki pojedynczo i sam dopasowuje tempo do łącza — bez narastającego opóźnienia. Jakość/rozmiar klatek live ustawisz w <code>config.ini</code> (<code>live_quality</code>, <code>live_width/height</code>). Używa kamery na wyłączność; zamknij stronę, gdy skończysz.</p>
+<script>window.CAM_TOKEN={token_js};</script>
+<script>{LIVE_JS}</script>
 """
         return self._layout("Na żywo", body, active="/live")
 

@@ -23,6 +23,8 @@ class CameraConfig:
     live_width: int
     live_height: int
     live_fps: int
+    live_quality: int
+    live_idle_timeout: float
     hflip: bool
     vflip: bool
     tuning_file: str
@@ -94,6 +96,8 @@ def load_config(path: Union[str, Path]) -> AppConfig:
         live_width=_get_int(parser, "camera", "live_width", 1280),
         live_height=_get_int(parser, "camera", "live_height", 720),
         live_fps=_get_int(parser, "camera", "live_fps", 5),
+        live_quality=_get_int(parser, "camera", "live_quality", 50),
+        live_idle_timeout=_get_float(parser, "camera", "live_idle_timeout", 8.0),
         hflip=_get_bool(parser, "camera", "hflip", True),
         vflip=_get_bool(parser, "camera", "vflip", True),
         tuning_file=_get_str(
