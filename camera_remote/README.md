@@ -98,15 +98,16 @@ as a fallback if the repo copy is missing.
 ## Admin Shell
 
 A page at `/admin` can run shell commands on the Pi as the service user. It is
-**disabled by default**. Enable it in `/etc/camera-remote/config.ini`:
+**enabled by default** (a `Shell` link appears in the nav). Disable it in
+`/etc/camera-remote/config.ini` if you do not want it:
 
 ```ini
 [server]
-admin_enabled = true
+admin_enabled = false
 admin_timeout = 60
 ```
 
-Then restart `camera-remote.service`. A `Shell` link appears in the nav.
+Then restart `camera-remote.service`.
 
 Security model:
 
