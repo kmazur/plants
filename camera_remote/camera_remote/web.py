@@ -597,6 +597,24 @@ PAGE_JS = """
     loadSys(); setInterval(function(){ if(!document.hidden) loadSys(); }, 30000);
   }
 
+  /* ---- Feature: latest per-capture metadata strip ---- */
+  var meta = $("#metaStrip");
+  if(meta){
+    function wxEmoji(c){ if(c==null)return "🌡"; if(c===0)return "☀️"; if(c<=2)return "🌤️"; if(c===3)return "☁️"; if(c<=48)return "🌫️"; if(c<=67)return "🌧️"; if(c<=77)return "🌨️"; if(c<=82)return "🌦️"; if(c<=86)return "🌨️"; return "⛈️"; }
+    function chip2(label, val){ return '<div class="chip"><span class="chip-v">' + val + '</span><span class="chip-l">' + label + '</span></div>'; }
+    function loadMeta(){
+      fetch(withTok("/api/metadata/latest")).then(function(r){ return r.json(); }).then(function(m){
+        var out = "";
+        if(m.outdoor && m.outdoor.temp_c != null){ out += chip2("na zewnątrz", wxEmoji(m.outdoor.code) + " " + m.outdoor.temp_c + "°C" + (m.outdoor.humidity != null ? (" · " + m.outdoor.humidity + "%") : "")); }
+        if(m.brightness != null){ out += chip2("jasność", "💡 " + m.brightness); }
+        if(m.cam && m.cam.lux != null){ out += chip2("lux", Math.round(m.cam.lux)); }
+        if(m.cam && m.cam.exposure_us != null){ out += chip2("ekspozycja", (m.cam.exposure_us/1000).toFixed(1) + " ms"); }
+        meta.innerHTML = out;
+      }).catch(function(){});
+    }
+    loadMeta(); setInterval(function(){ if(!document.hidden) loadMeta(); }, 30000);
+  }
+
   /* ---- Feature: build a real timelapse video on demand ---- */
   var buildBtn = $("#buildTl");
   if(buildBtn && window.CAM_DAY){
@@ -641,6 +659,51 @@ PAGE_JS = """
         }, 3000);
       }catch(e){ toast("B\\u0142\\u0105d sieci", "warn"); buildBurstBtn.disabled = false; buildBurstBtn.textContent = old; }
     });
+  }
+
+  /* ---- Feature: per-day metadata chart (brightness / CPU / outdoor temp) ---- */
+  var metaChartEl = $("#metaChart");
+  if(metaChartEl && window.CAM_DAY && (window.CAM_DAY.base || "").indexOf("/history/") === 0){
+    (async function(){
+      try{
+        var j = await (await fetch(withTok("/api/metadata?day=" + encodeURIComponent(window.CAM_DAY.day)))).json();
+        var recs = j.records || [];
+        if(recs.length < 2) return;
+        var W = 720, H = 170, pad = 22, n = recs.length;
+        function lineFor(get, color){
+          var vals = recs.map(get);
+          var nums = vals.filter(function(v){ return v != null && !isNaN(v); });
+          if(nums.length < 2) return null;
+          var mn = Math.min.apply(null, nums), mx = Math.max.apply(null, nums); if(mx === mn) mx = mn + 1;
+          var d = "";
+          vals.forEach(function(v, i){
+            if(v == null || isNaN(v)) return;
+            var x = pad + (W - 2 * pad) * i / (n - 1);
+            var y = pad + (H - 2 * pad) * (1 - (v - mn) / (mx - mn));
+            d += (d ? "L" : "M") + x.toFixed(1) + " " + y.toFixed(1) + " ";
+          });
+          return { d: d, min: mn, max: mx, color: color };
+        }
+        var defs = [
+          { name: "jasność", color: "#e6b450", get: function(x){ return x.brightness != null ? x.brightness : null; } },
+          { name: "temp CPU", color: "#e0533f", get: function(x){ return x.cpu_temp_c != null ? x.cpu_temp_c : null; } },
+          { name: "temp zewn.", color: "#4eb389", get: function(x){ return (x.outdoor && x.outdoor.temp_c != null) ? x.outdoor.temp_c : null; } }
+        ];
+        var paths = "", legend = "";
+        defs.forEach(function(s){
+          var L = lineFor(s.get, s.color); if(!L) return;
+          paths += '<path d="' + L.d + '" fill="none" stroke="' + s.color + '" stroke-width="1.6"/>';
+          legend += '<span style="color:' + s.color + ';font-weight:700;margin-right:.9rem;white-space:nowrap">\\u25A0 ' + s.name + ' (' + L.min + '\\u2013' + L.max + ')</span>';
+        });
+        if(!paths) return;
+        var csv = withTok("/api/metadata?day=" + encodeURIComponent(window.CAM_DAY.day) + "&format=csv");
+        metaChartEl.style.display = "";
+        metaChartEl.innerHTML =
+          '<div class="sub" style="margin-bottom:.4rem">Metadane dnia (' + recs.length + ' pkt) \\u00B7 <a href="' + csv + '">CSV</a></div>' +
+          '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" style="width:100%;height:auto">' + paths + '</svg>' +
+          '<div style="font-size:.76rem;margin-top:.4rem;display:flex;flex-wrap:wrap">' + legend + '</div>';
+      }catch(e){}
+    })();
   }
 
   /* ---- Feature: history scrubber + timelapse + client-side nav + keyboard ---- */
@@ -893,6 +956,10 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             self._send_json(self._status())
         elif parsed.path == "/api/system":
             self._send_json(read_system_stats(self.storage.data_dir))
+        elif parsed.path == "/api/metadata":
+            self._metadata(parsed.query)
+        elif parsed.path == "/api/metadata/latest":
+            self._metadata_latest(parsed.query)
         elif parsed.path == "/admin":
             self._send_html(self._admin_page(parsed.query))
         elif parsed.path == "/api/shell/read":
@@ -1062,6 +1129,49 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
         threading.Thread(target=worker, daemon=True).start()
         log.info("burst timelapse rebuild started for %s", session)
         self._send_json({"ok": True, "building": True})
+
+    def _metadata(self, query: str) -> None:
+        if not self._authorized(query):
+            self._send_json({"error": "unauthorized"}, HTTPStatus.UNAUTHORIZED)
+            return
+        params = parse_qs(query)
+        day = params.get("day", [""])[0]
+        if not _valid_day(day):
+            self._send_json({"error": "bad day"}, HTTPStatus.BAD_REQUEST)
+            return
+        from . import metadata as md
+        records = md.read_day(self.storage.history_dir / day)
+        if params.get("format", [""])[0] == "csv":
+            cols = ["ts", "file", "cpu_temp_c", "brightness", "size", "load1",
+                    "mem_used_pct", "disk_used_pct", "outdoor.temp_c", "outdoor.humidity",
+                    "outdoor.wind", "outdoor.code", "cam.exposure_us", "cam.gain",
+                    "cam.lux", "cam.colour_temp"]
+
+            def cell(rec, col):
+                if "." in col:
+                    a, b = col.split(".", 1)
+                    return rec.get(a, {}).get(b, "")
+                return rec.get(col, "")
+
+            lines = [",".join(cols)]
+            for rec in records:
+                lines.append(",".join(str(cell(rec, c)) for c in cols))
+            self._send_text("\n".join(lines) + "\n", "text/csv")
+            return
+        self._send_json({"day": day, "count": len(records), "records": records})
+
+    def _metadata_latest(self, query: str) -> None:
+        if not self._authorized(query):
+            self._send_json({"error": "unauthorized"}, HTTPStatus.UNAUTHORIZED)
+            return
+        path = self.storage.latest_metadata_path
+        if path.exists():
+            try:
+                self._send_json(json.loads(path.read_text(encoding="utf-8")))
+                return
+            except Exception:
+                pass
+        self._send_json({})
 
     def _diag(self, query: str) -> None:
         if not self._authorized(query):
@@ -1658,6 +1768,7 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
   </div>
 </div>
 <div id="sysStrip" class="sysstrip"></div>
+<div id="metaStrip" class="sysstrip"></div>
 <div class="actions">
   <button class="btn btn-accent" data-capture type="button">📸 Zrób zdjęcie</button>
   <a class="btn btn-primary" href="{href('/live', token)}">🔴 Podgląd na żywo</a>
@@ -1863,6 +1974,7 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
 <h1 class="h">{day_h}</h1>
 <p class="sub" id="counter">{selected_label} · {selected_index + 1}/{len(images)}</p>
 {video_block}
+<div id="metaChart" class="card pad" style="display:none"></div>
 <h2 class="h" style="font-size:1rem;margin-top:1.3rem">Klatki</h2>
 <div class="card hero-card"><img id="viewer" class="viewer" src="{selected_url}" alt="{selected_label}"></div>
 <div class="scrubber">

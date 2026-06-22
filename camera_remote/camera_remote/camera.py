@@ -48,11 +48,14 @@ def _transform(config: CameraConfig):
     return libcamera.Transform(hflip=config.hflip, vflip=config.vflip)
 
 
-def capture_jpeg_file(output_path: Path, config: CameraConfig, size: Optional[Tuple[int, int]] = None) -> None:
+def capture_jpeg_file(output_path: Path, config: CameraConfig, size: Optional[Tuple[int, int]] = None) -> dict:
+    """Capture a full still to ``output_path``. Returns the camera metadata
+    (exposure, gain, lux, ...) for that capture, or an empty dict."""
     output_path.parent.mkdir(parents=True, exist_ok=True)
     width, height = size or (config.snapshot_width, config.snapshot_height)
     tmp_path = output_path.with_suffix(output_path.suffix + ".tmp")
 
+    meta: dict = {}
     picam = _new_picam(config)
     try:
         still_config = picam.create_still_configuration(
@@ -63,6 +66,10 @@ def capture_jpeg_file(output_path: Path, config: CameraConfig, size: Optional[Tu
         picam.start()
         time.sleep(config.warmup_seconds)
         picam.capture_file(str(tmp_path), format="jpeg")
+        try:
+            meta = picam.capture_metadata() or {}
+        except Exception:
+            meta = {}
         tmp_path.replace(output_path)
     finally:
         try:
@@ -75,6 +82,7 @@ def capture_jpeg_file(output_path: Path, config: CameraConfig, size: Optional[Tu
             pass
         if tmp_path.exists():
             tmp_path.unlink(missing_ok=True)
+    return meta
 
 
 class CaptureSession:

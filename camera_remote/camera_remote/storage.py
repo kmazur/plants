@@ -33,6 +33,7 @@ class SnapshotStorage:
         self.burst_dir = self.data_dir / "burst"
         self.latest_path = self.data_dir / "latest.jpg"
         self.latest_meta_path = self.data_dir / "latest.json"
+        self.latest_metadata_path = self.data_dir / "latest_metadata.json"
 
     def ensure_dirs(self) -> None:
         self.data_dir.mkdir(parents=True, exist_ok=True)
@@ -85,12 +86,13 @@ class SnapshotStorage:
         file_path = day_dir / f"{now.strftime('%H-%M-%S')}.jpg"
         blocking_lock = blocking or not self.config.snapshot.skip_when_camera_busy
 
+        cam_meta = {}
         try:
             with CameraLock(self.config.paths.lock_file, blocking=blocking_lock):
                 last_error = None
                 for attempt in range(1, self.config.camera.retry_count + 1):
                     try:
-                        capture_jpeg_file(file_path, self.config.camera)
+                        cam_meta = capture_jpeg_file(file_path, self.config.camera) or {}
                         break
                     except Exception as exc:
                         last_error = exc
@@ -114,6 +116,16 @@ class SnapshotStorage:
         tmp_meta = self.latest_meta_path.with_suffix(".json.tmp")
         tmp_meta.write_text(json.dumps(meta, indent=2), encoding="utf-8")
         tmp_meta.replace(self.latest_meta_path)
+
+        # Per-capture metadata time series (same granularity as snapshots).
+        try:
+            from . import metadata as md
+            record = md.build_record(now, file_path.name, file_path, self.data_dir,
+                                     getattr(self.config, "location", None), cam_meta)
+            md.append(day_dir, record)
+            self.latest_metadata_path.write_text(json.dumps(record), encoding="utf-8")
+        except Exception as exc:
+            log.warning("metadata record failed: %s", exc)
 
         self.cleanup_old_history()
         return SnapshotResult(file_path, self.latest_path, now)

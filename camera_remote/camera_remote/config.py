@@ -47,11 +47,20 @@ class PathConfig:
 
 
 @dataclass(frozen=True)
+class LocationConfig:
+    latitude: float
+    longitude: float
+    name: str
+    weather: bool
+
+
+@dataclass(frozen=True)
 class AppConfig:
     server: ServerConfig
     camera: CameraConfig
     snapshot: SnapshotConfig
     paths: PathConfig
+    location: LocationConfig
     config_path: Path
 
 
@@ -120,7 +129,13 @@ def load_config(path: Union[str, Path]) -> AppConfig:
         data_dir=Path(_get_str(parser, "paths", "data_dir", "/home/user/camera-remote-data")).expanduser(),
         lock_file=Path(_get_str(parser, "paths", "lock_file", "/tmp/camera-remote-camera.lock")).expanduser(),
     )
-    return AppConfig(server, camera, snapshot, paths, config_path)
+    location = LocationConfig(
+        latitude=_get_float(parser, "location", "latitude", 52.23),
+        longitude=_get_float(parser, "location", "longitude", 21.01),
+        name=_get_str(parser, "location", "name", "Warszawa"),
+        weather=_get_bool(parser, "location", "weather", True),
+    )
+    return AppConfig(server, camera, snapshot, paths, location, config_path)
 
 
 def ensure_auth_token(path: Union[str, Path]) -> str:
