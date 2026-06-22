@@ -87,15 +87,37 @@ class CaptureSession:
         self._picam = None
 
     def __enter__(self) -> "CaptureSession":
-        width, height = self.size or (self.config.snapshot_width, self.config.snapshot_height)
         picam = _new_picam(self.config)
-        still_config = picam.create_still_configuration(
-            main={"size": (width, height)},
-            transform=_transform(self.config),
-        )
-        picam.configure(still_config)
-        picam.start()
-        time.sleep(self.config.warmup_seconds)
+        try:
+            if self.size:
+                # A scaled video configuration (like the live view) starts
+                # reliably at non-native sizes and is fast; full-res uses a
+                # still configuration.
+                cam_config = picam.create_video_configuration(
+                    main={"size": self.size},
+                    transform=_transform(self.config),
+                )
+            else:
+                cam_config = picam.create_still_configuration(
+                    main={"size": (self.config.snapshot_width, self.config.snapshot_height)},
+                    transform=_transform(self.config),
+                )
+            picam.configure(cam_config)
+            if self.size:
+                quality = getattr(self.config, "live_quality", 0)
+                if quality:
+                    try:
+                        picam.options["quality"] = int(quality)
+                    except Exception:
+                        pass
+            picam.start()
+            time.sleep(self.config.warmup_seconds)
+        except Exception:
+            try:
+                picam.close()
+            except Exception:
+                pass
+            raise
         self._picam = picam
         return self
 
