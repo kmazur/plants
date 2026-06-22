@@ -23,7 +23,7 @@ _COLUMNS = [
     "load1", "mem_used_pct", "disk_used_pct", "uptime_s",
     "exposure_us", "gain", "lux", "colour_temp",
     "out_temp", "out_humidity", "out_wind", "out_cloud", "out_precip", "out_code",
-    "is_day", "sunrise", "sunset", "night",
+    "is_day", "sunrise", "sunset", "night", "night_mode",
 ]
 
 # Columns exposed to the time-of-day heatmap / "average day" view.
@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS metadata (
   load1 REAL, mem_used_pct REAL, disk_used_pct REAL, uptime_s INTEGER,
   exposure_us INTEGER, gain REAL, lux REAL, colour_temp INTEGER,
   out_temp REAL, out_humidity REAL, out_wind REAL, out_cloud REAL, out_precip REAL, out_code INTEGER,
-  is_day INTEGER, sunrise TEXT, sunset TEXT, night INTEGER
+  is_day INTEGER, sunrise TEXT, sunset TEXT, night INTEGER, night_mode TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_metadata_day ON metadata(day);
 CREATE TABLE IF NOT EXISTS events (
@@ -80,7 +80,7 @@ def _flatten(record: dict) -> dict:
         "out_wind": out.get("wind"), "out_cloud": out.get("cloud"),
         "out_precip": out.get("precip"), "out_code": out.get("code"),
         "is_day": record.get("is_day"), "sunrise": record.get("sunrise"), "sunset": record.get("sunset"),
-        "night": record.get("night"),
+        "night": record.get("night"), "night_mode": record.get("night_mode"),
     }
 
 
@@ -97,7 +97,7 @@ def _nest(row: sqlite3.Row) -> dict:
                      ("load1", "load1"), ("mem_used_pct", "mem_used_pct"),
                      ("disk_used_pct", "disk_used_pct"), ("uptime_s", "uptime_s"),
                      ("is_day", "is_day"), ("sunrise", "sunrise"), ("sunset", "sunset"),
-                     ("night", "night")):
+                     ("night", "night"), ("night_mode", "night_mode")):
         if r.get(col) is not None:
             rec[key] = r[col]
     cam = {k: r[c] for k, c in (("exposure_us", "exposure_us"), ("gain", "gain"),
@@ -130,7 +130,8 @@ class MetricsDB:
             conn.executescript(_SCHEMA)
             # Migrate older databases that predate added columns.
             have = {r["name"] for r in conn.execute("PRAGMA table_info(metadata)").fetchall()}
-            for col, decl in (("canopy_pct", "REAL"), ("sharpness", "REAL"), ("night", "INTEGER")):
+            for col, decl in (("canopy_pct", "REAL"), ("sharpness", "REAL"),
+                              ("night", "INTEGER"), ("night_mode", "TEXT")):
                 if col not in have:
                     conn.execute(f"ALTER TABLE metadata ADD COLUMN {col} {decl}")
 
@@ -163,7 +164,8 @@ class MetricsDB:
                           AVG(cpu_temp) cpu_avg, MIN(cpu_temp) cpu_min, MAX(cpu_temp) cpu_max,
                           AVG(out_temp) out_avg, MIN(out_temp) out_min, MAX(out_temp) out_max,
                           AVG(brightness) br_avg, MIN(brightness) br_min, MAX(brightness) br_max,
-                          AVG(canopy_pct) cn_avg, MIN(canopy_pct) cn_min, MAX(canopy_pct) cn_max
+                          AVG(canopy_pct) cn_avg, MIN(canopy_pct) cn_min, MAX(canopy_pct) cn_max,
+                          SUM(CASE WHEN night=1 THEN 1 ELSE 0 END) nights
                    FROM metadata GROUP BY day ORDER BY day DESC LIMIT ?""", (limit,)).fetchall()
         def agg(r, p):
             if r[p + "_avg"] is None:
@@ -171,7 +173,7 @@ class MetricsDB:
             return {"avg": round(r[p + "_avg"], 1), "min": round(r[p + "_min"], 1), "max": round(r[p + "_max"], 1)}
         out = [{"day": r["day"], "n": r["n"], "cpu_temp": agg(r, "cpu"),
                 "outdoor_temp": agg(r, "out"), "brightness": agg(r, "br"),
-                "canopy": agg(r, "cn")} for r in rows]
+                "canopy": agg(r, "cn"), "nights": int(r["nights"] or 0)} for r in rows]
         out.reverse()
         return out
 

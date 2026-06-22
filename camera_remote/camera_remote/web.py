@@ -477,6 +477,11 @@ a:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible{
 .heatcell{height:16px;font-size:.6rem;display:flex;align-items:center;justify-content:center;color:var(--muted)}
 .heathdr{height:14px}
 .heatday{justify-content:flex-end;padding-right:4px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.viewer-wrap{position:relative}
+.nv-badge{position:absolute;top:10px;left:10px;background:rgba(18,28,58,.82);color:#cfe0ff;border:1px solid rgba(150,180,240,.6);padding:.2rem .6rem;border-radius:999px;font-size:.72rem;font-weight:800;letter-spacing:.05em}
+.nv-tech{margin:.5rem 0 0;font-size:.8rem;color:var(--muted);background:rgba(70,90,130,.12);border:1px solid var(--border);border-radius:10px;padding:.45rem .7rem}
+.nv-tech b{color:var(--ink)}
+.dc-night{color:#9fb8ff;font-weight:700}
 .term-wrap{background:#0b1410;border:1px solid var(--border);border-radius:12px;padding:8px;box-shadow:var(--shadow);margin-top:.6rem}
 #term{height:64vh;width:100%}
 .term-bar{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin:.6rem 0 0}
@@ -729,12 +734,15 @@ PAGE_JS = """
   }
 
   /* ---- Feature: per-day metadata chart (brightness / CPU / outdoor temp) ---- */
+  var nightMap = {};
   var metaChartEl = $("#metaChart");
   if(metaChartEl && window.CAM_DAY && (window.CAM_DAY.base || "").indexOf("/history/") === 0){
     (async function(){
       try{
         var j = await (await fetch(withTok("/api/metadata?day=" + encodeURIComponent(window.CAM_DAY.day)))).json();
         var recs = j.records || [];
+        recs.forEach(function(r){ if(r.file) nightMap[r.file] = r; });
+        if(window.__nvRefresh) window.__nvRefresh();
         if(recs.length < 2) return;
         var CAP = 800;
         if(recs.length > CAP){ var st = (recs.length - 1) / (CAP - 1), s = []; for(var k = 0; k < CAP; k++) s.push(recs[Math.round(k * st)]); recs = s; }
@@ -782,6 +790,24 @@ PAGE_JS = """
     var viewer = $("#viewer"), scrub = $("#scrub"), counter = $("#counter"), frameSel = $("#frameSel");
     var playBtn = $("#playBtn"), speedSel = $("#speedSel"), dlDay = $("#dlDay"), thumbs = $("#thumbs");
     function urlFor(f){ var base = day.base || ("/history/" + encodeURIComponent(day.day) + "/"); return withTok(base + encodeURIComponent(f.n)); }
+    function updateNV(name){
+      var badge = $("#nvBadge"), tech = $("#nvTech"); if(!badge) return;
+      var r = nightMap[name];
+      if(r && r.night){
+        var cam = r.cam || {};
+        var exp = cam.exposure_us ? (cam.exposure_us/1e6).toFixed(2) + "s" : "?";
+        var gain = cam.gain ? (" \\u00B7 gain \\u00D7" + cam.gain.toFixed(1)) : "";
+        badge.textContent = "\\uD83C\\uDF19 NIGHT VISION";
+        badge.style.display = "";
+        tech.style.display = "";
+        tech.innerHTML = "\\uD83C\\uDF19 <b>Tryb nocny \\u2014 d\\u0142uga ekspozycja</b> \\u00B7 ekspozycja " + exp + gain
+          + " \\u00B7 AE wy\\u0142. \\u00B7 tryb " + (r.night_mode || "auto")
+          + " \\u00B7 NoIR (czu\\u0142a na podczerwie\\u0144)";
+      } else {
+        badge.style.display = "none"; if(tech) tech.style.display = "none";
+      }
+    }
+    window.__nvRefresh = function(){ if(frames[idx]) updateNV(frames[idx].n); };
     var playT = null;
     function stop(){ if(!playT) return; clearInterval(playT); playT = null; if(playBtn) playBtn.textContent = "\\u25B6 Odtw\\u00F3rz"; }
     function play(){ if(playT) return; if(playBtn) playBtn.textContent = "\\u23F8 Pauza"; playT = setInterval(function(){ setIdx(idx + 1); }, speedSel ? parseInt(speedSel.value, 10) : 300); }
@@ -795,6 +821,7 @@ PAGE_JS = """
       if(frameSel) frameSel.value = f.n;
       if(dlDay){ dlDay.href = u; dlDay.setAttribute("download", f.n); }
       if(thumbs) $all(".thumb", thumbs).forEach(function(t){ t.classList.toggle("active", t.getAttribute("data-name") === f.n); });
+      updateNV(f.n);
       var nx = frames[(idx + 1) % frames.length]; if(nx){ var im = new Image(); im.src = urlFor(nx); }
       if(lb && lb.classList.contains("open")){ lbUrls = frames.map(urlFor); lbIdx = idx; lbImg.src = u; }
     }
@@ -1052,7 +1079,7 @@ METRICS_JS = """
         pill(r.canopy_pct!=null?("\\uD83C\\uDF3F zieleń "+r.canopy_pct+"%"):"")+
         pill(r.brightness!=null?("\\uD83D\\uDCA1 jasność "+r.brightness):"")+
         pill(r.sharpness!=null?("\\uD83D\\uDD0E ostrość "+r.sharpness):"")+
-        pill((r.night && r.cam && r.cam.exposure_us)?("\\uD83C\\uDF19 "+(r.cam.exposure_us/1e6).toFixed(2)+"s"):"")+
+        pill(r.night?("\\uD83C\\uDF19 noc"+((r.cam&&r.cam.exposure_us)?(" "+(r.cam.exposure_us/1e6).toFixed(2)+"s"):"")+((r.cam&&r.cam.gain)?(" \\u00D7"+r.cam.gain.toFixed(1)):"")+(r.night_mode?(" ["+r.night_mode+"]"):"")):"")+
         pill("\\u2601\\uFE0F "+(o.cloud!=null?Math.round(o.cloud)+"%":"\\u2013"))+
         pill("\\uD83D\\uDCA8 "+(o.wind!=null?o.wind+" km/h":"\\u2013"))+
         pill("\\uD83D\\uDCA7 "+(o.precip!=null?o.precip+" mm":"\\u2013"))+
@@ -2881,6 +2908,7 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
         if not days:
             body = '<div class="card pad empty">Brak historii — jeszcze nic nie zapisano.</div>'
             return self._layout("Historia", body, active="/history")
+        nights = {s["day"]: s.get("nights", 0) for s in self.storage.metrics.summary(400)}
         cards = []
         for day in days:
             images = self.storage.images_for_day(day.name, newest_first=True)
@@ -2894,10 +2922,13 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
                 thumb = f'<img src="{thumb_url}" alt="{day_h}" loading="lazy" decoding="async">'
             else:
                 thumb = ""
+            n_night = nights.get(day.name, 0)
+            night_badge = (f'<span class="dc-night" title="{n_night} klatek nocnych">🌙 {n_night}</span>'
+                           if n_night else "")
             cards.append(
                 f'<a class="daycard" href="{day_link}">{thumb}'
                 f'<div class="dc-body"><span class="dc-day">{day_h}</span>'
-                f'<span class="dc-n">{len(images)}</span></div></a>'
+                f'{night_badge}<span class="dc-n">{len(images)}</span></div></a>'
             )
         movie_block = (
             '<div class="card pad" id="movieCard">'
@@ -3009,7 +3040,8 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
 {video_block}
 <div id="metaChart" class="card pad" style="display:none"></div>
 <h2 class="h" style="font-size:1rem;margin-top:1.3rem">Klatki</h2>
-<div class="card hero-card"><img id="viewer" class="viewer" src="{selected_url}" alt="{selected_label}"></div>
+<div class="card hero-card viewer-wrap"><img id="viewer" class="viewer" src="{selected_url}" alt="{selected_label}"><div id="nvBadge" class="nv-badge" style="display:none"></div></div>
+<div id="nvTech" class="nv-tech" style="display:none"></div>
 <div class="scrubber">
   <input id="scrub" type="range" min="0" max="{len(images) - 1}" value="{selected_index}" aria-label="Przewijaj klatki">
 </div>

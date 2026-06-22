@@ -142,6 +142,7 @@ class SnapshotStorage:
                                      canopy_roi=self.canopy_roi())
             if night:
                 record["night"] = 1
+                record["night_mode"] = self.night_mode()
             self.metrics.insert(record)
             self.record_zones(file_path, int(now.timestamp()), now.strftime("%Y-%m-%d"))
             md.check_reboot(self.metrics, now)
