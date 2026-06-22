@@ -1235,7 +1235,7 @@ COMPARE_JS = """
   function fmt(t){ t=Math.round(t); var h=Math.floor(t/3600), m=Math.floor((t%3600)/60); return (h<10?"0":"")+h+":"+(m<10?"0":"")+m; }
   function setWipe(v){ var ins="inset(0 "+(100-v)+"% 0 0)"; over.style.clipPath=ins; over.style.webkitClipPath=ins; divEl.style.left=v+"%"; }
 
-  async function days(){ try{ return (await (await fetch(withTok("/api/metadata/days"))).json()).days||[]; }catch(e){ return []; } }
+  async function days(){ try{ return (await (await fetch(withTok("/api/history/days"))).json()).days||[]; }catch(e){ return []; } }
   async function framesFor(day){ try{ return (await (await fetch(withTok("/api/history/frames?day="+encodeURIComponent(day)))).json()).frames||[]; }catch(e){ return []; } }
 
   function nearest(S, t){
@@ -1297,8 +1297,8 @@ COMPARE_JS = """
   (async function(){
     var ds=await days();
     if(!ds.length){ wrap.innerHTML='<div class="pad sub">Brak historii do porównania.</div>'; return; }
-    fill($("dayA"), ds, ds[ds.length-1]);
-    fill($("dayB"), ds, ds[0]);
+    fill($("dayA"), ds, ds[0]);
+    fill($("dayB"), ds, ds[ds.length-1]);
     await loadSide("A"); await loadSide("B");
     setWipe(50); resetTimeline();
   })();
@@ -1375,6 +1375,8 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             self._metadata_days(parsed.query)
         elif parsed.path == "/api/history/frames":
             self._history_frames(parsed.query)
+        elif parsed.path == "/api/history/days":
+            self._history_days(parsed.query)
         elif parsed.path == "/api/metadata/summary":
             self._metadata_summary(parsed.query)
         elif parsed.path == "/api/metadata/events":
@@ -1622,6 +1624,13 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             self._send_json({"error": "unauthorized"}, HTTPStatus.UNAUTHORIZED)
             return
         self._send_json({"days": self.storage.metrics.days()})
+
+    def _history_days(self, query: str) -> None:
+        if not self._authorized(query):
+            self._send_json({"error": "unauthorized"}, HTTPStatus.UNAUTHORIZED)
+            return
+        days = sorted(p.name for p in self.storage.date_dirs())
+        self._send_json({"days": days})
 
     def _history_frames(self, query: str) -> None:
         if not self._authorized(query):
@@ -1887,7 +1896,7 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
         def worker():
             try:
                 from . import timelapse as tl
-                sel = sorted(storage.metrics.days())
+                sel = sorted(p.name for p in storage.date_dirs())
                 if days > 0:
                     sel = sel[-days:]
                 if not sel:
