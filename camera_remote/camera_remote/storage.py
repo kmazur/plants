@@ -32,6 +32,7 @@ class SnapshotStorage:
         self.history_dir = self.data_dir / "history"
         self.burst_dir = self.data_dir / "burst"
         self.movies_dir = self.data_dir / "movies"
+        self.thumbs_dir = self.data_dir / "thumbs"
         self.latest_path = self.data_dir / "latest.jpg"
         self.latest_meta_path = self.data_dir / "latest.json"
         self.data_dir.mkdir(parents=True, exist_ok=True)
@@ -47,6 +48,7 @@ class SnapshotStorage:
         self.history_dir.mkdir(parents=True, exist_ok=True)
         self.burst_dir.mkdir(parents=True, exist_ok=True)
         self.movies_dir.mkdir(parents=True, exist_ok=True)
+        self.thumbs_dir.mkdir(parents=True, exist_ok=True)
 
     def date_dirs(self) -> list[Path]:
         if not self.history_dir.exists():
@@ -75,6 +77,7 @@ class SnapshotStorage:
                 if day < cutoff:
                     log.info("removing old history directory: %s", day_dir)
                     shutil.rmtree(day_dir, ignore_errors=True)
+                    shutil.rmtree(self.thumbs_dir / "history" / day_dir.name, ignore_errors=True)
         if self.burst_dir.exists():
             for session_dir in self.burst_dir.iterdir():
                 if not session_dir.is_dir():
@@ -215,6 +218,25 @@ class SnapshotStorage:
             return json.loads(self.latest_meta_path.read_text(encoding="utf-8"))
         except Exception:
             return {}
+
+    def thumb_for(self, src: Path, key: str, width: int = 400) -> Path:
+        """Return a cached small JPEG for ``src`` (generating it on first use).
+        ``key`` is the cache-relative path, e.g. ``history/<day>/<file>``."""
+        dst = self.thumbs_dir / key
+        try:
+            if dst.exists() and dst.stat().st_mtime >= src.stat().st_mtime:
+                return dst
+        except OSError:
+            pass
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        from PIL import Image
+        with Image.open(src) as im:
+            im = im.convert("RGB")
+            im.thumbnail((width, width))
+            tmp = dst.with_suffix(".jpg.tmp")
+            im.save(tmp, "JPEG", quality=80)
+            tmp.replace(dst)
+        return dst
 
     def canopy_roi(self):
         """Normalized (x, y, w, h) plant region for canopy measurement, or None

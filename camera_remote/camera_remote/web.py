@@ -728,6 +728,8 @@ PAGE_JS = """
         var j = await (await fetch(withTok("/api/metadata?day=" + encodeURIComponent(window.CAM_DAY.day)))).json();
         var recs = j.records || [];
         if(recs.length < 2) return;
+        var CAP = 800;
+        if(recs.length > CAP){ var st = (recs.length - 1) / (CAP - 1), s = []; for(var k = 0; k < CAP; k++) s.push(recs[Math.round(k * st)]); recs = s; }
         var W = 720, H = 170, pad = 22, n = recs.length;
         function lineFor(get, color){
           var vals = recs.map(get);
@@ -997,8 +999,9 @@ METRICS_JS = """
   function withTok(p){ var t=window.CAM_TOKEN||""; var u=new URL(p,location.origin); if(t)u.searchParams.set("token",t); return u.pathname+u.search; }
   if(!$("dayCharts")) return;
   if(!window.uPlot){ $("dayCharts").innerHTML='<div class="card pad">Nie udało się załadować uPlot (sieć?).</div>'; return; }
-  var charts=[], recs=[], curDay=null, histChart=null;
+  var charts=[], recs=[], curDay=null, histChart=null, gidx=[];
   var SUN={rise:null,set:null}, REBOOTS=[];
+  function buildGidx(n, cap){ gidx=[]; if(n<=cap){ for(var i=0;i<n;i++) gidx.push(i); return; } var step=(n-1)/(cap-1); for(var k=0;k<cap;k++) gidx.push(Math.round(k*step)); }
   function num(r, path){ var ps=path.split("."), v=r; for(var i=0;i<ps.length;i++){ if(v==null)return null; v=v[ps[i]]; } return (typeof v==="number")?v:null; }
   function destroyCharts(){ charts.forEach(function(c){ try{c.destroy();}catch(e){} }); charts=[]; }
   function tsec(s){ var t=Date.parse(s); return isNaN(t)?null:t/1000; }
@@ -1016,6 +1019,7 @@ METRICS_JS = """
       '<span class="cmain"><b>'+(o.temp_c!=null?o.temp_c.toFixed(1)+"\\u00B0C":"\\u2013")+'</b><span class="sub">'+w[1]+'</span></span>'+
       '<span class="cgrid">'+
         pill(r.canopy_pct!=null?("\\uD83C\\uDF3F zieleń "+r.canopy_pct+"%"):"")+
+        pill(r.brightness!=null?("\\uD83D\\uDCA1 jasność "+r.brightness):"")+
         pill("\\u2601\\uFE0F "+(o.cloud!=null?Math.round(o.cloud)+"%":"\\u2013"))+
         pill("\\uD83D\\uDCA8 "+(o.wind!=null?o.wind+" km/h":"\\u2013"))+
         pill("\\uD83D\\uDCA7 "+(o.precip!=null?o.precip+" mm":"\\u2013"))+
@@ -1056,9 +1060,9 @@ METRICS_JS = """
   if(slider) slider.addEventListener("input", function(){ setSlider(parseInt(slider.value,10), true); });
 
   function makeChart(el, title, defs){
-    var xs=recs.map(function(r){ return Date.parse(r.ts)/1000; });
+    var xs=gidx.map(function(i){ return Date.parse(recs[i].ts)/1000; });
     var data=[xs];
-    defs.forEach(function(d){ data.push(recs.map(function(r){ return num(r,d.path); })); });
+    defs.forEach(function(d){ data.push(gidx.map(function(i){ return num(recs[i],d.path); })); });
     var usesRight=defs.some(function(d){return d.right;});
     var series=[{}];
     defs.forEach(function(d){ series.push({label:d.label, stroke:d.color, width:1.6, scale:(d.right?"y2":"y"), spanGaps:true}); });
@@ -1066,7 +1070,7 @@ METRICS_JS = """
     if(usesRight) axes.push({scale:"y2", side:1, grid:{show:false}});
     var opts={ title:title, width:(el.clientWidth||700), height:170, legend:{live:true},
       cursor:{sync:{key:"m"}, focus:{prox:20}}, series:series, axes:axes,
-      hooks:{ drawClear:[bandHook], setCursor:[function(u){ if(u.cursor.idx!=null) setSlider(u.cursor.idx, false); }] } };
+      hooks:{ drawClear:[bandHook], setCursor:[function(u){ if(u.cursor.idx!=null) setSlider(gidx[u.cursor.idx], false); }] } };
     charts.push(new uPlot(opts, data, el));
   }
 
@@ -1077,6 +1081,7 @@ METRICS_JS = """
     var host=$("dayCharts"); host.innerHTML="";
     if(!recs.length){ host.innerHTML='<div class="card pad sub">Brak danych dla tego dnia.</div>'; renderCond(null); return; }
     var s0=recs[0]||{};
+    buildGidx(recs.length, 700);
     SUN={ rise:tsec(s0.sunrise), set:tsec(s0.sunset) };
     await loadDayReboots(day);
     ["chCanopy","chTemp","chWx","chLight","chSys"].forEach(function(id){ var d=document.createElement("div"); d.className="chart"; d.id=id; host.appendChild(d); });
@@ -1118,7 +1123,7 @@ METRICS_JS = """
         s.map(function(d){ return d.brightness?d.brightness.avg:null; })];
       if(histChart){ try{histChart.destroy();}catch(e){} }
       histChart=new uPlot({ title:"Historia (dzienne) — wzrost i klimat", width:(el.clientWidth||700), height:280, legend:{live:true},
-        series:[{},{label:"zieleń avg %",stroke:"#3da35a",width:2.4,scale:"y"},{label:"CPU avg",stroke:"#e0533f",scale:"y2"},{label:"zewn. max",stroke:"#4eb389",scale:"y2"},{label:"zewn. min",stroke:"#5b9bd8",scale:"y2"},{label:"jasność avg",stroke:"#e6b450",scale:"y3",show:false}],
+        series:[{},{label:"zieleń avg %",stroke:"#3da35a",width:2.4,scale:"y"},{label:"CPU avg",stroke:"#e0533f",scale:"y2"},{label:"zewn. max",stroke:"#4eb389",scale:"y2"},{label:"zewn. min",stroke:"#5b9bd8",scale:"y2"},{label:"jasność avg",stroke:"#e6b450",scale:"y3"}],
         axes:[{},{scale:"y"},{scale:"y2",side:1,grid:{show:false}}] }, data, el);
     }catch(e){}
   }
@@ -1672,7 +1677,8 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
         token = self.app_config.server.auth_token
         token_js = json.dumps(token)
         body = f"""
-<link rel="stylesheet" href="/vendor/uPlot.min.css"/>
+<link rel="stylesheet" href="/vendor/uPlot.min.css" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="/vendor/uPlot.min.css"></noscript>
 <script src="/vendor/uPlot.iife.min.js"></script>
 <h1 class="h">Dane</h1>
 <div class="ctrlrow">
@@ -2136,7 +2142,10 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
     def _send_tatry_page(self) -> None:
         for path in self.tatry_pages:
             if path.exists() and path.is_file():
-                self._send_file(path)
+                try:
+                    self._send_html(path.read_text(encoding="utf-8"))
+                except (OSError, UnicodeDecodeError):
+                    self._send_file(path)
                 return
         self._send_text("not found\n", "text/plain", HTTPStatus.NOT_FOUND)
 
@@ -2341,6 +2350,13 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             except ValueError:
                 self._send_text("bad path\n", "text/plain", HTTPStatus.BAD_REQUEST)
                 return
+            if "thumb" in parse_qs(query) and filename.endswith(".jpg"):
+                try:
+                    self._send_file(self.storage.thumb_for(target, f"history/{day}/{filename}"),
+                                    immutable=True)
+                    return
+                except Exception as exc:
+                    log.debug("history thumb failed: %s", exc)
             # Timestamped frames never change; videos get rebuilt so revalidate.
             self._send_file(target, immutable=not filename.endswith(".mp4"))
             return
@@ -2359,6 +2375,13 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             except ValueError:
                 self._send_text("bad path\n", "text/plain", HTTPStatus.BAD_REQUEST)
                 return
+            if "thumb" in parse_qs(query) and filename.endswith(".jpg"):
+                try:
+                    self._send_file(self.storage.thumb_for(target, f"burst/{session}/{filename}"),
+                                    immutable=True)
+                    return
+                except Exception as exc:
+                    log.debug("burst thumb failed: %s", exc)
             self._send_file(target, immutable=not filename.endswith(".mp4"))
             return
         self._send_text("not found\n", "text/plain", HTTPStatus.NOT_FOUND)
@@ -2376,8 +2399,8 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             link = href(f"/burst/{quote(s.name)}", token)
             label = html.escape(s.name.replace("_", " "))
             if frames:
-                thumb_url = href(f"/burst/{quote(s.name)}/{quote(frames[0].name)}", token)
-                thumb = f'<img src="{thumb_url}" alt="{label}" loading="lazy">'
+                thumb_url = href(f"/burst/{quote(s.name)}/{quote(frames[0].name)}?thumb=1", token)
+                thumb = f'<img src="{thumb_url}" alt="{label}" loading="lazy" decoding="async">'
             else:
                 thumb = ""
             tag = "🎞️ " if has_video else ""
@@ -2638,8 +2661,8 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             day_h = html.escape(day.name)
             day_link = href(f"/history/{quote(day.name)}", token)
             if images:
-                thumb_url = href(f"/history/{quote(day.name)}/{quote(images[0].name)}", token)
-                thumb = f'<img src="{thumb_url}" alt="{day_h}" loading="lazy">'
+                thumb_url = href(f"/history/{quote(day.name)}/{quote(images[0].name)}?thumb=1", token)
+                thumb = f'<img src="{thumb_url}" alt="{day_h}" loading="lazy" decoding="async">'
             else:
                 thumb = ""
             cards.append(
@@ -2713,7 +2736,7 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
 
         items = []
         for image_path in images[start:end]:
-            url = href(f"/history/{quote(day)}/{quote(image_path.name)}", token)
+            url = href(f"/history/{quote(day)}/{quote(image_path.name)}?thumb=1", token)
             label = html.escape(image_path.stem.replace("-", ":"))
             active = " active" if image_path.name == selected_name else ""
             select_url = href(
@@ -2722,7 +2745,7 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             )
             items.append(
                 f'<a class="thumb{active}" href="{select_url}" data-name="{html.escape(image_path.name)}">'
-                f'<img src="{url}" alt="{label}" loading="lazy"><span>{label}</span></a>'
+                f'<img src="{url}" alt="{label}" loading="lazy" decoding="async"><span>{label}</span></a>'
             )
 
         day_data = json.dumps({
