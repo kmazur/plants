@@ -33,7 +33,13 @@ class SnapshotStorage:
         self.burst_dir = self.data_dir / "burst"
         self.latest_path = self.data_dir / "latest.jpg"
         self.latest_meta_path = self.data_dir / "latest.json"
-        self.latest_metadata_path = self.data_dir / "latest_metadata.json"
+        self.data_dir.mkdir(parents=True, exist_ok=True)
+        from .metricsdb import MetricsDB
+        self.metrics = MetricsDB(self.data_dir / "metrics.db")
+        try:
+            self.metrics.import_jsonl_once(self.history_dir)
+        except Exception as exc:
+            log.warning("metrics jsonl import failed: %s", exc)
 
     def ensure_dirs(self) -> None:
         self.data_dir.mkdir(parents=True, exist_ok=True)
@@ -117,13 +123,13 @@ class SnapshotStorage:
         tmp_meta.write_text(json.dumps(meta, indent=2), encoding="utf-8")
         tmp_meta.replace(self.latest_meta_path)
 
-        # Per-capture metadata time series (same granularity as snapshots).
+        # Per-capture metadata time series (SQLite).
         try:
             from . import metadata as md
             record = md.build_record(now, file_path.name, file_path, self.data_dir,
                                      getattr(self.config, "location", None), cam_meta)
-            md.append(day_dir, record)
-            self.latest_metadata_path.write_text(json.dumps(record), encoding="utf-8")
+            self.metrics.insert(record)
+            md.check_reboot(self.metrics, now)
         except Exception as exc:
             log.warning("metadata record failed: %s", exc)
 

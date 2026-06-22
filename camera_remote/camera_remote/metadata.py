@@ -1,15 +1,12 @@
-"""Per-capture metadata recorded at the same granularity as the snapshots.
-
-Each normal snapshot appends one JSON line to ``history/<day>/metadata.jsonl``
-with CPU temperature, frame brightness, file size, a brief system snapshot,
-camera exposure metadata, and (cached) outdoor weather for the Pi's location.
-"""
+"""Collect per-capture metadata. Persistence is handled by MetricsDB (SQLite);
+this module only gathers the values into a nested record dict."""
 from __future__ import annotations
 
 import json
 import logging
 import os
 import shutil
+import subprocess
 import time
 import urllib.request
 from datetime import datetime
@@ -17,18 +14,14 @@ from pathlib import Path
 
 log = logging.getLogger(__name__)
 
-METADATA_NAME = "metadata.jsonl"
 WEATHER_CACHE = "weather_cache.json"
 WEATHER_TTL = 600  # seconds
 
-# Picamera2 metadata key -> our short name
 _CAM_KEYS = {
     "ExposureTime": "exposure_us",
     "AnalogueGain": "gain",
-    "DigitalGain": "digital_gain",
     "Lux": "lux",
     "ColourTemperature": "colour_temp",
-    "FrameDuration": "frame_us",
 }
 
 
@@ -40,8 +33,31 @@ def cpu_temp_c():
         return None
 
 
-def brightness(path) -> "float | None":
-    """Mean luma 0-255 (downsampled). Needs Pillow; returns None if unavailable."""
+def cpu_freq_mhz():
+    try:
+        raw = Path("/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq").read_text().strip()
+        return round(int(raw) / 1000)
+    except Exception:
+        return None
+
+
+def throttled():
+    """Raspberry Pi throttling/undervoltage flags (vcgencmd get_throttled)."""
+    try:
+        out = subprocess.run(["vcgencmd", "get_throttled"], capture_output=True, text=True, timeout=4).stdout
+        return int(out.strip().split("=", 1)[1], 16)
+    except Exception:
+        return None
+
+
+def uptime_s():
+    try:
+        return int(float(Path("/proc/uptime").read_text().split()[0]))
+    except Exception:
+        return None
+
+
+def brightness(path):
     try:
         from PIL import Image
         with Image.open(path) as im:
@@ -76,6 +92,9 @@ def system_brief(data_dir) -> dict:
         out["disk_used_pct"] = round(100 * usage.used / usage.total, 1)
     except Exception:
         pass
+    u = uptime_s()
+    if u is not None:
+        out["uptime_s"] = u
     return out
 
 
@@ -92,6 +111,7 @@ def camera_brief(meta) -> dict:
 
 
 def outdoor(latitude, longitude, cache_path, ttl: int = WEATHER_TTL) -> dict:
+    """Current weather + today's sunrise/sunset (Open-Meteo, file-cached)."""
     cache_path = Path(cache_path)
     now = time.time()
     stale = None
@@ -105,15 +125,24 @@ def outdoor(latitude, longitude, cache_path, ttl: int = WEATHER_TTL) -> dict:
     try:
         url = (
             f"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}"
-            "&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code&timezone=auto"
+            "&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code,"
+            "cloud_cover,precipitation,is_day"
+            "&daily=sunrise,sunset&forecast_days=1&timezone=auto"
         )
         with urllib.request.urlopen(url, timeout=8) as resp:
-            current = (json.loads(resp.read().decode("utf-8")).get("current") or {})
+            j = json.loads(resp.read().decode("utf-8"))
+        cur = j.get("current") or {}
+        daily = j.get("daily") or {}
         data = {
-            "temp_c": current.get("temperature_2m"),
-            "humidity": current.get("relative_humidity_2m"),
-            "wind": current.get("wind_speed_10m"),
-            "code": current.get("weather_code"),
+            "temp_c": cur.get("temperature_2m"),
+            "humidity": cur.get("relative_humidity_2m"),
+            "wind": cur.get("wind_speed_10m"),
+            "cloud": cur.get("cloud_cover"),
+            "precip": cur.get("precipitation"),
+            "code": cur.get("weather_code"),
+            "is_day": cur.get("is_day"),
+            "sunrise": (daily.get("sunrise") or [None])[0],
+            "sunset": (daily.get("sunset") or [None])[0],
         }
         try:
             cache_path.write_text(json.dumps({"ts": now, "data": data}), encoding="utf-8")
@@ -127,9 +156,10 @@ def outdoor(latitude, longitude, cache_path, ttl: int = WEATHER_TTL) -> dict:
 
 def build_record(now: datetime, file_name: str, file_path, data_dir, location, cam_meta) -> dict:
     record = {"ts": now.isoformat(timespec="seconds"), "file": file_name}
-    temp = cpu_temp_c()
-    if temp is not None:
-        record["cpu_temp_c"] = temp
+    for key, fn in (("cpu_temp_c", cpu_temp_c), ("cpu_freq_mhz", cpu_freq_mhz), ("throttled", throttled)):
+        val = fn()
+        if val is not None:
+            record[key] = val
     bright = brightness(file_path)
     if bright is not None:
         record["brightness"] = bright
@@ -143,30 +173,29 @@ def build_record(now: datetime, file_name: str, file_path, data_dir, location, c
         record["cam"] = cam
     if location is not None and getattr(location, "weather", False):
         od = outdoor(location.latitude, location.longitude, Path(data_dir) / WEATHER_CACHE)
-        if od and any(v is not None for v in od.values()):
-            record["outdoor"] = od
+        if od:
+            for key in ("is_day", "sunrise", "sunset"):
+                if od.get(key) is not None:
+                    record[key] = od.pop(key)
+                else:
+                    od.pop(key, None)
+            if any(v is not None for v in od.values()):
+                record["outdoor"] = od
     return record
 
 
-def append(day_dir, record: dict) -> None:
+def check_reboot(db, now: datetime) -> None:
+    """Record a 'reboot' event when the kernel boot id changes."""
     try:
-        with open(Path(day_dir) / METADATA_NAME, "a", encoding="utf-8") as fh:
-            fh.write(json.dumps(record) + "\n")
+        boot_id = Path("/proc/sys/kernel/random/boot_id").read_text().strip()
+    except Exception:
+        return
+    try:
+        prev = db.kv_get("boot_id")
+        if prev and prev != boot_id:
+            db.add_event(int(now.timestamp()), "reboot", "boot_id changed")
+            log.info("reboot detected")
+        if prev != boot_id:
+            db.kv_set("boot_id", boot_id)
     except Exception as exc:
-        log.warning("metadata append failed: %s", exc)
-
-
-def read_day(day_dir) -> list:
-    path = Path(day_dir) / METADATA_NAME
-    if not path.exists():
-        return []
-    out = []
-    for line in path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            out.append(json.loads(line))
-        except Exception:
-            pass
-    return out
+        log.debug("reboot check failed: %s", exc)

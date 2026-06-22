@@ -410,6 +410,15 @@ a:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible{
 .danger-note{background:rgba(178,59,46,.12);border:1px solid var(--border);border-radius:.6rem;
   padding:.6rem .8rem;font-size:.84rem;line-height:1.5;color:var(--ink);margin:0 0 .2rem}
 .danger-note code{background:rgba(0,0,0,.18);padding:.05rem .3rem;border-radius:5px}
+.chart{background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);padding:.5rem .4rem;margin-bottom:.7rem}
+.uplot,.u-wrap{width:100%}
+.u-legend{font-size:.78rem}
+.u-title{font-size:.85rem;color:var(--ink);font-weight:700}
+.metarow{display:flex;gap:.8rem;flex-wrap:wrap;align-items:flex-start;margin-top:.6rem}
+.metarow img{flex:1 1 320px;max-width:520px;border-radius:10px;background:#050807}
+.metarow pre{flex:1 1 240px;margin:0;max-height:320px}
+.evnt{font-size:.78rem;color:var(--muted);margin-top:.6rem}
+.evnt b{color:#e0533f}
 .term-wrap{background:#0b1410;border:1px solid var(--border);border-radius:12px;padding:8px;box-shadow:var(--shadow);margin-top:.6rem}
 #term{height:64vh;width:100%}
 .term-bar{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin:.6rem 0 0}
@@ -895,6 +904,107 @@ LIVE_JS = """
 """
 
 
+METRICS_JS = """
+(function(){
+  function $(id){ return document.getElementById(id); }
+  function withTok(p){ var t=window.CAM_TOKEN||""; var u=new URL(p,location.origin); if(t)u.searchParams.set("token",t); return u.pathname+u.search; }
+  if(!$("dayCharts")) return;
+  if(!window.uPlot){ $("dayCharts").innerHTML='<div class="card pad">Nie udało się załadować uPlot (sieć?).</div>'; return; }
+  var charts=[], recs=[], curDay=null, histChart=null;
+  function num(r, path){ var ps=path.split("."), v=r; for(var i=0;i<ps.length;i++){ if(v==null)return null; v=v[ps[i]]; } return (typeof v==="number")?v:null; }
+  function destroyCharts(){ charts.forEach(function(c){ try{c.destroy();}catch(e){} }); charts=[]; }
+
+  var slider=$("mSlider"), img=$("mImg"), vals=$("mVals");
+  function setSlider(i, withImage){
+    if(i==null||i<0||i>=recs.length) return;
+    if(slider) slider.value=String(i);
+    var r=recs[i];
+    if(withImage && img && r.file) img.src=withTok("/history/"+encodeURIComponent(curDay)+"/"+encodeURIComponent(r.file));
+    if(vals) vals.textContent=JSON.stringify(r,null,2);
+  }
+  if(slider) slider.addEventListener("input", function(){ setSlider(parseInt(slider.value,10), true); });
+
+  function makeChart(el, title, defs){
+    var xs=recs.map(function(r){ return Date.parse(r.ts)/1000; });
+    var data=[xs];
+    defs.forEach(function(d){ data.push(recs.map(function(r){ return num(r,d.path); })); });
+    var usesRight=defs.some(function(d){return d.right;});
+    var series=[{}];
+    defs.forEach(function(d){ series.push({label:d.label, stroke:d.color, width:1.6, scale:(d.right?"y2":"y"), spanGaps:true}); });
+    var axes=[{}, {scale:"y"}];
+    if(usesRight) axes.push({scale:"y2", side:1, grid:{show:false}});
+    var opts={ title:title, width:(el.clientWidth||700), height:170, legend:{live:true},
+      cursor:{sync:{key:"m"}, focus:{prox:20}}, series:series, axes:axes,
+      hooks:{ setCursor:[function(u){ if(u.cursor.idx!=null) setSlider(u.cursor.idx, false); }] } };
+    charts.push(new uPlot(opts, data, el));
+  }
+
+  async function loadDay(day){
+    curDay=day; destroyCharts();
+    try{ recs=((await (await fetch(withTok("/api/metadata?day="+encodeURIComponent(day)))).json()).records)||[]; }
+    catch(e){ recs=[]; }
+    var host=$("dayCharts"); host.innerHTML="";
+    if(!recs.length){ host.innerHTML='<div class="card pad sub">Brak danych dla tego dnia.</div>'; return; }
+    ["chTemp","chLight","chSys"].forEach(function(id){ var d=document.createElement("div"); d.className="chart"; d.id=id; host.appendChild(d); });
+    makeChart($("chTemp"),"Temperatura (°C)",[{label:"CPU",path:"cpu_temp_c",color:"#e0533f"},{label:"zewn.",path:"outdoor.temp_c",color:"#4eb389"}]);
+    makeChart($("chLight"),"Światło",[{label:"jasność",path:"brightness",color:"#e6b450"},{label:"lux",path:"cam.lux",color:"#5b9bd8",right:true}]);
+    makeChart($("chSys"),"System",[{label:"RAM %",path:"mem_used_pct",color:"#a585d0"},{label:"dysk %",path:"disk_used_pct",color:"#698075"},{label:"load",path:"load1",color:"#ef9b42",right:true}]);
+    if(slider){ slider.max=String(recs.length-1); }
+    setSlider(recs.length-1, true);
+    var csv=$("mCsv"); if(csv) csv.href=withTok("/api/metadata?day="+encodeURIComponent(day)+"&format=csv");
+    loadEvents();
+  }
+  async function loadEvents(){
+    var el=$("mEvents"); if(!el) return;
+    try{
+      var ev=((await (await fetch(withTok("/api/metadata/events"))).json()).events||[]).slice(0,8);
+      el.innerHTML = ev.length ? ("Zdarzenia: " + ev.map(function(e){ return (e.type==="reboot"?"<b>reboot</b>":e.type)+" "+e.ts.replace("T"," "); }).join(" · ")) : "";
+    }catch(e){}
+  }
+  async function loadHist(){
+    try{
+      var s=((await (await fetch(withTok("/api/metadata/summary?days=30"))).json()).summary)||[];
+      var el=$("chHist"); el.innerHTML="";
+      if(!s.length){ el.innerHTML='<div class="sub">Brak danych historycznych.</div>'; return; }
+      var xs=s.map(function(d){ return Date.parse(d.day+"T12:00:00")/1000; });
+      var data=[xs,
+        s.map(function(d){ return d.cpu_temp?d.cpu_temp.avg:null; }),
+        s.map(function(d){ return d.outdoor_temp?d.outdoor_temp.max:null; }),
+        s.map(function(d){ return d.outdoor_temp?d.outdoor_temp.min:null; }),
+        s.map(function(d){ return d.brightness?d.brightness.avg:null; })];
+      if(histChart){ try{histChart.destroy();}catch(e){} }
+      histChart=new uPlot({ title:"Historia (dzienne)", width:(el.clientWidth||700), height:260, legend:{live:true},
+        series:[{},{label:"CPU avg",stroke:"#e0533f",scale:"y"},{label:"zewn. max",stroke:"#4eb389",scale:"y"},{label:"zewn. min",stroke:"#5b9bd8",scale:"y"},{label:"jasność avg",stroke:"#e6b450",scale:"y2"}],
+        axes:[{},{scale:"y"},{scale:"y2",side:1,grid:{show:false}}] }, data, el);
+    }catch(e){}
+  }
+  function show(tab){
+    $("dayView").style.display = tab==="day"?"":"none";
+    $("histView").style.display = tab==="hist"?"":"none";
+    $("mTabDay").classList.toggle("btn-primary", tab==="day");
+    $("mTabHist").classList.toggle("btn-primary", tab==="hist");
+    if(tab==="hist") loadHist();
+  }
+  $("mTabDay").addEventListener("click", function(){ show("day"); });
+  $("mTabHist").addEventListener("click", function(){ show("hist"); });
+  var sel=$("mDay");
+  if(sel) sel.addEventListener("change", function(){ loadDay(sel.value); });
+  window.addEventListener("resize", function(){
+    charts.forEach(function(u){ try{ u.setSize({width:u.root.parentNode.clientWidth, height:170}); }catch(e){} });
+    if(histChart){ try{ histChart.setSize({width:histChart.root.parentNode.clientWidth, height:260}); }catch(e){} }
+  });
+  (async function(){
+    var days=[];
+    try{ days=((await (await fetch(withTok("/api/metadata/days"))).json()).days)||[]; }catch(e){}
+    if(!days.length){ $("dayCharts").innerHTML='<div class="card pad sub">Brak danych metadanych jeszcze (poczekaj na snapshot).</div>'; return; }
+    if(sel) sel.innerHTML=days.map(function(d){ return '<option>'+d+'</option>'; }).join("");
+    show("day");
+    loadDay(days[0]);
+  })();
+})();
+"""
+
+
 class CameraRequestHandler(BaseHTTPRequestHandler):
     server_version = "CameraRemote/0.1"
 
@@ -960,6 +1070,14 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             self._metadata(parsed.query)
         elif parsed.path == "/api/metadata/latest":
             self._metadata_latest(parsed.query)
+        elif parsed.path == "/api/metadata/days":
+            self._metadata_days(parsed.query)
+        elif parsed.path == "/api/metadata/summary":
+            self._metadata_summary(parsed.query)
+        elif parsed.path == "/api/metadata/events":
+            self._metadata_events(parsed.query)
+        elif parsed.path == "/metrics":
+            self._send_html(self._metrics_html(parsed.query))
         elif parsed.path == "/admin":
             self._send_html(self._admin_page(parsed.query))
         elif parsed.path == "/api/shell/read":
@@ -1139,8 +1257,7 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
         if not _valid_day(day):
             self._send_json({"error": "bad day"}, HTTPStatus.BAD_REQUEST)
             return
-        from . import metadata as md
-        records = md.read_day(self.storage.history_dir / day)
+        records = self.storage.metrics.query_day(day)
         if params.get("format", [""])[0] == "csv":
             cols = ["ts", "file", "cpu_temp_c", "brightness", "size", "load1",
                     "mem_used_pct", "disk_used_pct", "outdoor.temp_c", "outdoor.humidity",
@@ -1160,18 +1277,60 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             return
         self._send_json({"day": day, "count": len(records), "records": records})
 
+    def _metadata_days(self, query: str) -> None:
+        if not self._authorized(query):
+            self._send_json({"error": "unauthorized"}, HTTPStatus.UNAUTHORIZED)
+            return
+        self._send_json({"days": self.storage.metrics.days()})
+
+    def _metadata_summary(self, query: str) -> None:
+        if not self._authorized(query):
+            self._send_json({"error": "unauthorized"}, HTTPStatus.UNAUTHORIZED)
+            return
+        try:
+            limit = int(parse_qs(query).get("days", ["30"])[0])
+        except ValueError:
+            limit = 30
+        self._send_json({"summary": self.storage.metrics.summary(max(1, limit))})
+
+    def _metadata_events(self, query: str) -> None:
+        if not self._authorized(query):
+            self._send_json({"error": "unauthorized"}, HTTPStatus.UNAUTHORIZED)
+            return
+        self._send_json({"events": self.storage.metrics.events(50)})
+
     def _metadata_latest(self, query: str) -> None:
         if not self._authorized(query):
             self._send_json({"error": "unauthorized"}, HTTPStatus.UNAUTHORIZED)
             return
-        path = self.storage.latest_metadata_path
-        if path.exists():
-            try:
-                self._send_json(json.loads(path.read_text(encoding="utf-8")))
-                return
-            except Exception:
-                pass
-        self._send_json({})
+        self._send_json(self.storage.metrics.latest())
+
+    def _metrics_html(self, query: str) -> str:
+        token = self.app_config.server.auth_token
+        token_js = json.dumps(token)
+        body = f"""
+<link rel="stylesheet" href="/vendor/uPlot.min.css"/>
+<script src="/vendor/uPlot.iife.min.js"></script>
+<h1 class="h">Dane</h1>
+<div class="ctrlrow">
+  <label class="switch">Dzień <select id="mDay" class="mini"></select></label>
+  <button id="mTabDay" class="btn btn-primary" type="button">Dzień</button>
+  <button id="mTabHist" class="btn" type="button">Historia</button>
+  <a id="mCsv" class="btn" href="#">⬇️ CSV</a>
+</div>
+<div id="dayView">
+  <div id="dayCharts"></div>
+  <div class="card pad">
+    <div class="scrubber"><input id="mSlider" type="range" min="0" max="0" value="0" aria-label="Przewijaj próbki"></div>
+    <div class="metarow"><img id="mImg" alt="klatka"><pre id="mVals" class="out"></pre></div>
+    <div id="mEvents" class="evnt"></div>
+  </div>
+</div>
+<div id="histView" style="display:none"><div id="chHist" class="chart"></div></div>
+<script>window.CAM_TOKEN={token_js};</script>
+<script>{METRICS_JS}</script>
+"""
+        return self._layout("Dane", body, active="/metrics")
 
     def _diag(self, query: str) -> None:
         if not self._authorized(query):
@@ -1703,6 +1862,7 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             ("/live", "Live"),
             ("/history", "Historia"),
             ("/burst", "Burst"),
+            ("/metrics", "Dane"),
             ("/checklista-tatry.html", "Tatry"),
         ]
         if self.app_config.server.admin_enabled:
