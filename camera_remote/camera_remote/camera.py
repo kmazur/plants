@@ -77,6 +77,52 @@ def capture_jpeg_file(output_path: Path, config: CameraConfig, size: Optional[Tu
             tmp_path.unlink(missing_ok=True)
 
 
+class CaptureSession:
+    """Keep one still camera open and capture many frames quickly (no per-shot
+    open/configure/warmup), for temporary burst capture."""
+
+    def __init__(self, config: CameraConfig, size: Optional[Tuple[int, int]] = None):
+        self.config = config
+        self.size = size
+        self._picam = None
+
+    def __enter__(self) -> "CaptureSession":
+        width, height = self.size or (self.config.snapshot_width, self.config.snapshot_height)
+        picam = _new_picam(self.config)
+        still_config = picam.create_still_configuration(
+            main={"size": (width, height)},
+            transform=_transform(self.config),
+        )
+        picam.configure(still_config)
+        picam.start()
+        time.sleep(self.config.warmup_seconds)
+        self._picam = picam
+        return self
+
+    def capture_file(self, output_path: Path) -> None:
+        if self._picam is None:
+            raise RuntimeError("capture session is not started")
+        output_path = Path(output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        tmp_path = output_path.with_suffix(output_path.suffix + ".tmp")
+        self._picam.capture_file(str(tmp_path), format="jpeg")
+        tmp_path.replace(output_path)
+
+    def __exit__(self, *exc) -> None:
+        picam = self._picam
+        self._picam = None
+        if picam is None:
+            return
+        try:
+            picam.stop()
+        except Exception:
+            pass
+        try:
+            picam.close()
+        except Exception:
+            pass
+
+
 class LiveCamera:
     def __init__(self, config: CameraConfig):
         self.config = config

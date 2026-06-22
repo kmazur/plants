@@ -103,6 +103,29 @@ class SnapshotStorage:
         self.cleanup_old_history()
         return SnapshotResult(file_path, self.latest_path, now)
 
+    def burst_path(self, now: datetime = None) -> Path:
+        """History path for a burst frame, with millisecond precision so rapid
+        captures don't collide."""
+        now = now or datetime.now()
+        day_dir = self.history_dir / now.strftime("%Y-%m-%d")
+        name = now.strftime("%H-%M-%S-") + f"{now.microsecond // 1000:03d}"
+        return day_dir / f"{name}.jpg"
+
+    def promote_latest(self, file_path: Path, now: datetime = None) -> None:
+        """Copy a freshly captured frame to latest.jpg and update its metadata."""
+        now = now or datetime.now()
+        tmp_latest = self.latest_path.with_suffix(".jpg.tmp")
+        shutil.copyfile(file_path, tmp_latest)
+        tmp_latest.replace(self.latest_path)
+        meta = {
+            "timestamp": now.isoformat(timespec="seconds"),
+            "path": str(file_path),
+            "size": file_path.stat().st_size,
+        }
+        tmp_meta = self.latest_meta_path.with_suffix(".json.tmp")
+        tmp_meta.write_text(json.dumps(meta, indent=2), encoding="utf-8")
+        tmp_meta.replace(self.latest_meta_path)
+
     def latest_meta(self) -> dict:
         if not self.latest_meta_path.exists():
             return {}

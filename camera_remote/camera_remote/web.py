@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import List, Optional
 from urllib.parse import parse_qs, quote, unquote, urlparse
 
+from .burst import BurstController
 from .camera import LiveCamera
 from .config import AppConfig, load_config
 from .locking import CameraBusy, CameraLock
@@ -474,6 +475,42 @@ PAGE_JS = """
     document.addEventListener("visibilitychange", function(){ if(!document.hidden && saved.on) refreshHero(); });
   }
 
+  /* ---- Feature: temporary burst (fast snapshots) ---- */
+  var burstBtn = $("#burstBtn");
+  if(burstBtn){
+    var burstInt = $("#burstInt"), burstDur = $("#burstDur"), burstStat = $("#burstStatus"), pollT = null;
+    function renderBurst(s){
+      if(s.active){
+        burstBtn.textContent = "\\u23F9 Stop"; burstBtn.classList.add("btn-primary");
+        burstStat.textContent = "\\u25CF " + s.count + " klatek \\u00B7 pozosta\\u0142o " + s.remaining + " s";
+      } else {
+        burstBtn.textContent = "\\u25B6 Start"; burstBtn.classList.remove("btn-primary");
+        burstStat.textContent = s.error ? ("\\u26A0 " + s.error) : (s.count ? ("zrobiono " + s.count + " klatek") : "");
+      }
+    }
+    async function pollBurst(){
+      try{
+        var s = await (await fetch(withTok("/api/burst/status"))).json();
+        renderBurst(s);
+        if(s.active && !pollT){ pollT = setInterval(pollBurst, 1500); }
+        if(!s.active && pollT){ clearInterval(pollT); pollT = null; refreshHero(); }
+      }catch(e){}
+    }
+    burstBtn.addEventListener("click", async function(){
+      try{
+        var s = await (await fetch(withTok("/api/burst/status"))).json();
+        if(s.active){ await fetch(withTok("/api/burst/stop"), { method: "POST" }); toast("Szybkie zdj\\u0119cia: stop"); }
+        else{
+          await fetch(withTok("/api/burst/start"), { method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ interval: parseFloat(burstInt.value), duration: parseFloat(burstDur.value) }) });
+          toast("Szybkie zdj\\u0119cia: start", "ok");
+        }
+      }catch(e){ toast("B\\u0142\\u0105d sieci", "warn"); }
+      pollBurst();
+    });
+    pollBurst();
+  }
+
   /* ---- Feature: live Raspberry Pi system stats ---- */
   var sys = $("#sysStrip");
   if(sys){
@@ -731,6 +768,8 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             self._shell_read(parsed.query)
         elif parsed.path == "/api/timelapse/status":
             self._timelapse_status(parsed.query)
+        elif parsed.path == "/api/burst/status":
+            self._burst_status(parsed.query)
         elif parsed.path == "/api/bootstrap":
             self._send_tatry_bootstrap(parsed.query)
         elif parsed.path == "/api/capture-now":
@@ -759,6 +798,10 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             self._shell_close(parsed.query)
         elif parsed.path == "/api/timelapse/build":
             self._timelapse_build(parsed.query)
+        elif parsed.path == "/api/burst/start":
+            self._burst_start(parsed.query)
+        elif parsed.path == "/api/burst/stop":
+            self._burst_stop(parsed.query)
         else:
             self._send_text("not found\n", "text/plain", HTTPStatus.NOT_FOUND)
 
@@ -800,6 +843,32 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             self._send_json({"ok": False, "skipped": True, "message": result.message}, HTTPStatus.CONFLICT)
             return
         self._send_json({"ok": True, "path": str(result.path), "timestamp": result.timestamp.isoformat()})
+
+    def _burst_status(self, query: str) -> None:
+        if not self._authorized(query):
+            self._send_json({"error": "unauthorized"}, HTTPStatus.UNAUTHORIZED)
+            return
+        self._send_json(self.server.burst.status())  # type: ignore[attr-defined]
+
+    def _burst_start(self, query: str) -> None:
+        if not self._authorized(query):
+            self._send_json({"error": "unauthorized"}, HTTPStatus.UNAUTHORIZED)
+            return
+        body = self._read_json_body() or {}
+        try:
+            interval = float(body.get("interval", 0))
+            duration = float(body.get("duration", 60))
+        except (TypeError, ValueError):
+            self._send_json({"error": "bad params"}, HTTPStatus.BAD_REQUEST)
+            return
+        result = self.server.burst.start(self.storage, interval, duration)  # type: ignore[attr-defined]
+        self._send_json(result)
+
+    def _burst_stop(self, query: str) -> None:
+        if not self._authorized(query):
+            self._send_json({"error": "unauthorized"}, HTTPStatus.UNAUTHORIZED)
+            return
+        self._send_json(self.server.burst.stop())  # type: ignore[attr-defined]
 
     def _timelapse_status(self, query: str) -> None:
         if not self._authorized(query):
@@ -1268,6 +1337,29 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
   </select>
   <span class="sub">· kliknij zdjęcie, by powiększyć</span>
 </div>
+<div class="card pad" style="margin-top:.9rem">
+  <div class="ctrlrow" style="margin:0">
+    <strong style="color:var(--ink)">⚡ Szybkie zdjęcia</strong>
+    <label class="switch">co
+      <select id="burstInt" class="mini" aria-label="Odstęp">
+        <option value="0">jak najszybciej</option>
+        <option value="1">1 s</option>
+        <option value="2">2 s</option>
+        <option value="5">5 s</option>
+      </select>
+    </label>
+    <label class="switch">przez
+      <select id="burstDur" class="mini" aria-label="Czas trwania">
+        <option value="30">30 s</option>
+        <option value="120" selected>2 min</option>
+        <option value="300">5 min</option>
+        <option value="600">10 min</option>
+      </select>
+    </label>
+    <button id="burstBtn" class="btn btn-accent" type="button">▶ Start</button>
+    <span id="burstStatus" class="sub"></span>
+  </div>
+</div>
 """
         return self._layout("Kamera", body, active="/")
 
@@ -1490,6 +1582,7 @@ class CameraServer(ThreadingHTTPServer):
         ]
         self.live = LiveSession(config)
         self.shell = ShellManager()
+        self.burst = BurstController(config)
         self.timelapse_lock = threading.Lock()
         self.timelapse_building: set = set()
 
