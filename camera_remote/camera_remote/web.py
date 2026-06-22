@@ -465,6 +465,8 @@ a:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible{
 .cmp-over{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover}
 .cmp-div{position:absolute;top:0;bottom:0;left:50%;width:2px;background:var(--accent);pointer-events:none}
 .cmp-div::after{content:"\\21C6";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--accent);color:#10160f;border-radius:999px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:.85rem;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.cmp-tag{position:absolute;top:8px;font-size:.72rem;font-weight:700;color:#fff;background:rgba(0,0,0,.5);padding:.12rem .5rem;border-radius:999px;pointer-events:none}
+.cmp-tag-l{left:8px}.cmp-tag-r{right:8px}
 .term-wrap{background:#0b1410;border:1px solid var(--border);border-radius:12px;padding:8px;box-shadow:var(--shadow);margin-top:.6rem}
 #term{height:64vh;width:100%}
 .term-bar{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin:.6rem 0 0}
@@ -1222,39 +1224,83 @@ COMPARE_JS = """
 (function(){
   function $(id){ return document.getElementById(id); }
   function withTok(p){ var t=window.CAM_TOKEN||""; var u=new URL(p,location.origin); if(t)u.searchParams.set("token",t); return u.pathname+u.search; }
-  if(!$("cmpRange")) return;
-  var A={day:null,frames:[]}, B={day:null,frames:[]};
-  var over=$("cmpA"), base=$("cmpB"), divEl=$("cmpDiv"), range=$("cmpRange"), wrap=$("cmpWrap");
-  function setDiv(v){ var ins="inset(0 "+(100-v)+"% 0 0)"; over.style.clipPath=ins; over.style.webkitClipPath=ins; divEl.style.left=v+"%"; }
+  if(!$("cmpTime")) return;
+  var over=$("cmpA"), base=$("cmpB"), divEl=$("cmpDiv"), wrap=$("cmpWrap");
+  var wipe=$("cmpRange"), timeEl=$("cmpTime"), playBtn=$("cmpPlay"), speedSel=$("cmpSpeed"), tlabel=$("cmpTlabel");
+  var A={day:null,frames:[],sod:[],cur:-1}, B={day:null,frames:[],sod:[],cur:-1};
+
+  function sodOf(name){ var m=/(\\d{2})-(\\d{2})-(\\d{2})/.exec(name); return m ? (+m[1])*3600+(+m[2])*60+(+m[3]) : 0; }
   function url(day,file){ return withTok("/history/"+encodeURIComponent(day)+"/"+encodeURIComponent(file)); }
   function fill(sel, items, val){ sel.innerHTML=items.map(function(i){ return '<option'+(i===val?' selected':'')+'>'+i+'</option>'; }).join(""); }
+  function fmt(t){ t=Math.round(t); var h=Math.floor(t/3600), m=Math.floor((t%3600)/60); return (h<10?"0":"")+h+":"+(m<10?"0":"")+m; }
+  function setWipe(v){ var ins="inset(0 "+(100-v)+"% 0 0)"; over.style.clipPath=ins; over.style.webkitClipPath=ins; divEl.style.left=v+"%"; }
+
   async function days(){ try{ return (await (await fetch(withTok("/api/metadata/days"))).json()).days||[]; }catch(e){ return []; } }
-  async function framesFor(day){ try{ var r=(await (await fetch(withTok("/api/metadata?day="+encodeURIComponent(day)))).json()).records||[]; return r.map(function(x){return x.file;}).filter(Boolean); }catch(e){ return []; } }
-  async function loadSide(side){
-    var S=side==="A"?A:B, daySel=$("day"+side), frSel=$("fr"+side), img=side==="A"?over:base;
-    S.day=daySel.value; S.frames=await framesFor(S.day);
-    var def = side==="A"? S.frames[0] : S.frames[S.frames.length-1];
-    fill(frSel, S.frames, def);
-    if(def) img.src=url(S.day, def);
+  async function framesFor(day){ try{ return (await (await fetch(withTok("/api/history/frames?day="+encodeURIComponent(day)))).json()).frames||[]; }catch(e){ return []; } }
+
+  function nearest(S, t){
+    var a=S.sod; if(!a.length) return -1;
+    if(t<=a[0]) return 0; if(t>=a[a.length-1]) return a.length-1;
+    var lo=0, hi=a.length-1;
+    while(lo<hi){ var mid=(lo+hi)>>1; if(a[mid]<t) lo=mid+1; else hi=mid; }
+    return (lo>0 && (t-a[lo-1])<=(a[lo]-t)) ? lo-1 : lo;
   }
-  $("dayA").addEventListener("change", function(){ loadSide("A"); });
-  $("dayB").addEventListener("change", function(){ loadSide("B"); });
-  $("frA").addEventListener("change", function(){ over.src=url(A.day,$("frA").value); });
-  $("frB").addEventListener("change", function(){ base.src=url(B.day,$("frB").value); });
-  range.addEventListener("input", function(){ setDiv(parseFloat(range.value)); });
-  base.addEventListener("load", function(){ setDiv(parseFloat(range.value)); });
+  function applyTime(t){
+    var ia=nearest(A,t), ib=nearest(B,t);
+    if(ia>=0 && ia!==A.cur){ A.cur=ia; over.src=url(A.day,A.frames[ia]); }
+    if(ib>=0 && ib!==B.cur){ B.cur=ib; base.src=url(B.day,B.frames[ib]); }
+    if(tlabel){ tlabel.textContent="⏱ "+fmt(t)+"  ·  przed "+(ia>=0?fmt(A.sod[ia]):"–")+"  /  po "+(ib>=0?fmt(B.sod[ib]):"–"); }
+  }
+  function trange(){
+    var lo=86400, hi=0;
+    [A,B].forEach(function(S){ if(S.sod.length){ lo=Math.min(lo,S.sod[0]); hi=Math.max(hi,S.sod[S.sod.length-1]); } });
+    if(hi<=lo){ lo=0; hi=86400; }
+    return [lo,hi];
+  }
+  function resetTimeline(){
+    var r=trange();
+    timeEl.min=r[0]; timeEl.max=r[1]; timeEl.step=Math.max(1, Math.round((r[1]-r[0])/600));
+    var v=parseFloat(timeEl.value); if(v<r[0]||v>r[1]) timeEl.value=r[0];
+    A.cur=-1; B.cur=-1; applyTime(parseFloat(timeEl.value));
+  }
+
+  var timer=null;
+  function stop(){ if(timer){ clearInterval(timer); timer=null; playBtn.textContent="▶ Odtwórz"; playBtn.classList.add("btn-primary"); } }
+  function play(){
+    var r=trange(), step=Math.max(1,(r[1]-r[0])/240), sp=parseInt(speedSel.value,10)||250;
+    timer=setInterval(function(){
+      var t=parseFloat(timeEl.value)+step; if(t>r[1]) t=r[0];
+      timeEl.value=t; applyTime(t);
+    }, sp);
+    playBtn.textContent="⏸ Pauza"; playBtn.classList.remove("btn-primary");
+  }
+  playBtn.addEventListener("click", function(){ timer ? stop() : play(); });
+  timeEl.addEventListener("input", function(){ stop(); applyTime(parseFloat(timeEl.value)); });
+  speedSel.addEventListener("change", function(){ if(timer){ stop(); play(); } });
+
+  wipe.addEventListener("input", function(){ setWipe(parseFloat(wipe.value)); });
+  base.addEventListener("load", function(){ setWipe(parseFloat(wipe.value)); });
   function pctAt(e){ var r=base.getBoundingClientRect(); return Math.max(0,Math.min(100,(e.clientX-r.left)/r.width*100)); }
   var dragging=false;
-  wrap.addEventListener("pointerdown", function(e){ dragging=true; var v=pctAt(e); range.value=v; setDiv(v); });
-  wrap.addEventListener("pointermove", function(e){ if(dragging){ var v=pctAt(e); range.value=v; setDiv(v); } });
+  wrap.addEventListener("pointerdown", function(e){ dragging=true; var v=pctAt(e); wipe.value=v; setWipe(v); });
+  wrap.addEventListener("pointermove", function(e){ if(dragging){ var v=pctAt(e); wipe.value=v; setWipe(v); } });
   window.addEventListener("pointerup", function(){ dragging=false; });
+
+  async function loadSide(side){
+    var S=side==="A"?A:B;
+    S.day=$("day"+side).value; S.frames=(await framesFor(S.day)).slice().sort();
+    S.sod=S.frames.map(sodOf); S.cur=-1;
+  }
+  $("dayA").addEventListener("change", async function(){ stop(); await loadSide("A"); resetTimeline(); });
+  $("dayB").addEventListener("change", async function(){ stop(); await loadSide("B"); resetTimeline(); });
+
   (async function(){
     var ds=await days();
     if(!ds.length){ wrap.innerHTML='<div class="pad sub">Brak historii do porównania.</div>'; return; }
     fill($("dayA"), ds, ds[ds.length-1]);
     fill($("dayB"), ds, ds[0]);
     await loadSide("A"); await loadSide("B");
-    setDiv(50);
+    setWipe(50); resetTimeline();
   })();
 })();
 """
@@ -1327,6 +1373,8 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             self._metadata_latest(parsed.query)
         elif parsed.path == "/api/metadata/days":
             self._metadata_days(parsed.query)
+        elif parsed.path == "/api/history/frames":
+            self._history_frames(parsed.query)
         elif parsed.path == "/api/metadata/summary":
             self._metadata_summary(parsed.query)
         elif parsed.path == "/api/metadata/events":
@@ -1575,6 +1623,17 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             return
         self._send_json({"days": self.storage.metrics.days()})
 
+    def _history_frames(self, query: str) -> None:
+        if not self._authorized(query):
+            self._send_json({"error": "unauthorized"}, HTTPStatus.UNAUTHORIZED)
+            return
+        day = parse_qs(query).get("day", [""])[0]
+        if not _valid_day(day):
+            self._send_json({"error": "bad day"}, HTTPStatus.BAD_REQUEST)
+            return
+        names = [p.name for p in self.storage.images_for_day(day, newest_first=False)]
+        self._send_json({"day": day, "frames": names})
+
     def _metadata_summary(self, query: str) -> None:
         if not self._authorized(query):
             self._send_json({"error": "unauthorized"}, HTTPStatus.UNAUTHORIZED)
@@ -1636,17 +1695,30 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
         token_js = json.dumps(token)
         body = f"""
 <h1 class="h">Porównaj</h1>
-<p class="sub">Przeciągnij linię (lub suwak), by porównać tę samą roślinę w dwóch momentach. Lewa strona = „przed", prawa = „po".</p>
+<p class="sub">Dwa dni obok siebie, zsynchronizowane po porze dnia. <b>Odtwórz</b> lub przesuń oś czasu — obie strony skaczą do najbliższej w czasie klatki. Pionową linią przecierasz „przed/po".</p>
 <div class="ctrlrow">
-  <label class="switch">Przed <select id="dayA" class="mini"></select> <select id="frA" class="mini"></select></label>
-  <label class="switch">Po <select id="dayB" class="mini"></select> <select id="frB" class="mini"></select></label>
+  <label class="switch">Przed <select id="dayA" class="mini"></select></label>
+  <label class="switch">Po <select id="dayB" class="mini"></select></label>
 </div>
 <div id="cmpWrap" class="card hero-card cmp">
   <img id="cmpB" class="cmp-img" alt="po">
   <img id="cmpA" class="cmp-img cmp-over" alt="przed">
   <div id="cmpDiv" class="cmp-div"></div>
+  <span class="cmp-tag cmp-tag-l">przed</span>
+  <span class="cmp-tag cmp-tag-r">po</span>
 </div>
-<div class="scrubber"><input id="cmpRange" type="range" min="0" max="100" value="50" aria-label="Suwak porównania"></div>
+<div class="player">
+  <button id="cmpPlay" class="btn btn-primary" type="button">▶ Odtwórz</button>
+  <select id="cmpSpeed" class="mini" aria-label="Prędkość">
+    <option value="500">wolno</option>
+    <option value="250" selected>normalnie</option>
+    <option value="100">szybko</option>
+  </select>
+  <span class="spacer"></span>
+  <span id="cmpTlabel" class="sub"></span>
+</div>
+<div class="scrubber"><span class="sub">⏱ Oś czasu (pora dnia)</span><input id="cmpTime" type="range" min="0" max="86400" value="0" aria-label="Oś czasu"></div>
+<div class="scrubber"><span class="sub">↔ Linia przed/po</span><input id="cmpRange" type="range" min="0" max="100" value="50" aria-label="Linia przed/po"></div>
 <script>window.CAM_TOKEN={token_js};</script>
 <script>{COMPARE_JS}</script>
 """
