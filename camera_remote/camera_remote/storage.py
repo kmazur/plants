@@ -15,6 +15,9 @@ from .locking import CameraBusy, CameraLock
 
 log = logging.getLogger(__name__)
 
+# libcamera draft NoiseReductionMode values
+_NR_MODES = {"off": 0, "fast": 1, "high": 2, "minimal": 3}
+
 
 @dataclass(frozen=True)
 class SnapshotResult:
@@ -107,7 +110,9 @@ class SnapshotStorage:
                 for attempt in range(1, self.config.camera.retry_count + 1):
                     try:
                         cam_meta = capture_jpeg_file(
-                            file_path, self.config.camera, controls=controls, warmup=warmup) or {}
+                            file_path, self.config.camera, controls=controls, warmup=warmup,
+                            image_controls=self._image_controls(),
+                            quality=self.config.camera.jpeg_quality) or {}
                         break
                     except Exception as exc:
                         last_error = exc
@@ -268,6 +273,30 @@ class SnapshotStorage:
             self.metrics.kv_set("canopy_roi", "")
         else:
             self.metrics.kv_set("canopy_roi", json.dumps([round(float(x), 4) for x in roi]))
+
+    # ---- image quality pipeline ----
+    def _image_controls(self) -> dict:
+        cam = self.config.camera
+        ctrl = {}
+        for name, val in (("Sharpness", cam.img_sharpness), ("Contrast", cam.img_contrast),
+                          ("Saturation", cam.img_saturation)):
+            if val is not None:
+                ctrl[name] = float(val)
+        nr = _NR_MODES.get((cam.denoise or "").lower())
+        if nr is not None:
+            ctrl["NoiseReductionMode"] = nr
+        return ctrl
+
+    def image_status(self) -> dict:
+        cam = self.config.camera
+        return {
+            "jpeg_quality": cam.jpeg_quality,
+            "resolution": [cam.snapshot_width, cam.snapshot_height],
+            "sharpness": cam.img_sharpness,
+            "contrast": cam.img_contrast,
+            "saturation": cam.img_saturation,
+            "denoise": cam.denoise,
+        }
 
     # ---- adaptive night mode ----
     def night_mode(self) -> str:

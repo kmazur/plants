@@ -49,13 +49,15 @@ def _transform(config: CameraConfig):
 
 
 def capture_jpeg_file(output_path: Path, config: CameraConfig, size: Optional[Tuple[int, int]] = None,
-                      controls: Optional[dict] = None, warmup: Optional[float] = None) -> dict:
+                      controls: Optional[dict] = None, warmup: Optional[float] = None,
+                      image_controls: Optional[dict] = None, quality: Optional[int] = None) -> dict:
     """Capture a full still to ``output_path``. Returns the camera metadata
     (exposure, gain, lux, ...) for that capture, or an empty dict.
 
-    ``controls`` lets the caller force exposure/gain (used by the adaptive night
-    mode); ``warmup`` overrides the settle time (a manual long exposure needs at
-    least one full exposure to elapse before the frame is valid)."""
+    ``controls`` forces exposure/gain (adaptive night mode) and is applied via
+    the configuration so it holds from the first frame; ``image_controls``
+    (sharpness/contrast/saturation/denoise) is applied best-effort after start;
+    ``quality`` sets the JPEG quality; ``warmup`` overrides the settle time."""
     output_path.parent.mkdir(parents=True, exist_ok=True)
     width, height = size or (config.snapshot_width, config.snapshot_height)
     tmp_path = output_path.with_suffix(output_path.suffix + ".tmp")
@@ -68,7 +70,17 @@ def capture_jpeg_file(output_path: Path, config: CameraConfig, size: Optional[Tu
             cfg_kwargs["controls"] = dict(controls)
         still_config = picam.create_still_configuration(**cfg_kwargs)
         picam.configure(still_config)
+        if quality:
+            try:
+                picam.options["quality"] = int(quality)
+            except Exception as exc:
+                log.warning("could not set jpeg quality: %s", exc)
         picam.start()
+        if image_controls:
+            try:
+                picam.set_controls(dict(image_controls))
+            except Exception as exc:
+                log.warning("could not apply image controls: %s", exc)
         time.sleep(warmup if warmup is not None else config.warmup_seconds)
         picam.capture_file(str(tmp_path), format="jpeg")
         try:

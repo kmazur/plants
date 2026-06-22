@@ -1939,6 +1939,7 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             "time": time.strftime("%Y-%m-%dT%H:%M:%S"),
             "ffmpeg": have_ffmpeg(),
             "live": self.server.live.diag(),  # type: ignore[attr-defined]
+            "image": self.storage.image_status(),
             "night": self.storage.night_status(),
             "burst": self.server.burst.status(),  # type: ignore[attr-defined]
             "system": read_system_stats(self.storage.data_dir),

@@ -37,6 +37,11 @@ class CameraConfig:
     night_target_brightness: float
     night_brightness_threshold: float
     live_night_max_us: int
+    jpeg_quality: int
+    img_sharpness: float
+    img_contrast: float
+    img_saturation: float
+    denoise: str
 
 
 @dataclass(frozen=True)
@@ -131,6 +136,11 @@ def load_config(path: Union[str, Path]) -> AppConfig:
         night_target_brightness=_get_float(parser, "camera", "night_target_brightness", 90.0),
         night_brightness_threshold=_get_float(parser, "camera", "night_brightness_threshold", 35.0),
         live_night_max_us=_get_int(parser, "camera", "live_night_max_us", 500_000),
+        jpeg_quality=_get_int(parser, "camera", "jpeg_quality", 92),
+        img_sharpness=_get_float(parser, "camera", "img_sharpness", 1.0),
+        img_contrast=_get_float(parser, "camera", "img_contrast", 1.0),
+        img_saturation=_get_float(parser, "camera", "img_saturation", 1.0),
+        denoise=_get_str(parser, "camera", "denoise", "high"),
     )
     snapshot = SnapshotConfig(
         retain_days=_get_int(parser, "snapshot", "retain_days", 14),
