@@ -478,14 +478,16 @@ PAGE_JS = """
   /* ---- Feature: temporary burst (fast snapshots) ---- */
   var burstBtn = $("#burstBtn");
   if(burstBtn){
-    var burstInt = $("#burstInt"), burstDur = $("#burstDur"), burstStat = $("#burstStatus"), pollT = null;
+    var burstInt = $("#burstInt"), burstDur = $("#burstDur"), burstRes = $("#burstRes"), burstStat = $("#burstStatus"), pollT = null;
     function renderBurst(s){
       if(s.active){
         burstBtn.textContent = "\\u23F9 Stop"; burstBtn.classList.add("btn-primary");
-        burstStat.textContent = "\\u25CF " + s.count + " klatek \\u00B7 pozosta\\u0142o " + s.remaining + " s";
+        burstStat.textContent = "\\u25CF " + s.count + " klatek \\u00B7 " + (s.resolution || "") + " \\u00B7 pozosta\\u0142o " + s.remaining + " s";
       } else {
         burstBtn.textContent = "\\u25B6 Start"; burstBtn.classList.remove("btn-primary");
-        burstStat.textContent = s.error ? ("\\u26A0 " + s.error) : (s.count ? ("zrobiono " + s.count + " klatek") : "");
+        if(s.error){ burstStat.textContent = "\\u26A0 " + s.error; }
+        else if(s.count){ burstStat.textContent = "zrobiono " + s.count + " klatek" + (s.backfilled ? (" \\u00B7 uzupe\\u0142niono " + s.backfilled + " w historii") : ""); }
+        else { burstStat.textContent = ""; }
       }
     }
     async function pollBurst(){
@@ -501,8 +503,10 @@ PAGE_JS = """
         var s = await (await fetch(withTok("/api/burst/status"))).json();
         if(s.active){ await fetch(withTok("/api/burst/stop"), { method: "POST" }); toast("Szybkie zdj\\u0119cia: stop"); }
         else{
+          var res = (burstRes.value || "0x0").split("x");
           await fetch(withTok("/api/burst/start"), { method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ interval: parseFloat(burstInt.value), duration: parseFloat(burstDur.value) }) });
+            body: JSON.stringify({ interval: parseFloat(burstInt.value), duration: parseFloat(burstDur.value),
+              width: parseInt(res[0], 10) || 0, height: parseInt(res[1], 10) || 0 }) });
           toast("Szybkie zdj\\u0119cia: start", "ok");
         }
       }catch(e){ toast("B\\u0142\\u0105d sieci", "warn"); }
@@ -858,10 +862,12 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
         try:
             interval = float(body.get("interval", 0))
             duration = float(body.get("duration", 60))
+            width = int(body.get("width", 0) or 0)
+            height = int(body.get("height", 0) or 0)
         except (TypeError, ValueError):
             self._send_json({"error": "bad params"}, HTTPStatus.BAD_REQUEST)
             return
-        result = self.server.burst.start(self.storage, interval, duration)  # type: ignore[attr-defined]
+        result = self.server.burst.start(self.storage, interval, duration, width, height)  # type: ignore[attr-defined]
         self._send_json(result)
 
     def _burst_stop(self, query: str) -> None:
@@ -1340,6 +1346,14 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
 <div class="card pad" style="margin-top:.9rem">
   <div class="ctrlrow" style="margin:0">
     <strong style="color:var(--ink)">⚡ Szybkie zdjęcia</strong>
+    <label class="switch">jakość
+      <select id="burstRes" class="mini" aria-label="Rozdzielczość">
+        <option value="0x0">pełna</option>
+        <option value="1280x720" selected>1280×720</option>
+        <option value="854x480">854×480</option>
+        <option value="640x360">640×360 (najszybciej)</option>
+      </select>
+    </label>
     <label class="switch">co
       <select id="burstInt" class="mini" aria-label="Odstęp">
         <option value="0">jak najszybciej</option>

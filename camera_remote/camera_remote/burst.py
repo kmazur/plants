@@ -1,8 +1,14 @@
 """Temporary high-rate snapshot capture ("burst" mode).
 
-Keeps one still camera open for the whole burst so frames are written to the
-history as fast as the sensor allows, for a bounded duration. Runs under the
-shared camera lock, so it is mutually exclusive with the live view.
+Keeps one still camera open for the whole burst so frames are written as fast
+as the sensor allows, for a bounded duration, at a chosen resolution. Frames
+are stored in a dedicated burst session directory (kept separate from the
+normal per-minute history). When the burst ends, the normal history is
+backfilled for the covered window by borrowing the burst frame closest to each
+normal-interval tick, so the regular timeline has no gap.
+
+Runs under the shared camera lock, so it is mutually exclusive with the live
+view.
 """
 from __future__ import annotations
 
@@ -10,6 +16,7 @@ import logging
 import threading
 import time
 from datetime import datetime
+from typing import List, Optional, Tuple
 
 from .camera import CaptureSession
 from .config import AppConfig
@@ -30,7 +37,8 @@ class BurstController:
         self.count = 0
         self.interval = 0.0
         self.until = 0.0
-        self.started_at = 0.0
+        self.resolution = ""
+        self.backfilled = 0
         self.error = ""
 
     def status(self) -> dict:
@@ -40,27 +48,31 @@ class BurstController:
                 "active": self.active,
                 "count": self.count,
                 "interval": self.interval,
+                "resolution": self.resolution,
                 "remaining": round(remaining),
+                "backfilled": self.backfilled,
                 "error": self.error,
             }
 
-    def start(self, storage, interval: float, duration: float) -> dict:
+    def start(self, storage, interval: float, duration: float,
+              width: int = 0, height: int = 0) -> dict:
         interval = max(0.0, float(interval))
         duration = max(1.0, min(float(duration), MAX_DURATION))
+        size: Optional[Tuple[int, int]] = (int(width), int(height)) if width and height else None
         with self._lock:
             if self.active:
-                # extend / retune a running burst
                 self.until = time.monotonic() + duration
                 self.interval = interval
                 return {"ok": True, "updated": True}
             self._stop.clear()
             self.active = True
             self.count = 0
+            self.backfilled = 0
             self.error = ""
             self.interval = interval
             self.until = time.monotonic() + duration
-            self.started_at = time.time()
-            self._thread = threading.Thread(target=self._run, args=(storage,), daemon=True)
+            self.resolution = (f"{size[0]}x{size[1]}" if size else "pełna")
+            self._thread = threading.Thread(target=self._run, args=(storage, size), daemon=True)
             self._thread.start()
             return {"ok": True}
 
@@ -68,17 +80,21 @@ class BurstController:
         self._stop.set()
         return {"ok": True}
 
-    def _run(self, storage) -> None:
+    def _run(self, storage, size) -> None:
+        frames: List[Tuple[datetime, "object"]] = []
+        start_dt = datetime.now()
         try:
             with CameraLock(self.config.paths.lock_file, blocking=False):
-                with CaptureSession(self.config.camera) as cam:
-                    log.info("burst started")
+                session_dir = storage.new_burst_session(start_dt)
+                with CaptureSession(self.config.camera, size=size) as cam:
+                    log.info("burst started (%s) -> %s", self.resolution, session_dir)
                     while not self._stop.is_set() and time.monotonic() < self.until:
                         t0 = time.monotonic()
                         now = datetime.now()
-                        path = storage.burst_path(now)
+                        path = storage.burst_frame_path(session_dir, now)
                         cam.capture_file(path)
                         storage.promote_latest(path, now)
+                        frames.append((now, path))
                         with self._lock:
                             self.count += 1
                         wait = self.interval - (time.monotonic() - t0)
@@ -93,11 +109,21 @@ class BurstController:
                 self.error = str(exc)
             log.exception("burst failed: %s", exc)
         finally:
+            backfilled = 0
+            if frames:
+                try:
+                    backfilled = storage.backfill_history(
+                        frames, start_dt, datetime.now(),
+                        self.config.snapshot.interval_seconds,
+                    )
+                except Exception as exc:
+                    log.warning("burst backfill failed: %s", exc)
             try:
                 storage.cleanup_old_history()
             except Exception:
                 pass
             with self._lock:
                 self.active = False
+                self.backfilled = backfilled
                 count = self.count
-            log.info("burst finished (%d frames)", count)
+            log.info("burst finished (%d frames, backfilled %d history slots)", count, backfilled)

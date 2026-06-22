@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import bisect
 import json
 import logging
 import shutil
@@ -29,12 +30,14 @@ class SnapshotStorage:
         self.config = config
         self.data_dir = config.paths.data_dir
         self.history_dir = self.data_dir / "history"
+        self.burst_dir = self.data_dir / "burst"
         self.latest_path = self.data_dir / "latest.jpg"
         self.latest_meta_path = self.data_dir / "latest.json"
 
     def ensure_dirs(self) -> None:
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self.history_dir.mkdir(parents=True, exist_ok=True)
+        self.burst_dir.mkdir(parents=True, exist_ok=True)
 
     def date_dirs(self) -> list[Path]:
         if not self.history_dir.exists():
@@ -49,19 +52,31 @@ class SnapshotStorage:
 
     def cleanup_old_history(self) -> None:
         retain_days = self.config.snapshot.retain_days
-        if retain_days <= 0 or not self.history_dir.exists():
+        if retain_days <= 0:
             return
         cutoff = datetime.now().date() - timedelta(days=retain_days)
-        for day_dir in self.history_dir.iterdir():
-            if not day_dir.is_dir():
-                continue
-            try:
-                day = datetime.strptime(day_dir.name, "%Y-%m-%d").date()
-            except ValueError:
-                continue
-            if day < cutoff:
-                log.info("removing old history directory: %s", day_dir)
-                shutil.rmtree(day_dir, ignore_errors=True)
+        if self.history_dir.exists():
+            for day_dir in self.history_dir.iterdir():
+                if not day_dir.is_dir():
+                    continue
+                try:
+                    day = datetime.strptime(day_dir.name, "%Y-%m-%d").date()
+                except ValueError:
+                    continue
+                if day < cutoff:
+                    log.info("removing old history directory: %s", day_dir)
+                    shutil.rmtree(day_dir, ignore_errors=True)
+        if self.burst_dir.exists():
+            for session_dir in self.burst_dir.iterdir():
+                if not session_dir.is_dir():
+                    continue
+                try:
+                    day = datetime.strptime(session_dir.name[:10], "%Y-%m-%d").date()
+                except ValueError:
+                    continue
+                if day < cutoff:
+                    log.info("removing old burst session: %s", session_dir)
+                    shutil.rmtree(session_dir, ignore_errors=True)
 
     def capture_once(self, blocking: bool = True) -> SnapshotResult:
         self.ensure_dirs()
@@ -103,13 +118,48 @@ class SnapshotStorage:
         self.cleanup_old_history()
         return SnapshotResult(file_path, self.latest_path, now)
 
-    def burst_path(self, now: datetime = None) -> Path:
-        """History path for a burst frame, with millisecond precision so rapid
-        captures don't collide."""
+    def new_burst_session(self, now: datetime = None) -> Path:
+        """Create and return a dedicated directory for one burst session, kept
+        separate from the normal per-minute history."""
         now = now or datetime.now()
-        day_dir = self.history_dir / now.strftime("%Y-%m-%d")
+        session = self.burst_dir / now.strftime("%Y-%m-%d_%H-%M-%S")
+        session.mkdir(parents=True, exist_ok=True)
+        return session
+
+    def burst_frame_path(self, session_dir: Path, now: datetime = None) -> Path:
+        """Path for one burst frame (millisecond precision) inside its session."""
+        now = now or datetime.now()
         name = now.strftime("%H-%M-%S-") + f"{now.microsecond // 1000:03d}"
-        return day_dir / f"{name}.jpg"
+        return session_dir / f"{name}.jpg"
+
+    def backfill_history(self, frames, start_dt: datetime, end_dt: datetime, interval: int) -> int:
+        """Fill the normal per-minute history for the window covered by a burst,
+        borrowing the burst frame closest in time to each interval tick. Avoids
+        a gap in the normal timeline when the snapshot timer was suppressed.
+
+        ``frames`` is a chronological list of (datetime, Path).
+        """
+        if not frames or interval <= 0:
+            return 0
+        times = [f[0] for f in frames]
+        count = 0
+        tick = start_dt
+        while tick <= end_dt:
+            idx = bisect.bisect_left(times, tick)
+            best = idx
+            if idx >= len(times):
+                best = len(times) - 1
+            elif idx > 0 and abs((times[idx - 1] - tick).total_seconds()) <= abs((times[idx] - tick).total_seconds()):
+                best = idx - 1
+            src = frames[best][1]
+            day_dir = self.history_dir / tick.strftime("%Y-%m-%d")
+            day_dir.mkdir(parents=True, exist_ok=True)
+            dest = day_dir / (tick.strftime("%H-%M-%S") + ".jpg")
+            if not dest.exists() and Path(src).exists():
+                shutil.copyfile(src, dest)
+                count += 1
+            tick += timedelta(seconds=interval)
+        return count
 
     def promote_latest(self, file_path: Path, now: datetime = None) -> None:
         """Copy a freshly captured frame to latest.jpg and update its metadata."""

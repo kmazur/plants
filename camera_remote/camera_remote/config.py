@@ -37,6 +37,7 @@ class CameraConfig:
 class SnapshotConfig:
     retain_days: int
     skip_when_camera_busy: bool
+    interval_seconds: int
 
 
 @dataclass(frozen=True)
@@ -113,6 +114,7 @@ def load_config(path: Union[str, Path]) -> AppConfig:
     snapshot = SnapshotConfig(
         retain_days=_get_int(parser, "snapshot", "retain_days", 14),
         skip_when_camera_busy=_get_bool(parser, "snapshot", "skip_when_camera_busy", True),
+        interval_seconds=_get_int(parser, "snapshot", "interval_seconds", 60),
     )
     paths = PathConfig(
         data_dir=Path(_get_str(parser, "paths", "data_dir", "/home/user/camera-remote-data")).expanduser(),
