@@ -118,6 +118,17 @@ class SnapshotStorage:
         self.cleanup_old_history()
         return SnapshotResult(file_path, self.latest_path, now)
 
+    def burst_sessions(self) -> list[Path]:
+        if not self.burst_dir.exists():
+            return []
+        return sorted([p for p in self.burst_dir.iterdir() if p.is_dir()], reverse=True)
+
+    def burst_frames(self, session: str, newest_first: bool = False) -> list[Path]:
+        root = self.burst_dir / session
+        if not root.exists():
+            return []
+        return sorted(root.glob("*.jpg"), reverse=newest_first)
+
     def new_burst_session(self, now: datetime = None) -> Path:
         """Create and return a dedicated directory for one burst session, kept
         separate from the normal per-minute history."""

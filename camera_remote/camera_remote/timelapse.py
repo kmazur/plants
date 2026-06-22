@@ -64,6 +64,55 @@ def _is_up_to_date(out: Path, frames: List[Path]) -> bool:
     return out.stat().st_mtime >= newest
 
 
+def build_dir(
+    frames_dir,
+    out_path,
+    *,
+    fps: int = DEFAULT_FPS,
+    width: int = DEFAULT_WIDTH,
+    force: bool = False,
+    timeout: int = 1800,
+) -> Optional[Path]:
+    """Encode all ``*.jpg`` in ``frames_dir`` into the H.264 file ``out_path``.
+    Returns the path, None when there are no frames, raises on ffmpeg errors."""
+    frames_dir = Path(frames_dir)
+    out_path = Path(out_path)
+    frames = sorted(frames_dir.glob("*.jpg"))
+    if not frames:
+        return None
+    if not force and _is_up_to_date(out_path, frames):
+        return out_path
+    if not have_ffmpeg():
+        raise RuntimeError("ffmpeg is not installed")
+
+    name, enc_args = pick_encoder(_available_encoders())
+    tmp = out_path.with_suffix(out_path.suffix + ".tmp.mp4")
+    cmd = [
+        "ffmpeg", "-hide_banner", "-nostdin", "-y",
+        "-framerate", str(fps),
+        "-pattern_type", "glob", "-i", str(frames_dir / "*.jpg"),
+        "-vf", f"scale={width}:-2:flags=bicubic",
+        "-pix_fmt", "yuv420p",
+        *enc_args,
+        "-r", str(fps),
+        "-movflags", "+faststart",
+        str(tmp),
+    ]
+    log.info("building timelapse %s with %s (%d frames)", out_path, name, len(frames))
+    try:
+        subprocess.run(cmd, check=True, capture_output=True, timeout=timeout)
+    except subprocess.CalledProcessError as exc:
+        tmp.unlink(missing_ok=True)
+        tail = (exc.stderr or b"").decode("utf-8", "replace")[-600:]
+        raise RuntimeError(f"ffmpeg failed: {tail}") from exc
+    except subprocess.TimeoutExpired as exc:
+        tmp.unlink(missing_ok=True)
+        raise RuntimeError("ffmpeg timed out") from exc
+    os.replace(tmp, out_path)
+    log.info("wrote %s (%d bytes)", out_path, out_path.stat().st_size)
+    return out_path
+
+
 def build_day(
     data_dir,
     day: str,
@@ -73,48 +122,11 @@ def build_day(
     force: bool = False,
     timeout: int = 1800,
 ) -> Optional[Path]:
-    """Build ``history/<day>/timelapse.mp4``. Returns the path, or None when the
-    day has no frames. Raises RuntimeError on ffmpeg problems."""
+    """Build ``history/<day>/timelapse.mp4``."""
     day_dir = Path(data_dir) / "history" / day
     if not day_dir.is_dir():
         return None
-    frames = sorted(day_dir.glob("*.jpg"))
-    if not frames:
-        return None
-
-    out = day_dir / TIMELAPSE_NAME
-    if not force and _is_up_to_date(out, frames):
-        return out
-
-    if not have_ffmpeg():
-        raise RuntimeError("ffmpeg is not installed")
-
-    name, enc_args = pick_encoder(_available_encoders())
-    tmp = day_dir / (TIMELAPSE_NAME + ".tmp.mp4")
-    cmd = [
-        "ffmpeg", "-hide_banner", "-nostdin", "-y",
-        "-framerate", str(fps),
-        "-pattern_type", "glob", "-i", str(day_dir / "*.jpg"),
-        "-vf", f"scale={width}:-2:flags=bicubic",
-        "-pix_fmt", "yuv420p",
-        *enc_args,
-        "-r", str(fps),
-        "-movflags", "+faststart",
-        str(tmp),
-    ]
-    log.info("building timelapse for %s with %s (%d frames)", day, name, len(frames))
-    try:
-        subprocess.run(cmd, check=True, capture_output=True, timeout=timeout)
-    except subprocess.CalledProcessError as exc:
-        tmp.unlink(missing_ok=True)
-        tail = (exc.stderr or b"").decode("utf-8", "replace")[-600:]
-        raise RuntimeError(f"ffmpeg failed for {day}: {tail}") from exc
-    except subprocess.TimeoutExpired as exc:
-        tmp.unlink(missing_ok=True)
-        raise RuntimeError(f"ffmpeg timed out for {day}") from exc
-    os.replace(tmp, out)
-    log.info("wrote %s (%d bytes)", out, out.stat().st_size)
-    return out
+    return build_dir(day_dir, day_dir / TIMELAPSE_NAME, fps=fps, width=width, force=force, timeout=timeout)
 
 
 def _all_days(data_dir) -> List[str]:

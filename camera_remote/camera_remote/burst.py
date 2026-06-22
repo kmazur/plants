@@ -21,6 +21,7 @@ from typing import List, Optional, Tuple
 from .camera import CaptureSession
 from .config import AppConfig
 from .locking import CameraBusy, CameraLock
+from .timelapse import TIMELAPSE_NAME, build_dir, have_ffmpeg
 
 log = logging.getLogger(__name__)
 
@@ -39,6 +40,8 @@ class BurstController:
         self.until = 0.0
         self.resolution = ""
         self.backfilled = 0
+        self.session = ""
+        self.video = False
         self.error = ""
 
     def status(self) -> dict:
@@ -51,6 +54,8 @@ class BurstController:
                 "resolution": self.resolution,
                 "remaining": round(remaining),
                 "backfilled": self.backfilled,
+                "session": self.session,
+                "video": self.video,
                 "error": self.error,
             }
 
@@ -68,6 +73,8 @@ class BurstController:
             self.active = True
             self.count = 0
             self.backfilled = 0
+            self.session = ""
+            self.video = False
             self.error = ""
             self.interval = interval
             self.until = time.monotonic() + duration
@@ -109,6 +116,7 @@ class BurstController:
                 self.error = str(exc)
             log.exception("burst failed: %s", exc)
         finally:
+            # Camera lock is released here; backfill + encode need no camera.
             backfilled = 0
             if frames:
                 try:
@@ -118,6 +126,14 @@ class BurstController:
                     )
                 except Exception as exc:
                     log.warning("burst backfill failed: %s", exc)
+            video_ok = False
+            if frames and session_dir is not None and have_ffmpeg():
+                try:
+                    width = min(1280, size[0]) if size else 1280
+                    build_dir(session_dir, session_dir / TIMELAPSE_NAME, fps=30, width=width, force=True)
+                    video_ok = True
+                except Exception as exc:
+                    log.warning("burst auto-timelapse failed: %s", exc)
             try:
                 storage.cleanup_old_history()
             except Exception:
@@ -125,5 +141,7 @@ class BurstController:
             with self._lock:
                 self.active = False
                 self.backfilled = backfilled
+                self.session = session_dir.name if session_dir is not None else ""
+                self.video = video_ok
                 count = self.count
-            log.info("burst finished (%d frames, backfilled %d history slots)", count, backfilled)
+            log.info("burst finished (%d frames, backfilled %d, video=%s)", count, backfilled, video_ok)

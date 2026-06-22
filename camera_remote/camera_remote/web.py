@@ -486,7 +486,11 @@ PAGE_JS = """
       } else {
         burstBtn.textContent = "\\u25B6 Start"; burstBtn.classList.remove("btn-primary");
         if(s.error){ burstStat.textContent = "\\u26A0 " + s.error; }
-        else if(s.count){ burstStat.textContent = "zrobiono " + s.count + " klatek" + (s.backfilled ? (" \\u00B7 uzupe\\u0142niono " + s.backfilled + " w historii") : ""); }
+        else if(s.count){
+          var msg = "zrobiono " + s.count + " klatek" + (s.backfilled ? (" \\u00B7 uzupe\\u0142niono " + s.backfilled + " w historii") : "");
+          if(s.session){ burstStat.innerHTML = msg + ' \\u00B7 <a href="' + withTok("/burst/" + encodeURIComponent(s.session)) + '">' + (s.video ? "\\u25B6 obejrzyj timelapse" : "otw\\u00f3rz sesj\\u0119") + "</a>"; }
+          else { burstStat.textContent = msg; }
+        }
         else { burstStat.textContent = ""; }
       }
     }
@@ -562,7 +566,7 @@ PAGE_JS = """
     var frames = day.frames, idx = day.index || 0;
     var viewer = $("#viewer"), scrub = $("#scrub"), counter = $("#counter"), frameSel = $("#frameSel");
     var playBtn = $("#playBtn"), speedSel = $("#speedSel"), dlDay = $("#dlDay"), thumbs = $("#thumbs");
-    function urlFor(f){ return withTok("/history/" + encodeURIComponent(day.day) + "/" + encodeURIComponent(f.n)); }
+    function urlFor(f){ var base = day.base || ("/history/" + encodeURIComponent(day.day) + "/"); return withTok(base + encodeURIComponent(f.n)); }
     var playT = null;
     function stop(){ if(!playT) return; clearInterval(playT); playT = null; if(playBtn) playBtn.textContent = "\\u25B6 Odtw\\u00F3rz"; }
     function play(){ if(playT) return; if(playBtn) playBtn.textContent = "\\u23F8 Pauza"; playT = setInterval(function(){ setIdx(idx + 1); }, speedSel ? parseInt(speedSel.value, 10) : 300); }
@@ -784,6 +788,10 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             self._send_html(self._history_index_html(parsed.query))
         elif parsed.path.startswith("/history/"):
             self._handle_history(parsed.path, parsed.query)
+        elif parsed.path == "/burst":
+            self._send_html(self._burst_index_html(parsed.query))
+        elif parsed.path.startswith("/burst/"):
+            self._handle_burst(parsed.path, parsed.query)
         else:
             self._send_text("not found\n", "text/plain", HTTPStatus.NOT_FOUND)
 
@@ -1256,12 +1264,113 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             return
         self._send_text("not found\n", "text/plain", HTTPStatus.NOT_FOUND)
 
+    def _handle_burst(self, path: str, query: str) -> None:
+        parts = [unquote(p) for p in path.split("/") if p]
+        if len(parts) == 2:
+            self._send_html(self._burst_session_html(parts[1], query))
+            return
+        if len(parts) == 3:
+            session, filename = parts[1], parts[2]
+            target = self.storage.burst_dir / session / filename
+            try:
+                target.resolve().relative_to(self.storage.burst_dir.resolve())
+            except ValueError:
+                self._send_text("bad path\n", "text/plain", HTTPStatus.BAD_REQUEST)
+                return
+            self._send_file(target)
+            return
+        self._send_text("not found\n", "text/plain", HTTPStatus.NOT_FOUND)
+
+    def _burst_index_html(self, query: str) -> str:
+        token = self.app_config.server.auth_token
+        sessions = self.storage.burst_sessions()
+        if not sessions:
+            body = '<div class="card pad empty">Brak sesji burst — uruchom „Szybkie zdjęcia" na stronie Kamera.</div>'
+            return self._layout("Burst", body, active="/burst")
+        cards = []
+        for s in sessions:
+            frames = self.storage.burst_frames(s.name)
+            has_video = (s / TIMELAPSE_NAME).exists()
+            link = href(f"/burst/{quote(s.name)}", token)
+            label = html.escape(s.name.replace("_", " "))
+            if frames:
+                thumb_url = href(f"/burst/{quote(s.name)}/{quote(frames[0].name)}", token)
+                thumb = f'<img src="{thumb_url}" alt="{label}" loading="lazy">'
+            else:
+                thumb = ""
+            tag = "🎞️ " if has_video else ""
+            cards.append(
+                f'<a class="daycard" href="{link}">{thumb}'
+                f'<div class="dc-body"><span class="dc-day">{tag}{label}</span>'
+                f'<span class="dc-n">{len(frames)}</span></div></a>'
+            )
+        body = (
+            f'<h1 class="h">Burst</h1>'
+            f'<p class="sub">{len(sessions)} sesji. Każda to osobny zestaw gęstych klatek + auto-timelapse.</p>'
+            f'<div class="grid-days">{"".join(cards)}</div>'
+        )
+        return self._layout("Burst", body, active="/burst")
+
+    def _burst_session_html(self, session: str, query: str) -> str:
+        token = self.app_config.server.auth_token
+        frames = self.storage.burst_frames(session)
+        if not frames:
+            body = '<div class="card pad empty">Pusta lub nieznana sesja burst.</div>'
+            return self._layout("Burst", body, active="/burst")
+        total = len(frames)
+        # bound the in-page frame list (the video covers full playback)
+        step = max(1, total // 2000)
+        sample = frames[::step]
+        first_url = href(f"/burst/{quote(session)}/{quote(sample[0].name)}", token)
+        base = "/burst/" + quote(session) + "/"
+        day_data = json.dumps({
+            "day": session,
+            "base": base,
+            "index": 0,
+            "frames": [{"n": p.name, "l": p.stem.replace("-", ":")} for p in sample],
+        })
+        video_path = self.storage.burst_dir / session / TIMELAPSE_NAME
+        if video_path.exists():
+            video_url = href(f"/burst/{quote(session)}/{quote(TIMELAPSE_NAME)}", token)
+            video_block = (
+                f'<div class="card hero-card">'
+                f'<video class="viewer" controls preload="metadata" playsinline poster="{first_url}">'
+                f'<source src="{video_url}" type="video/mp4"></video>'
+                f'<div class="hero-bar"><span class="badge">🎞️ Timelapse ({total} klatek)</span>'
+                f'<span class="spacer"></span>'
+                f'<a class="btn" href="{video_url}" download="{html.escape(session)}.mp4">⬇️ MP4</a></div></div>'
+            )
+        else:
+            video_block = '<div class="card pad"><p class="sub" style="margin:0">Wideo nie zostało zbudowane (brak ffmpeg lub błąd enkodowania).</p></div>'
+        label = html.escape(session.replace("_", " "))
+        body = f"""
+<h1 class="h">Burst — {label}</h1>
+<p class="sub" id="counter">{total} klatek</p>
+{video_block}
+<h2 class="h" style="font-size:1rem;margin-top:1.3rem">Klatki (przegląd)</h2>
+<div class="card hero-card"><img id="viewer" class="viewer" src="{first_url}" alt="klatka"></div>
+<div class="scrubber"><input id="scrub" type="range" min="0" max="{len(sample) - 1}" value="0" aria-label="Przewijaj klatki"></div>
+<div class="player">
+  <button class="btn btn-primary" id="playBtn" type="button">▶ Odtwórz</button>
+  <select id="speedSel" class="mini" aria-label="Prędkość">
+    <option value="300">wolno</option>
+    <option value="120" selected>normalnie</option>
+    <option value="60">szybko</option>
+  </select>
+  <span class="spacer"></span>
+  <a class="btn" id="dlDay" href="{first_url}" download="{html.escape(sample[0].name)}">⬇️ Klatka</a>
+</div>
+<script>window.CAM_DAY={day_data};</script>
+"""
+        return self._layout("Burst", body, active="/burst")
+
     def _nav(self, active: str) -> str:
         token = self.app_config.server.auth_token
         items = [
             ("/", "Kamera"),
             ("/live", "Live"),
             ("/history", "Historia"),
+            ("/burst", "Burst"),
             ("/checklista-tatry.html", "Tatry"),
         ]
         if self.app_config.server.admin_enabled:
@@ -1494,6 +1603,7 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
 
         day_data = json.dumps({
             "day": day,
+            "base": "/history/" + quote(day) + "/",
             "index": selected_index,
             "frames": [{"n": p.name, "l": p.stem.replace("-", ":")} for p in images],
         })
