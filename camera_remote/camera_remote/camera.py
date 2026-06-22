@@ -163,20 +163,30 @@ class LiveCamera:
         if self._picam is not None:
             return
         picam = _new_picam(self.config)
-        video_config = picam.create_video_configuration(
-            main={"size": (self.config.live_width, self.config.live_height)},
-            transform=_transform(self.config),
-        )
-        picam.configure(video_config)
-        # Smaller, lighter JPEGs so a constrained Pi/tunnel can keep up.
-        quality = getattr(self.config, "live_quality", 0)
-        if quality:
+        try:
+            video_config = picam.create_video_configuration(
+                main={"size": (self.config.live_width, self.config.live_height)},
+                transform=_transform(self.config),
+            )
+            picam.configure(video_config)
+            # Smaller, lighter JPEGs so a constrained Pi/tunnel can keep up.
+            quality = getattr(self.config, "live_quality", 0)
+            if quality:
+                try:
+                    picam.options["quality"] = int(quality)
+                except Exception as exc:
+                    log.warning("could not set live jpeg quality: %s", exc)
+            picam.start()
+            time.sleep(self.config.warmup_seconds)
+        except Exception:
+            # Crucial: close the half-open device, otherwise the next
+            # Picamera2() fails forever with "__init__ sequence did not
+            # complete" until the process restarts.
             try:
-                picam.options["quality"] = int(quality)
-            except Exception as exc:
-                log.warning("could not set live jpeg quality: %s", exc)
-        picam.start()
-        time.sleep(self.config.warmup_seconds)
+                picam.close()
+            except Exception:
+                pass
+            raise
         self._picam = picam
 
     def stop(self) -> None:

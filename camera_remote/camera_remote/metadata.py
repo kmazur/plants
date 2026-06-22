@@ -28,7 +28,6 @@ _CAM_KEYS = {
     "DigitalGain": "digital_gain",
     "Lux": "lux",
     "ColourTemperature": "colour_temp",
-    "SensorTemperature": "sensor_temp_c",
     "FrameDuration": "frame_us",
 }
 
