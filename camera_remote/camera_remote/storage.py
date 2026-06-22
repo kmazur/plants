@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from .camera import capture_jpeg_file
+from .camera import capture_jpeg_file, capture_brackets
 from .config import AppConfig
 from .locking import CameraBusy, CameraLock
 
@@ -377,12 +377,12 @@ class SnapshotStorage:
         """Capture a 3-shot exposure bracket and merge via exposure fusion
         (more detail in shadows and highlights). Saves to data_dir/hdr and
         returns the path."""
+        import io
         import numpy as np
         from PIL import Image
         self.ensure_dirs()
         out_dir = self.data_dir / "hdr"
-        tmp_dir = out_dir / ".tmp"
-        tmp_dir.mkdir(parents=True, exist_ok=True)
+        out_dir.mkdir(parents=True, exist_ok=True)
         now = datetime.now()
         last = self.metrics.latest() or {}
         base = int((last.get("cam") or {}).get("exposure_us") or 10000)
@@ -390,19 +390,24 @@ class SnapshotStorage:
         factor = 2.0 ** ev_step
         exposures = [max(60, int(base / factor)), base, min(4_000_000, int(base * factor))]
         image_controls = self._image_controls()
-        frames = []
+        jpegs = None
         with CameraLock(self.config.paths.lock_file, blocking=True):
-            for i, exp in enumerate(exposures):
-                fp = tmp_dir / f"b{i}.jpg"
-                capture_jpeg_file(
-                    fp, self.config.camera,
-                    controls={"AeEnable": False, "ExposureTime": exp, "AnalogueGain": 1.0},
-                    warmup=exp / 1_000_000.0 + 0.4,
-                    image_controls=image_controls, quality=95)
-                frames.append(fp)
+            last_error = None
+            for attempt in range(1, self.config.camera.retry_count + 1):
+                try:
+                    jpegs = capture_brackets(self.config.camera, exposures,
+                                             image_controls=image_controls, quality=95)
+                    break
+                except Exception as exc:
+                    last_error = exc
+                    log.warning("hdr bracket attempt %s failed: %s", attempt, exc)
+                    if attempt < self.config.camera.retry_count:
+                        time.sleep(self.config.camera.retry_delay_seconds)
+            else:
+                raise RuntimeError(f"hdr bracket failed after retries: {last_error}")
         arrs, size = [], None
-        for fp in frames:
-            with Image.open(fp) as im:
+        for data in jpegs:
+            with Image.open(io.BytesIO(data)) as im:
                 im = im.convert("RGB")
                 if im.width > fuse_width:
                     im = im.resize((fuse_width, max(1, round(im.height * fuse_width / im.width))))
@@ -427,11 +432,6 @@ class SnapshotStorage:
             out += W[i][..., None] * a
         out_path = out_dir / (now.strftime("%Y-%m-%d_%H-%M-%S") + ".jpg")
         Image.fromarray((out.clip(0, 1) * 255).astype("uint8")).save(out_path, "JPEG", quality=95)
-        for fp in frames:
-            try:
-                fp.unlink()
-            except Exception:
-                pass
         return out_path
 
     # ---- adaptive night mode ----

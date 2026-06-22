@@ -102,6 +102,48 @@ def capture_jpeg_file(output_path: Path, config: CameraConfig, size: Optional[Tu
     return meta
 
 
+def capture_brackets(config: CameraConfig, exposures, size: Optional[Tuple[int, int]] = None,
+                     image_controls: Optional[dict] = None, quality: Optional[int] = None):
+    """Capture several exposures from a single camera session (no per-shot
+    open/close, which avoids the 'Input/output error' from rapid reopen).
+    Returns a list of JPEG byte strings, one per requested exposure (µs)."""
+    width, height = size or (config.snapshot_width, config.snapshot_height)
+    picam = _new_picam(config)
+    out = []
+    try:
+        still_config = picam.create_still_configuration(
+            main={"size": (width, height)}, transform=_transform(config))
+        picam.configure(still_config)
+        if quality:
+            try:
+                picam.options["quality"] = int(quality)
+            except Exception:
+                pass
+        picam.start()
+        if image_controls:
+            try:
+                picam.set_controls(dict(image_controls))
+            except Exception as exc:
+                log.warning("bracket image controls failed: %s", exc)
+        for exp in exposures:
+            exp = int(exp)
+            picam.set_controls({"AeEnable": False, "ExposureTime": exp, "AnalogueGain": 1.0})
+            time.sleep(exp / 1_000_000.0 + 0.4)
+            buf = io.BytesIO()
+            picam.capture_file(buf, format="jpeg")
+            out.append(buf.getvalue())
+        return out
+    finally:
+        try:
+            picam.stop()
+        except Exception:
+            pass
+        try:
+            picam.close()
+        except Exception:
+            pass
+
+
 class CaptureSession:
     """Keep one still camera open and capture many frames quickly (no per-shot
     open/configure/warmup), for temporary burst capture."""
