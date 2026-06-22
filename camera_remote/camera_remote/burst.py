@@ -16,6 +16,7 @@ import logging
 import threading
 import time
 from datetime import datetime
+from pathlib import Path
 from typing import List, Optional, Tuple
 
 from .camera import CaptureSession
@@ -26,6 +27,33 @@ from .timelapse import TIMELAPSE_NAME, build_dir, have_ffmpeg
 log = logging.getLogger(__name__)
 
 MAX_DURATION = 1800  # hard cap so a burst can never run away
+TIMELAPSE_ERROR = "timelapse.error.txt"
+
+
+def build_session_timelapse(session_dir, width: int = 1280, fps: int = 30):
+    """Build a burst session's timelapse, persisting the full error on failure
+    so the viewer can show exactly what ffmpeg did. Returns (ok, error)."""
+    session_dir = Path(session_dir)
+    err_file = session_dir / TIMELAPSE_ERROR
+    try:
+        if not have_ffmpeg():
+            raise RuntimeError("ffmpeg not installed (which ffmpeg found nothing)")
+        out = build_dir(session_dir, session_dir / TIMELAPSE_NAME, fps=fps, width=width, force=True)
+        if out is None:
+            raise RuntimeError(f"no *.jpg frames found in {session_dir}")
+        try:
+            err_file.unlink()
+        except FileNotFoundError:
+            pass
+        return True, ""
+    except Exception as exc:
+        detail = f"{datetime.now().isoformat()}\n{exc}"
+        try:
+            err_file.write_text(detail, encoding="utf-8")
+        except Exception:
+            pass
+        log.warning("burst timelapse build failed for %s: %s", session_dir, exc)
+        return False, str(exc)
 
 
 class BurstController:
@@ -127,13 +155,9 @@ class BurstController:
                 except Exception as exc:
                     log.warning("burst backfill failed: %s", exc)
             video_ok = False
-            if frames and session_dir is not None and have_ffmpeg():
-                try:
-                    width = min(1280, size[0]) if size else 1280
-                    build_dir(session_dir, session_dir / TIMELAPSE_NAME, fps=30, width=width, force=True)
-                    video_ok = True
-                except Exception as exc:
-                    log.warning("burst auto-timelapse failed: %s", exc)
+            if frames and session_dir is not None:
+                width = min(1280, size[0]) if size else 1280
+                video_ok, _ = build_session_timelapse(session_dir, width=width)
             try:
                 storage.cleanup_old_history()
             except Exception:

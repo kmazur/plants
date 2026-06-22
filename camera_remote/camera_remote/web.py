@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import collections
 import html
 import json
 import logging
@@ -36,93 +37,150 @@ TOKEN_COOKIE = "camera_token"
 TOKEN_COOKIE_MAX_AGE = 60 * 60 * 24 * 365
 
 
+class RingLogHandler(logging.Handler):
+    """Keep the most recent WARNING+ log lines in memory for /api/diag."""
+
+    def __init__(self, capacity: int = 200):
+        super().__init__(level=logging.WARNING)
+        self.buf = collections.deque(maxlen=capacity)
+
+    def emit(self, record):
+        try:
+            self.buf.append(TOKEN_RE.sub(r"\1***", self.format(record)))
+        except Exception:
+            pass
+
+
+LOG_RING = RingLogHandler()
+LOG_RING.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
+
+
 def configure_logging() -> None:
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
+    root = logging.getLogger()
+    if LOG_RING not in root.handlers:
+        root.addHandler(LOG_RING)
 
 
 class LiveSession:
-    """Shared warm live camera for both the MJPEG stream and the pull endpoint.
+    """Shared warm live camera for the MJPEG stream and the pull endpoint.
 
-    MJPEG holds an open connection (reference counted via ``acquire``/
-    ``release``). The pull endpoint (``grab_frame``) keeps the camera warm for
-    ``live_idle_timeout`` seconds after the last frame so each short request
-    does not restart the sensor. A background watchdog stops the camera once
-    there are no MJPEG clients and the pull idle deadline has passed.
+    A single re-entrant lock serializes start/capture/stop/watchdog so a frame
+    can never be captured from a camera the watchdog is tearing down (which
+    previously surfaced as intermittent 500s). On any capture/start failure the
+    camera is reset so the next request re-initialises cleanly, and the last
+    error is recorded for diagnostics.
     """
 
     def __init__(self, config: AppConfig):
         self.config = config
-        self._state_lock = threading.Lock()
-        self._capture_lock = threading.Lock()
+        self._lock = threading.RLock()
         self._camera_lock_ctx = None
         self._camera = None
         self._clients = 0
         self._idle_deadline = 0.0
         self._idle_timeout = max(1.0, float(getattr(config.camera, "live_idle_timeout", 8.0)))
+        self.last_error = ""
+        self.started_count = 0
         self._stop = False
         self._watchdog = threading.Thread(target=self._watchdog_loop, daemon=True)
         self._watchdog.start()
 
-    def _start_locked(self) -> None:
+    def _ensure_started(self) -> None:  # call under self._lock
         if self._camera is not None:
             return
-        self._camera_lock_ctx = CameraLock(self.config.paths.lock_file, blocking=False)
+        ctx = CameraLock(self.config.paths.lock_file, blocking=False)
+        ctx.__enter__()  # raises CameraBusy
+        self._camera_lock_ctx = ctx
         try:
-            self._camera_lock_ctx.__enter__()
-        except CameraBusy:
+            camera = LiveCamera(self.config.camera)
+            camera.start()
+        except Exception as exc:
+            # Record and release the lock so the next attempt retries cleanly.
+            self.last_error = f"{type(exc).__name__}: {exc}"
+            try:
+                ctx.__exit__(None, None, None)
+            except Exception:
+                pass
             self._camera_lock_ctx = None
             raise
-        self._camera = LiveCamera(self.config.camera)
-        self._camera.start()
+        self._camera = camera
+        self.started_count += 1
         log.info("live camera started")
 
-    def _stop_locked(self):
+    def _teardown(self) -> None:  # call under self._lock
         camera = self._camera
-        lock_ctx = self._camera_lock_ctx
+        ctx = self._camera_lock_ctx
         self._camera = None
         self._camera_lock_ctx = None
-        return camera, lock_ctx
+        if camera is not None:
+            try:
+                camera.stop()
+            except Exception:
+                pass
+        if ctx is not None:
+            try:
+                ctx.__exit__(None, None, None)
+            except Exception:
+                pass
 
-    def acquire(self) -> LiveCamera:
-        with self._state_lock:
-            self._start_locked()  # raises CameraBusy
-            self._clients += 1
-            return self._camera
-
-    def release(self) -> None:
-        with self._state_lock:
-            self._clients = max(0, self._clients - 1)
+    def _capture(self) -> bytes:  # call under self._lock
+        self._ensure_started()  # raises CameraBusy
+        self._idle_deadline = time.monotonic() + self._idle_timeout
+        try:
+            data = self._camera.capture_jpeg_bytes()
+            self.last_error = ""
+            return data
+        except Exception as exc:
+            self.last_error = f"{type(exc).__name__}: {exc}"
+            self._teardown()  # reset so the next attempt re-initialises
+            raise
 
     def grab_frame(self) -> bytes:
-        with self._state_lock:
-            self._start_locked()  # raises CameraBusy
-            camera = self._camera
-            self._idle_deadline = time.monotonic() + self._idle_timeout
-        with self._capture_lock:
-            return camera.capture_jpeg_bytes()
+        with self._lock:
+            return self._capture()
+
+    def acquire(self) -> "LiveSession":
+        with self._lock:
+            self._ensure_started()  # raises CameraBusy
+            self._clients += 1
+            return self
+
+    def release(self) -> None:
+        with self._lock:
+            self._clients = max(0, self._clients - 1)
+
+    def capture_locked(self) -> bytes:
+        with self._lock:
+            return self._capture()
 
     def _watchdog_loop(self) -> None:
         while not self._stop:
             time.sleep(1.0)
-            with self._state_lock:
+            with self._lock:
                 if self._camera is None:
                     continue
                 if self._clients > 0 or time.monotonic() < self._idle_deadline:
                     continue
-                camera, lock_ctx = self._stop_locked()
-            if camera is not None:
-                camera.stop()
+                self._teardown()
                 log.info("live camera stopped (idle)")
-            if lock_ctx is not None:
-                lock_ctx.__exit__(None, None, None)
 
     @property
     def clients(self) -> int:
-        with self._state_lock:
+        with self._lock:
             return self._clients
+
+    def diag(self) -> dict:
+        with self._lock:
+            return {
+                "camera_open": self._camera is not None,
+                "clients": self._clients,
+                "starts": self.started_count,
+                "last_error": self.last_error,
+            }
 
 
 def token_param(token: str) -> str:
@@ -560,6 +618,31 @@ PAGE_JS = """
     });
   }
 
+  /* ---- Feature: (re)build a burst session timelapse with full error ---- */
+  var buildBurstBtn = $("#buildBurst");
+  if(buildBurstBtn && window.CAM_DAY){
+    buildBurstBtn.addEventListener("click", async function(){
+      var sess = window.CAM_DAY.day;
+      buildBurstBtn.disabled = true; var old = buildBurstBtn.textContent; buildBurstBtn.textContent = "Buduj\\u0119\\u2026";
+      try{
+        var r = await fetch(withTok("/api/burst/timelapse?session=" + encodeURIComponent(sess)), { method: "POST" });
+        var j = await r.json();
+        if(j.error){ toast("B\\u0142\\u0105d: " + j.error, "warn"); buildBurstBtn.disabled = false; buildBurstBtn.textContent = old; return; }
+        toast("Buduj\\u0119 timelapse\\u2026", "ok");
+        var poll = setInterval(async function(){
+          try{
+            var s = await (await fetch(withTok("/api/burst/session?session=" + encodeURIComponent(sess)))).json();
+            if(!s.building){
+              clearInterval(poll);
+              if(s.exists){ toast("Gotowe \\u2014 od\\u015bwie\\u017cam", "ok"); setTimeout(function(){ location.reload(); }, 800); }
+              else { toast("Nie uda\\u0142o si\\u0119 \\u2014 zobacz log", "warn"); setTimeout(function(){ location.reload(); }, 800); }
+            }
+          }catch(e){}
+        }, 3000);
+      }catch(e){ toast("B\\u0142\\u0105d sieci", "warn"); buildBurstBtn.disabled = false; buildBurstBtn.textContent = old; }
+    });
+  }
+
   /* ---- Feature: history scrubber + timelapse + client-side nav + keyboard ---- */
   var day = window.CAM_DAY;
   if(day && day.frames && day.frames.length){
@@ -670,40 +753,80 @@ SHELL_JS = """
 LIVE_JS = """
 (function(){
   function withTok(p){ var t = window.CAM_TOKEN || ""; var u = new URL(p, location.origin); if(t) u.searchParams.set("token", t); return u.pathname + u.search; }
-  var img = document.getElementById("liveImg");
+  function $(id){ return document.getElementById(id); }
+  var img = $("liveImg");
   if(!img) return;
-  var statusEl = document.getElementById("liveStatus");
-  var fpsEl = document.getElementById("liveFps");
-  var pauseBtn = document.getElementById("livePause");
-  var rateSel = document.getElementById("liveRate");
-  var running = true;
-  var minInterval = parseInt((rateSel && rateSel.value) || "200", 10);
-  var lastStart = 0, frames = 0, fpsWindow = performance.now();
-  function schedule(delay){ if(running) setTimeout(loadNext, Math.max(0, delay)); }
-  function loadNext(){
+  var statusEl = $("liveStatus"), fpsEl = $("liveFps"), pauseBtn = $("livePause"), rateSel = $("liveRate");
+  var diagBtn = $("diagBtn"), diagPanel = $("diagPanel"), diagOut = $("diagOut");
+  var running = true, minInterval = parseInt((rateSel && rateSel.value) || "200", 10);
+  var frames = 0, fpsWindow = performance.now(), curURL = null;
+  var clientLog = [];
+  function logc(s){ clientLog.push(new Date().toISOString().substr(11,12) + " " + s); if(clientLog.length > 40) clientLog.shift(); }
+  function setStatus(text, cls){ if(statusEl){ statusEl.textContent = text; statusEl.className = "badge " + (cls || ""); } }
+  function schedule(d){ if(running) setTimeout(loadNext, Math.max(0, d)); }
+  async function loadNext(){
     if(!running) return;
-    if(document.hidden){ schedule(500); return; }   // don't burn the Pi/bandwidth in a background tab
-    lastStart = performance.now();
-    img.src = withTok("/live.jpg?t=" + Date.now());
+    if(document.hidden){ schedule(500); return; }
+    var t0 = performance.now();
+    try{
+      var r = await fetch(withTok("/live.jpg?t=" + Date.now()), { cache: "no-store" });
+      if(!r.ok){
+        var body = ""; try{ body = (await r.text()).trim(); }catch(e){}
+        logc("GET /live.jpg -> " + r.status + (body ? (" " + body) : ""));
+        var hint = r.status === 409 ? "kamera zajęta" : (r.status === 502 ? "serwer niedostępny" : (r.status === 500 ? "błąd serwera" : ""));
+        setStatus("\\u26A0 " + r.status + (hint ? (" \\u00B7 " + hint) : "") + (body ? (" \\u00B7 " + body) : ""), "dead");
+        schedule(r.status === 409 ? 1500 : 1200);
+        return;
+      }
+      var blob = await r.blob();
+      var url = URL.createObjectURL(blob);
+      img.onload = function(){ if(curURL) URL.revokeObjectURL(curURL); curURL = url; };
+      img.src = url;
+      frames++;
+      var now = performance.now();
+      if(now - fpsWindow >= 1000){ if(fpsEl) fpsEl.textContent = (frames * 1000 / (now - fpsWindow)).toFixed(1) + " fps"; frames = 0; fpsWindow = now; }
+      setStatus("\\u25CF na \\u017cywo", "");
+      schedule(minInterval - (performance.now() - t0));
+    }catch(e){
+      logc("fetch error: " + ((e && e.message) || e));
+      setStatus("\\u26A0 brak po\\u0142\\u0105czenia \\u2014 ponawiam", "dead");
+      schedule(1500);
+    }
   }
-  img.addEventListener("load", function(){
-    var took = performance.now() - lastStart;
-    frames++;
-    var now = performance.now();
-    if(now - fpsWindow >= 1000){ if(fpsEl) fpsEl.textContent = (frames * 1000 / (now - fpsWindow)).toFixed(1) + " fps"; frames = 0; fpsWindow = now; }
-    if(statusEl) statusEl.className = "badge";
-    schedule(minInterval - took);
-  });
-  img.addEventListener("error", function(){
-    if(statusEl) statusEl.className = "badge dead";
-    schedule(1000);   // backoff on hiccup / camera busy
-  });
   if(pauseBtn) pauseBtn.addEventListener("click", function(){
     running = !running;
     pauseBtn.textContent = running ? "\\u23F8 Pauza" : "\\u25B6 Wzn\\u00F3w";
-    if(running) loadNext();
+    if(running) loadNext(); else setStatus("\\u23F8 pauza", "");
   });
   if(rateSel) rateSel.addEventListener("change", function(){ minInterval = parseInt(rateSel.value, 10); });
+
+  async function buildDiag(){
+    var dump = {
+      when: new Date().toISOString(),
+      page: location.href.replace(/token=[^&]+/, "token=***"),
+      userAgent: navigator.userAgent,
+      online: navigator.onLine,
+      clientLog: clientLog.slice()
+    };
+    try{
+      var r = await fetch(withTok("/api/diag"));
+      dump.serverHttp = r.status;
+      dump.server = await r.json();
+    }catch(e){ dump.serverFetchError = String(e); }
+    return JSON.stringify(dump, null, 2);
+  }
+  if(diagBtn) diagBtn.addEventListener("click", async function(){
+    diagPanel.style.display = "";
+    diagOut.textContent = "\\u2026"; diagOut.textContent = await buildDiag();
+  });
+  if($("diagRefresh")) $("diagRefresh").addEventListener("click", async function(){ diagOut.textContent = await buildDiag(); });
+  if($("diagCopy")) $("diagCopy").addEventListener("click", function(){
+    var txt = diagOut.textContent;
+    if(navigator.clipboard){ navigator.clipboard.writeText(txt).then(function(){}, function(){}); }
+    var sel = window.getSelection(); var range = document.createRange(); range.selectNodeContents(diagOut); sel.removeAllRanges(); sel.addRange(range);
+  });
+  window.addEventListener("error", function(e){ logc("JS error: " + (e.message || "")); });
+  window.addEventListener("unhandledrejection", function(e){ logc("promise: " + ((e.reason && e.reason.message) || e.reason)); });
   loadNext();
 })();
 """
@@ -778,6 +901,10 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             self._timelapse_status(parsed.query)
         elif parsed.path == "/api/burst/status":
             self._burst_status(parsed.query)
+        elif parsed.path == "/api/burst/session":
+            self._burst_session_status(parsed.query)
+        elif parsed.path == "/api/diag":
+            self._diag(parsed.query)
         elif parsed.path == "/api/bootstrap":
             self._send_tatry_bootstrap(parsed.query)
         elif parsed.path == "/api/capture-now":
@@ -814,6 +941,8 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             self._burst_start(parsed.query)
         elif parsed.path == "/api/burst/stop":
             self._burst_stop(parsed.query)
+        elif parsed.path == "/api/burst/timelapse":
+            self._burst_timelapse(parsed.query)
         else:
             self._send_text("not found\n", "text/plain", HTTPStatus.NOT_FOUND)
 
@@ -883,6 +1012,82 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             self._send_json({"error": "unauthorized"}, HTTPStatus.UNAUTHORIZED)
             return
         self._send_json(self.server.burst.stop())  # type: ignore[attr-defined]
+
+    def _burst_session_status(self, query: str) -> None:
+        if not self._authorized(query):
+            self._send_json({"error": "unauthorized"}, HTTPStatus.UNAUTHORIZED)
+            return
+        session = parse_qs(query).get("session", [""])[0]
+        sess_dir = self.storage.burst_dir / session
+        if "/" in session or ".." in session or not sess_dir.is_dir():
+            self._send_json({"error": "unknown session"}, HTTPStatus.NOT_FOUND)
+            return
+        video = sess_dir / TIMELAPSE_NAME
+        err_file = sess_dir / "timelapse.error.txt"
+        with self.server.timelapse_lock:  # type: ignore[attr-defined]
+            building = session in self.server.burst_building  # type: ignore[attr-defined]
+        self._send_json({
+            "exists": video.exists(),
+            "building": building,
+            "size": video.stat().st_size if video.exists() else 0,
+            "frames": len(self.storage.burst_frames(session)),
+            "ffmpeg": have_ffmpeg(),
+            "error": err_file.read_text(encoding="utf-8") if err_file.exists() else "",
+        })
+
+    def _burst_timelapse(self, query: str) -> None:
+        if not self._authorized(query):
+            self._send_json({"error": "unauthorized"}, HTTPStatus.UNAUTHORIZED)
+            return
+        session = parse_qs(query).get("session", [""])[0]
+        sess_dir = self.storage.burst_dir / session
+        if "/" in session or ".." in session or not sess_dir.is_dir():
+            self._send_json({"error": "unknown session"}, HTTPStatus.NOT_FOUND)
+            return
+        server = self.server
+        with server.timelapse_lock:  # type: ignore[attr-defined]
+            if session in server.burst_building:  # type: ignore[attr-defined]
+                self._send_json({"ok": True, "building": True, "already": True})
+                return
+            server.burst_building.add(session)  # type: ignore[attr-defined]
+
+        def worker():
+            try:
+                from .burst import build_session_timelapse
+                build_session_timelapse(sess_dir)
+            finally:
+                with server.timelapse_lock:  # type: ignore[attr-defined]
+                    server.burst_building.discard(session)  # type: ignore[attr-defined]
+
+        threading.Thread(target=worker, daemon=True).start()
+        log.info("burst timelapse rebuild started for %s", session)
+        self._send_json({"ok": True, "building": True})
+
+    def _diag(self, query: str) -> None:
+        if not self._authorized(query):
+            self._send_json({"error": "unauthorized"}, HTTPStatus.UNAUTHORIZED)
+            return
+        s = self.app_config.server
+        c = self.app_config.camera
+        payload = {
+            "time": time.strftime("%Y-%m-%dT%H:%M:%S"),
+            "ffmpeg": have_ffmpeg(),
+            "live": self.server.live.diag(),  # type: ignore[attr-defined]
+            "burst": self.server.burst.status(),  # type: ignore[attr-defined]
+            "system": read_system_stats(self.storage.data_dir),
+            "server": {
+                "version": self.server_version,
+                "host": s.host,
+                "port": s.port,
+                "live_fps": c.live_fps,
+                "live_size": [c.live_width, c.live_height],
+                "live_quality": c.live_quality,
+                "live_idle_timeout": c.live_idle_timeout,
+                "snapshot_interval": self.app_config.snapshot.interval_seconds,
+            },
+            "log_tail": list(LOG_RING.buf),
+        }
+        self._send_json(payload)
 
     def _timelapse_status(self, query: str) -> None:
         if not self._authorized(query):
@@ -1203,11 +1408,12 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
         try:
             frame = self.live.grab_frame()
         except CameraBusy:
-            self._send_text("camera busy\n", "text/plain", HTTPStatus.CONFLICT)
+            self._send_text("camera busy (live/snapshot/burst in use)\n", "text/plain", HTTPStatus.CONFLICT)
             return
         except Exception as exc:
-            log.exception("live frame failed: %s", exc)
-            self._send_text("live error\n", "text/plain", HTTPStatus.INTERNAL_SERVER_ERROR)
+            log.warning("live frame failed: %s", exc)
+            self._send_text(f"live error: {type(exc).__name__}: {exc}\n", "text/plain",
+                            HTTPStatus.INTERNAL_SERVER_ERROR)
             return
         try:
             self.send_response(HTTPStatus.OK)
@@ -1221,18 +1427,24 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
 
     def _send_mjpeg(self) -> None:
         try:
-            camera = self.live.acquire()
+            self.live.acquire()
         except CameraBusy:
             self._send_text("camera busy\n", "text/plain", HTTPStatus.CONFLICT)
             return
-        interval = getattr(camera, "frame_interval", 0.2)
+        interval = 1.0 / max(1, self.app_config.camera.live_fps)
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", "multipart/x-mixed-replace; boundary=frame")
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
         try:
             while True:
-                frame = camera.capture_jpeg_bytes()
+                try:
+                    frame = self.live.capture_locked()
+                except CameraBusy:
+                    break
+                except Exception as exc:
+                    log.warning("live mjpeg frame failed: %s", exc)
+                    break
                 self.wfile.write(b"--frame\r\n")
                 self.wfile.write(b"Content-Type: image/jpeg\r\n")
                 self.wfile.write(f"Content-Length: {len(frame)}\r\n\r\n".encode("ascii"))
@@ -1242,8 +1454,6 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
                 time.sleep(interval)
         except (BrokenPipeError, ConnectionResetError):
             pass
-        except Exception as exc:
-            log.exception("live stream failed: %s", exc)
         finally:
             self.live.release()
 
@@ -1341,7 +1551,19 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
                 f'<a class="btn" href="{video_url}" download="{html.escape(session)}.mp4">⬇️ MP4</a></div></div>'
             )
         else:
-            video_block = '<div class="card pad"><p class="sub" style="margin:0">Wideo nie zostało zbudowane (brak ffmpeg lub błąd enkodowania).</p></div>'
+            err_file = self.storage.burst_dir / session / "timelapse.error.txt"
+            if err_file.exists():
+                note = (
+                    '<p class="sub" style="margin:0 0 .5rem">Build timelapse nie powiódł się — pełny log:</p>'
+                    f'<pre class="out err">{html.escape(err_file.read_text(encoding="utf-8"))}</pre>'
+                )
+            else:
+                note = '<p class="sub" style="margin:0">Timelapse jeszcze nie zbudowany dla tej sesji.</p>'
+            video_block = (
+                f'<div class="card pad">{note}'
+                '<div class="actions" style="margin-top:.6rem">'
+                '<button class="btn btn-primary" id="buildBurst" type="button">▶ Zbuduj timelapse</button></div></div>'
+            )
         label = html.escape(session.replace("_", " "))
         body = f"""
 <h1 class="h">Burst — {label}</h1>
@@ -1510,8 +1732,18 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
     </select>
   </label>
   <a class="btn" href="{href('/live.mjpg', token)}">Tryb MJPEG</a>
+  <span class="spacer"></span>
+  <button id="diagBtn" class="btn" type="button">🩺 Diagnostyka</button>
 </div>
-<p class="note">Podgląd pobiera klatki pojedynczo i sam dopasowuje tempo do łącza — bez narastającego opóźnienia. Jakość/rozmiar klatek live ustawisz w <code>config.ini</code> (<code>live_quality</code>, <code>live_width/height</code>). Używa kamery na wyłączność; zamknij stronę, gdy skończysz.</p>
+<p class="note">Podgląd pobiera klatki pojedynczo i sam dopasowuje tempo do łącza. Gdy coś nie działa, strona nie przestaje próbować — pokazuje status i błąd. „Diagnostyka" zbiera pełny zrzut do skopiowania.</p>
+<div id="diagPanel" class="card pad" style="display:none">
+  <div class="ctrlrow" style="margin:0 0 .5rem">
+    <strong style="color:var(--ink)">Diagnostyka</strong>
+    <button id="diagRefresh" class="btn" type="button">↻ Odśwież</button>
+    <button id="diagCopy" class="btn" type="button">⧉ Kopiuj</button>
+  </div>
+  <pre id="diagOut" class="out"></pre>
+</div>
 <script>window.CAM_TOKEN={token_js};</script>
 <script>{LIVE_JS}</script>
 """
@@ -1709,6 +1941,7 @@ class CameraServer(ThreadingHTTPServer):
         self.burst = BurstController(config)
         self.timelapse_lock = threading.Lock()
         self.timelapse_building: set = set()
+        self.burst_building: set = set()
 
     def handle_error(self, request, client_address) -> None:
         exc_type, exc, _ = sys.exc_info()

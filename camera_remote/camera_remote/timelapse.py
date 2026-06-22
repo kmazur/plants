@@ -103,11 +103,18 @@ def build_dir(
         subprocess.run(cmd, check=True, capture_output=True, timeout=timeout)
     except subprocess.CalledProcessError as exc:
         tmp.unlink(missing_ok=True)
-        tail = (exc.stderr or b"").decode("utf-8", "replace")[-600:]
-        raise RuntimeError(f"ffmpeg failed: {tail}") from exc
+        stderr = (exc.stderr or b"").decode("utf-8", "replace")[-4000:]
+        stdout = (exc.stdout or b"").decode("utf-8", "replace")[-1000:]
+        raise RuntimeError(
+            f"ffmpeg exited {exc.returncode}\n"
+            f"encoder: {name}\n"
+            f"frames: {len(frames)} in {frames_dir}\n"
+            f"command: {' '.join(cmd)}\n"
+            f"--- stderr ---\n{stderr}\n--- stdout ---\n{stdout}"
+        ) from exc
     except subprocess.TimeoutExpired as exc:
         tmp.unlink(missing_ok=True)
-        raise RuntimeError("ffmpeg timed out") from exc
+        raise RuntimeError(f"ffmpeg timed out after {timeout}s\ncommand: {' '.join(cmd)}") from exc
     os.replace(tmp, out_path)
     log.info("wrote %s (%d bytes)", out_path, out_path.stat().st_size)
     return out_path
