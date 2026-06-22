@@ -48,9 +48,14 @@ def _transform(config: CameraConfig):
     return libcamera.Transform(hflip=config.hflip, vflip=config.vflip)
 
 
-def capture_jpeg_file(output_path: Path, config: CameraConfig, size: Optional[Tuple[int, int]] = None) -> dict:
+def capture_jpeg_file(output_path: Path, config: CameraConfig, size: Optional[Tuple[int, int]] = None,
+                      controls: Optional[dict] = None, warmup: Optional[float] = None) -> dict:
     """Capture a full still to ``output_path``. Returns the camera metadata
-    (exposure, gain, lux, ...) for that capture, or an empty dict."""
+    (exposure, gain, lux, ...) for that capture, or an empty dict.
+
+    ``controls`` lets the caller force exposure/gain (used by the adaptive night
+    mode); ``warmup`` overrides the settle time (a manual long exposure needs at
+    least one full exposure to elapse before the frame is valid)."""
     output_path.parent.mkdir(parents=True, exist_ok=True)
     width, height = size or (config.snapshot_width, config.snapshot_height)
     tmp_path = output_path.with_suffix(output_path.suffix + ".tmp")
@@ -58,13 +63,13 @@ def capture_jpeg_file(output_path: Path, config: CameraConfig, size: Optional[Tu
     meta: dict = {}
     picam = _new_picam(config)
     try:
-        still_config = picam.create_still_configuration(
-            main={"size": (width, height)},
-            transform=_transform(config),
-        )
+        cfg_kwargs = dict(main={"size": (width, height)}, transform=_transform(config))
+        if controls:
+            cfg_kwargs["controls"] = dict(controls)
+        still_config = picam.create_still_configuration(**cfg_kwargs)
         picam.configure(still_config)
         picam.start()
-        time.sleep(config.warmup_seconds)
+        time.sleep(warmup if warmup is not None else config.warmup_seconds)
         picam.capture_file(str(tmp_path), format="jpeg")
         try:
             meta = picam.capture_metadata() or {}
@@ -190,9 +195,13 @@ class LiveCamera:
             return
         picam = _new_picam(self.config)
         try:
+            # Raise the auto-exposure ceiling so the preview brightens at night
+            # (AE still uses short exposures by day, so daytime fps is unaffected).
+            night_max = max(20000, int(getattr(self.config, "live_night_max_us", 500000)))
             video_config = picam.create_video_configuration(
                 main={"size": (self.config.live_width, self.config.live_height)},
                 transform=_transform(self.config),
+                controls={"FrameDurationLimits": (8333, night_max)},
             )
             picam.configure(video_config)
             # Smaller, lighter JPEGs so a constrained Pi/tunnel can keep up.

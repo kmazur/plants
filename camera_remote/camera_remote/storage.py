@@ -97,13 +97,17 @@ class SnapshotStorage:
         file_path = day_dir / f"{now.strftime('%H-%M-%S')}.jpg"
         blocking_lock = blocking or not self.config.snapshot.skip_when_camera_busy
 
+        night = self._is_night()
+        controls, warmup, night_exp = self._night_controls() if night else (None, None, None)
+
         cam_meta = {}
         try:
             with CameraLock(self.config.paths.lock_file, blocking=blocking_lock):
                 last_error = None
                 for attempt in range(1, self.config.camera.retry_count + 1):
                     try:
-                        cam_meta = capture_jpeg_file(file_path, self.config.camera) or {}
+                        cam_meta = capture_jpeg_file(
+                            file_path, self.config.camera, controls=controls, warmup=warmup) or {}
                         break
                     except Exception as exc:
                         last_error = exc
@@ -114,6 +118,8 @@ class SnapshotStorage:
                     raise RuntimeError(f"snapshot failed after retries: {last_error}")
         except CameraBusy:
             return SnapshotResult(file_path, self.latest_path, now, skipped=True, message="camera busy")
+        if night and night_exp:
+            self.metrics.kv_set("night_exp", str(night_exp))
 
         tmp_latest = self.latest_path.with_suffix(".jpg.tmp")
         shutil.copyfile(file_path, tmp_latest)
@@ -134,6 +140,8 @@ class SnapshotStorage:
             record = md.build_record(now, file_path.name, file_path, self.data_dir,
                                      getattr(self.config, "location", None), cam_meta,
                                      canopy_roi=self.canopy_roi())
+            if night:
+                record["night"] = 1
             self.metrics.insert(record)
             self.record_zones(file_path, int(now.timestamp()), now.strftime("%Y-%m-%d"))
             md.check_reboot(self.metrics, now)
@@ -259,6 +267,72 @@ class SnapshotStorage:
             self.metrics.kv_set("canopy_roi", "")
         else:
             self.metrics.kv_set("canopy_roi", json.dumps([round(float(x), 4) for x in roi]))
+
+    # ---- adaptive night mode ----
+    def night_mode(self) -> str:
+        """Effective mode: a runtime override (DB) wins over the config default."""
+        kv = self.metrics.kv_get("night_mode")
+        if kv in ("auto", "on", "off"):
+            return kv
+        m = getattr(self.config.camera, "night_mode", "auto")
+        return m if m in ("auto", "on", "off") else "auto"
+
+    def set_night_mode(self, mode: str) -> None:
+        self.metrics.kv_set("night_mode", mode if mode in ("auto", "on", "off") else "auto")
+
+    def _is_night(self) -> bool:
+        mode = self.night_mode()
+        if mode == "on":
+            return True
+        if mode == "off":
+            return False
+        last = self.metrics.latest() or {}
+        is_day = last.get("is_day")
+        if is_day is not None:
+            return int(is_day) == 0
+        b = last.get("brightness")
+        return b is not None and b < self.config.camera.night_brightness_threshold
+
+    def _night_controls(self):
+        """Closed-loop exposure: nudge the previous night exposure toward a
+        target brightness so successive frames converge and track the darkness.
+        Returns (controls, warmup_seconds, exposure_us)."""
+        cam = self.config.camera
+        try:
+            base = int(self.metrics.kv_get("night_exp") or 0)
+        except (TypeError, ValueError):
+            base = 0
+        last = self.metrics.latest() or {}
+        last_bright = last.get("brightness")
+        was_day = last.get("is_day") == 1
+        if base < 2000:
+            exp = min(cam.night_max_exposure_us, 300_000)  # 0.3 s seed
+        elif was_day or not last_bright:
+            exp = base  # re-entering night: seed from last night's exposure
+        else:
+            factor = cam.night_target_brightness / max(1.0, float(last_bright))
+            factor = max(0.5, min(factor, 2.5))  # damp swings
+            exp = int(base * factor)
+        exp = max(2000, min(int(exp), cam.night_max_exposure_us))
+        controls = {"AeEnable": False, "ExposureTime": exp, "AnalogueGain": cam.night_max_gain}
+        warmup = exp / 1_000_000.0 + max(cam.warmup_seconds, 0.4)
+        return controls, warmup, exp
+
+    def night_status(self) -> dict:
+        last = self.metrics.latest() or {}
+        try:
+            night_exp = int(self.metrics.kv_get("night_exp") or 0)
+        except (TypeError, ValueError):
+            night_exp = 0
+        return {
+            "mode": self.night_mode(),
+            "is_night": self._is_night(),
+            "night_exp_us": night_exp,
+            "last_exposure_us": (last.get("cam") or {}).get("exposure_us"),
+            "last_brightness": last.get("brightness"),
+            "max_exposure_us": self.config.camera.night_max_exposure_us,
+            "max_gain": self.config.camera.night_max_gain,
+        }
 
     def zones(self) -> list:
         """Named measurement zones: [{name, x, y, w, h}, ...] (normalized)."""

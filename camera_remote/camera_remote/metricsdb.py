@@ -23,7 +23,7 @@ _COLUMNS = [
     "load1", "mem_used_pct", "disk_used_pct", "uptime_s",
     "exposure_us", "gain", "lux", "colour_temp",
     "out_temp", "out_humidity", "out_wind", "out_cloud", "out_precip", "out_code",
-    "is_day", "sunrise", "sunset",
+    "is_day", "sunrise", "sunset", "night",
 ]
 
 # Columns exposed to the time-of-day heatmap / "average day" view.
@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS metadata (
   load1 REAL, mem_used_pct REAL, disk_used_pct REAL, uptime_s INTEGER,
   exposure_us INTEGER, gain REAL, lux REAL, colour_temp INTEGER,
   out_temp REAL, out_humidity REAL, out_wind REAL, out_cloud REAL, out_precip REAL, out_code INTEGER,
-  is_day INTEGER, sunrise TEXT, sunset TEXT
+  is_day INTEGER, sunrise TEXT, sunset TEXT, night INTEGER
 );
 CREATE INDEX IF NOT EXISTS idx_metadata_day ON metadata(day);
 CREATE TABLE IF NOT EXISTS events (
@@ -80,6 +80,7 @@ def _flatten(record: dict) -> dict:
         "out_wind": out.get("wind"), "out_cloud": out.get("cloud"),
         "out_precip": out.get("precip"), "out_code": out.get("code"),
         "is_day": record.get("is_day"), "sunrise": record.get("sunrise"), "sunset": record.get("sunset"),
+        "night": record.get("night"),
     }
 
 
@@ -95,7 +96,8 @@ def _nest(row: sqlite3.Row) -> dict:
                      ("canopy_pct", "canopy_pct"), ("sharpness", "sharpness"), ("size", "size"),
                      ("load1", "load1"), ("mem_used_pct", "mem_used_pct"),
                      ("disk_used_pct", "disk_used_pct"), ("uptime_s", "uptime_s"),
-                     ("is_day", "is_day"), ("sunrise", "sunrise"), ("sunset", "sunset")):
+                     ("is_day", "is_day"), ("sunrise", "sunrise"), ("sunset", "sunset"),
+                     ("night", "night")):
         if r.get(col) is not None:
             rec[key] = r[col]
     cam = {k: r[c] for k, c in (("exposure_us", "exposure_us"), ("gain", "gain"),
@@ -128,7 +130,7 @@ class MetricsDB:
             conn.executescript(_SCHEMA)
             # Migrate older databases that predate added columns.
             have = {r["name"] for r in conn.execute("PRAGMA table_info(metadata)").fetchall()}
-            for col, decl in (("canopy_pct", "REAL"), ("sharpness", "REAL")):
+            for col, decl in (("canopy_pct", "REAL"), ("sharpness", "REAL"), ("night", "INTEGER")):
                 if col not in have:
                     conn.execute(f"ALTER TABLE metadata ADD COLUMN {col} {decl}")
 

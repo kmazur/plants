@@ -996,6 +996,28 @@ LIVE_JS = """
   if(resetBtn) resetBtn.addEventListener("click", function(){ postRoi({ reset: true }); });
   fetch(withTok("/api/live/roi"), { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }).catch(function(){});
 
+  /* ---- Feature: adaptive night mode ---- */
+  var nightSel = $("nightSel"), nightStat = $("nightStat");
+  function showNight(s){
+    if(!nightStat || !s) return;
+    if(s.is_night){
+      var us = s.night_exp_us || s.last_exposure_us || 0;
+      nightStat.textContent = "\\uD83C\\uDF19 noc" + (us ? (" \\u00B7 " + (us/1e6).toFixed(us<1e6?2:1) + "s") : "");
+    } else {
+      nightStat.textContent = "\\u2600\\uFE0F dzień";
+    }
+    if(nightSel && s.mode) nightSel.value = s.mode;
+  }
+  async function nightApi(method, body){
+    try{
+      var o = { method: method, headers: { "Content-Type": "application/json" } };
+      if(body) o.body = JSON.stringify(body);
+      showNight(await (await fetch(withTok("/api/night"), o)).json());
+    }catch(e){}
+  }
+  if(nightSel) nightSel.addEventListener("change", function(){ nightApi("POST", { mode: nightSel.value }); });
+  nightApi("GET");
+
   loadNext();
 })();
 """
@@ -1030,6 +1052,7 @@ METRICS_JS = """
         pill(r.canopy_pct!=null?("\\uD83C\\uDF3F zieleń "+r.canopy_pct+"%"):"")+
         pill(r.brightness!=null?("\\uD83D\\uDCA1 jasność "+r.brightness):"")+
         pill(r.sharpness!=null?("\\uD83D\\uDD0E ostrość "+r.sharpness):"")+
+        pill((r.night && r.cam && r.cam.exposure_us)?("\\uD83C\\uDF19 "+(r.cam.exposure_us/1e6).toFixed(2)+"s"):"")+
         pill("\\u2601\\uFE0F "+(o.cloud!=null?Math.round(o.cloud)+"%":"\\u2013"))+
         pill("\\uD83D\\uDCA8 "+(o.wind!=null?o.wind+" km/h":"\\u2013"))+
         pill("\\uD83D\\uDCA7 "+(o.precip!=null?o.precip+" mm":"\\u2013"))+
@@ -1471,6 +1494,8 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             self._metadata_zones(parsed.query)
         elif parsed.path == "/api/metadata/hourly":
             self._metadata_hourly(parsed.query)
+        elif parsed.path == "/api/night":
+            self._night_api(parsed.query)
         elif parsed.path == "/api/metadata/events":
             self._metadata_events(parsed.query)
         elif parsed.path == "/metrics":
@@ -1533,6 +1558,8 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             self._canopy_backfill(parsed.query)
         elif parsed.path == "/api/canopy/zones":
             self._canopy_zones(parsed.query)
+        elif parsed.path == "/api/night":
+            self._night_api(parsed.query)
         elif parsed.path == "/api/movie/build":
             self._movie_build(parsed.query)
         elif parsed.path == "/api/burst/start":
@@ -1885,6 +1912,7 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             "time": time.strftime("%Y-%m-%dT%H:%M:%S"),
             "ffmpeg": have_ffmpeg(),
             "live": self.server.live.diag(),  # type: ignore[attr-defined]
+            "night": self.storage.night_status(),
             "burst": self.server.burst.status(),  # type: ignore[attr-defined]
             "system": read_system_stats(self.storage.data_dir),
             "server": {
@@ -2023,6 +2051,17 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
         threading.Thread(target=worker, daemon=True).start()
         log.info("image-metrics backfill started (%d rows)", total)
         self._send_json({"ok": True, "running": True, "total": total})
+
+    def _night_api(self, query: str) -> None:
+        if not self._authorized(query):
+            self._send_json({"error": "unauthorized"}, HTTPStatus.UNAUTHORIZED)
+            return
+        if self.command == "POST":
+            body = self._read_json_body() or {}
+            mode = body.get("mode")
+            if mode in ("auto", "on", "off"):
+                self.storage.set_night_mode(mode)
+        self._send_json(self.storage.night_status())
 
     def _canopy_zones(self, query: str) -> None:
         if not self._authorized(query):
@@ -2802,6 +2841,14 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
 <div class="ctrlrow">
   <button id="livePause" class="btn" type="button">⏸ Pauza</button>
   <button id="liveReset" class="btn" type="button">🔍 Reset zoom</button>
+  <label class="switch">🌙 Noc
+    <select id="nightSel" class="mini" aria-label="Tryb nocny">
+      <option value="auto">auto</option>
+      <option value="on">wł.</option>
+      <option value="off">wył.</option>
+    </select>
+  </label>
+  <span id="nightStat" class="badge"></span>
   <label class="switch">Płynność
     <select id="liveRate" class="mini" aria-label="Płynność podglądu">
       <option value="500">~2 fps (oszczędnie)</option>

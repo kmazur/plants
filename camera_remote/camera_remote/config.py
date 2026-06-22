@@ -31,6 +31,12 @@ class CameraConfig:
     warmup_seconds: float
     retry_count: int
     retry_delay_seconds: float
+    night_mode: str
+    night_max_exposure_us: int
+    night_max_gain: float
+    night_target_brightness: float
+    night_brightness_threshold: float
+    live_night_max_us: int
 
 
 @dataclass(frozen=True)
@@ -119,6 +125,12 @@ def load_config(path: Union[str, Path]) -> AppConfig:
         warmup_seconds=_get_float(parser, "camera", "warmup_seconds", 0.7),
         retry_count=_get_int(parser, "camera", "retry_count", 3),
         retry_delay_seconds=_get_float(parser, "camera", "retry_delay_seconds", 3.0),
+        night_mode=_get_str(parser, "camera", "night_mode", "auto"),
+        night_max_exposure_us=_get_int(parser, "camera", "night_max_exposure_us", 2_000_000),
+        night_max_gain=_get_float(parser, "camera", "night_max_gain", 16.0),
+        night_target_brightness=_get_float(parser, "camera", "night_target_brightness", 90.0),
+        night_brightness_threshold=_get_float(parser, "camera", "night_brightness_threshold", 35.0),
+        live_night_max_us=_get_int(parser, "camera", "live_night_max_us", 500_000),
     )
     snapshot = SnapshotConfig(
         retain_days=_get_int(parser, "snapshot", "retain_days", 14),
