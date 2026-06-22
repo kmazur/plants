@@ -27,6 +27,7 @@ from .locking import CameraBusy, CameraLock
 from .shellsession import ShellManager
 from .storage import SnapshotStorage
 from .tatry import get_bootstrap
+from .timelapse import TIMELAPSE_NAME, build_day, have_ffmpeg
 
 log = logging.getLogger(__name__)
 TOKEN_RE = re.compile(r"([?&]token=)[^&\s\"]+")
@@ -139,6 +140,13 @@ def href(path: str, token: str) -> str:
 
 def _clamp(value: int, minimum: int, maximum: int) -> int:
     return max(minimum, min(maximum, value))
+
+
+_DAY_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def _valid_day(day: str) -> bool:
+    return bool(_DAY_RE.match(day or ""))
 
 
 def read_system_stats(data_dir) -> dict:
@@ -486,6 +494,27 @@ PAGE_JS = """
     loadSys(); setInterval(function(){ if(!document.hidden) loadSys(); }, 30000);
   }
 
+  /* ---- Feature: build a real timelapse video on demand ---- */
+  var buildBtn = $("#buildTl");
+  if(buildBtn && window.CAM_DAY){
+    buildBtn.addEventListener("click", async function(){
+      var d = window.CAM_DAY.day;
+      buildBtn.disabled = true; var old = buildBtn.textContent; buildBtn.textContent = "Buduj\\u0119\\u2026";
+      try{
+        var r = await fetch(withTok("/api/timelapse/build?day=" + encodeURIComponent(d)), { method: "POST" });
+        var j = await r.json();
+        if(j.error){ toast("B\\u0142\\u0105d: " + j.error, "warn"); buildBtn.disabled = false; buildBtn.textContent = old; return; }
+        toast("Buduj\\u0119 timelapse\\u2026", "ok");
+        var poll = setInterval(async function(){
+          try{
+            var s = await (await fetch(withTok("/api/timelapse/status?day=" + encodeURIComponent(d)))).json();
+            if(s.exists && !s.building){ clearInterval(poll); toast("Gotowe \\u2014 od\\u015bwie\\u017cam", "ok"); setTimeout(function(){ location.reload(); }, 900); }
+          }catch(e){}
+        }, 4000);
+      }catch(e){ toast("B\\u0142\\u0105d sieci", "warn"); buildBtn.disabled = false; buildBtn.textContent = old; }
+    });
+  }
+
   /* ---- Feature: history scrubber + timelapse + client-side nav + keyboard ---- */
   var day = window.CAM_DAY;
   if(day && day.frames && day.frames.length){
@@ -700,6 +729,8 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             self._send_html(self._admin_page(parsed.query))
         elif parsed.path == "/api/shell/read":
             self._shell_read(parsed.query)
+        elif parsed.path == "/api/timelapse/status":
+            self._timelapse_status(parsed.query)
         elif parsed.path == "/api/bootstrap":
             self._send_tatry_bootstrap(parsed.query)
         elif parsed.path == "/api/capture-now":
@@ -726,6 +757,8 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             self._shell_resize(parsed.query)
         elif parsed.path == "/api/shell/close":
             self._shell_close(parsed.query)
+        elif parsed.path == "/api/timelapse/build":
+            self._timelapse_build(parsed.query)
         else:
             self._send_text("not found\n", "text/plain", HTTPStatus.NOT_FOUND)
 
@@ -767,6 +800,60 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             self._send_json({"ok": False, "skipped": True, "message": result.message}, HTTPStatus.CONFLICT)
             return
         self._send_json({"ok": True, "path": str(result.path), "timestamp": result.timestamp.isoformat()})
+
+    def _timelapse_status(self, query: str) -> None:
+        if not self._authorized(query):
+            self._send_json({"error": "unauthorized"}, HTTPStatus.UNAUTHORIZED)
+            return
+        day = parse_qs(query).get("day", [""])[0]
+        if not _valid_day(day):
+            self._send_json({"error": "bad day"}, HTTPStatus.BAD_REQUEST)
+            return
+        video = self.storage.history_dir / day / TIMELAPSE_NAME
+        exists = video.exists()
+        with self.server.timelapse_lock:  # type: ignore[attr-defined]
+            building = day in self.server.timelapse_building  # type: ignore[attr-defined]
+        self._send_json({
+            "exists": exists,
+            "building": building,
+            "size": video.stat().st_size if exists else 0,
+            "ffmpeg": have_ffmpeg(),
+        })
+
+    def _timelapse_build(self, query: str) -> None:
+        if not self._authorized(query):
+            self._send_json({"error": "unauthorized"}, HTTPStatus.UNAUTHORIZED)
+            return
+        day = parse_qs(query).get("day", [""])[0]
+        if not _valid_day(day):
+            self._send_json({"error": "bad day"}, HTTPStatus.BAD_REQUEST)
+            return
+        if not (self.storage.history_dir / day).is_dir():
+            self._send_json({"error": "unknown day"}, HTTPStatus.NOT_FOUND)
+            return
+        if not have_ffmpeg():
+            self._send_json({"error": "ffmpeg not installed"}, HTTPStatus.NOT_IMPLEMENTED)
+            return
+        server = self.server
+        with server.timelapse_lock:  # type: ignore[attr-defined]
+            if day in server.timelapse_building:  # type: ignore[attr-defined]
+                self._send_json({"ok": True, "building": True, "already": True})
+                return
+            server.timelapse_building.add(day)  # type: ignore[attr-defined]
+        data_dir = self.storage.data_dir
+
+        def worker():
+            try:
+                build_day(data_dir, day, force=True)
+            except Exception as exc:
+                log.warning("timelapse build failed for %s: %s", day, exc)
+            finally:
+                with server.timelapse_lock:  # type: ignore[attr-defined]
+                    server.timelapse_building.discard(day)  # type: ignore[attr-defined]
+
+        threading.Thread(target=worker, daemon=True).start()
+        log.info("timelapse build started for %s", day)
+        self._send_json({"ok": True, "building": True})
 
     def _admin_enabled(self) -> bool:
         return bool(self.app_config.server.admin_enabled)
@@ -971,17 +1058,49 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             self._send_text("not found\n", "text/plain", HTTPStatus.NOT_FOUND)
             return
         content_type = mimetypes.guess_type(str(path))[0] or "application/octet-stream"
-        self.send_response(HTTPStatus.OK)
+        size = path.stat().st_size
+        start, end = 0, size - 1
+        partial = False
+        rng = self.headers.get("Range")
+        if rng and rng.startswith("bytes="):
+            spec = rng.split("=", 1)[1].split(",")[0].strip()
+            lo, _, hi = spec.partition("-")
+            try:
+                if lo == "":
+                    start = max(0, size - int(hi))
+                else:
+                    start = int(lo)
+                    end = int(hi) if hi else size - 1
+                end = min(end, size - 1)
+                if start > end or start >= size:
+                    raise ValueError
+                partial = True
+            except ValueError:
+                self.send_response(HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE)
+                self.send_header("Content-Range", f"bytes */{size}")
+                self.end_headers()
+                return
+        length = end - start + 1
+        self.send_response(HTTPStatus.PARTIAL_CONTENT if partial else HTTPStatus.OK)
         self.send_header("Content-Type", content_type)
-        self.send_header("Content-Length", str(path.stat().st_size))
+        self.send_header("Content-Length", str(length))
+        self.send_header("Accept-Ranges", "bytes")
+        if partial:
+            self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
         self.send_header("Cache-Control", "public, max-age=86400" if cache else "no-store")
         self.end_headers()
-        with path.open("rb") as fh:
-            while True:
-                chunk = fh.read(1024 * 64)
-                if not chunk:
-                    break
-                self.wfile.write(chunk)
+        try:
+            with path.open("rb") as fh:
+                fh.seek(start)
+                remaining = length
+                while remaining > 0:
+                    chunk = fh.read(min(64 * 1024, remaining))
+                    if not chunk:
+                        break
+                    self.wfile.write(chunk)
+                    remaining -= len(chunk)
+        except (BrokenPipeError, ConnectionResetError):
+            pass
 
     def _send_vendor(self, path: str) -> None:
         """Serve vendored static assets (xterm.js, ...) without auth — they
@@ -1273,10 +1392,30 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             "frames": [{"n": p.name, "l": p.stem.replace("-", ":")} for p in images],
         })
 
+        video_path = self.storage.history_dir / day / TIMELAPSE_NAME
+        video_url = href(f"/history/{quote(day)}/{quote(TIMELAPSE_NAME)}", token)
+        if video_path.exists():
+            video_block = (
+                f'<div class="card hero-card">'
+                f'<video class="viewer" controls preload="metadata" playsinline poster="{selected_url}">'
+                f'<source src="{video_url}" type="video/mp4"></video>'
+                f'<div class="hero-bar"><span class="badge">🎞️ Timelapse</span><span class="spacer"></span>'
+                f'<a class="btn" href="{video_url}" download="{html.escape(day)}-timelapse.mp4">⬇️ MP4</a>'
+                f'<button class="btn" id="buildTl" type="button">↻ Odśwież</button></div></div>'
+            )
+        else:
+            video_block = (
+                '<div class="card pad"><p class="sub" style="margin:0">Brak timelapse dla tego dnia — '
+                'odtwarzanie poniżej składa pełne klatki (wolniej przez sieć). '
+                '<button class="btn btn-primary" id="buildTl" type="button">▶ Zbuduj timelapse</button></p></div>'
+            )
+
         day_h = html.escape(day)
         body = f"""
 <h1 class="h">{day_h}</h1>
 <p class="sub" id="counter">{selected_label} · {selected_index + 1}/{len(images)}</p>
+{video_block}
+<h2 class="h" style="font-size:1rem;margin-top:1.3rem">Klatki</h2>
 <div class="card hero-card"><img id="viewer" class="viewer" src="{selected_url}" alt="{selected_label}"></div>
 <div class="scrubber">
   <input id="scrub" type="range" min="0" max="{len(images) - 1}" value="{selected_index}" aria-label="Przewijaj klatki">
@@ -1351,6 +1490,8 @@ class CameraServer(ThreadingHTTPServer):
         ]
         self.live = LiveSession(config)
         self.shell = ShellManager()
+        self.timelapse_lock = threading.Lock()
+        self.timelapse_building: set = set()
 
     def handle_error(self, request, client_address) -> None:
         exc_type, exc, _ = sys.exc_info()

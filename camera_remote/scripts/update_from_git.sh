@@ -48,10 +48,13 @@ install_units() {
   sudo -n install -m 0644 "$STACK_DIR/systemd/camera-snapshot.timer" /etc/systemd/system/camera-snapshot.timer
   sudo -n install -m 0644 "$STACK_DIR/systemd/camera-remote-update.service" /etc/systemd/system/camera-remote-update.service
   sudo -n install -m 0644 "$STACK_DIR/systemd/camera-remote-update.timer" /etc/systemd/system/camera-remote-update.timer
+  sudo -n install -m 0644 "$STACK_DIR/systemd/camera-timelapse.service" /etc/systemd/system/camera-timelapse.service
+  sudo -n install -m 0644 "$STACK_DIR/systemd/camera-timelapse.timer" /etc/systemd/system/camera-timelapse.timer
   sudo -n systemctl daemon-reload
   sudo -n systemctl enable --now camera-remote.service
   sudo -n systemctl enable --now camera-snapshot.timer
   sudo -n systemctl enable --now camera-remote-update.timer
+  sudo -n systemctl enable --now camera-timelapse.timer
 }
 
 restart_units() {

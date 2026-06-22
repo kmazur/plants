@@ -1,0 +1,17 @@
+[Unit]
+Description=Build daily snapshot timelapse videos
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=user
+Group=user
+WorkingDirectory=/home/user/IdeaProjects/plants/camera_remote
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+Nice=15
+IOSchedulingClass=idle
+CPUWeight=20
+ExecStart=/usr/bin/python3 -m camera_remote.timelapse --recent 3 --config /etc/camera-remote/config.ini
+TimeoutStartSec=3600

@@ -28,7 +28,7 @@ DEFAULT_WIDTH = 1280
 # Preferred encoders, best first. Hardware h264_v4l2m2m is cheap thermally on a
 # Pi; libx264 is the portable software fallback; mpeg4 is a last resort.
 _ENCODERS: List[Tuple[str, List[str]]] = [
-    ("h264_v4l2m2m", ["-c:v", "h264_v4l2m2m", "-b:v", "6M"]),
+    ("h264_v4l2m2m", ["-c:v", "h264_v4l2m2m", "-b:v", "4M"]),
     ("libx264", ["-c:v", "libx264", "-preset", "veryfast", "-crf", "28"]),
     ("mpeg4", ["-c:v", "mpeg4", "-q:v", "5"]),
 ]
