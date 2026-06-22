@@ -42,6 +42,7 @@ class CameraConfig:
     img_contrast: float
     img_saturation: float
     denoise: str
+    night_postprocess: bool
 
 
 @dataclass(frozen=True)
@@ -141,6 +142,7 @@ def load_config(path: Union[str, Path]) -> AppConfig:
         img_contrast=_get_float(parser, "camera", "img_contrast", 1.0),
         img_saturation=_get_float(parser, "camera", "img_saturation", 1.0),
         denoise=_get_str(parser, "camera", "denoise", "high"),
+        night_postprocess=_get_bool(parser, "camera", "night_postprocess", True),
     )
     snapshot = SnapshotConfig(
         retain_days=_get_int(parser, "snapshot", "retain_days", 14),

@@ -125,21 +125,12 @@ class SnapshotStorage:
             return SnapshotResult(file_path, self.latest_path, now, skipped=True, message="camera busy")
         if night and night_exp:
             self.metrics.kv_set("night_exp", str(night_exp))
+        self._maybe_lock_wb(cam_meta)
 
-        tmp_latest = self.latest_path.with_suffix(".jpg.tmp")
-        shutil.copyfile(file_path, tmp_latest)
-        tmp_latest.replace(self.latest_path)
-
-        meta = {
-            "timestamp": now.isoformat(timespec="seconds"),
-            "path": str(file_path),
-            "size": file_path.stat().st_size,
-        }
-        tmp_meta = self.latest_meta_path.with_suffix(".json.tmp")
-        tmp_meta.write_text(json.dumps(meta, indent=2), encoding="utf-8")
-        tmp_meta.replace(self.latest_meta_path)
-
-        # Per-capture metadata time series (SQLite).
+        # Metrics come from the RAW frame, before any cosmetic post-processing,
+        # so canopy/brightness/sharpness stay comparable and the night exposure
+        # loop sees the true brightness.
+        pp = night and bool(getattr(self.config.camera, "night_postprocess", True))
         try:
             from . import metadata as md
             record = md.build_record(now, file_path.name, file_path, self.data_dir,
@@ -148,11 +139,33 @@ class SnapshotStorage:
             if night:
                 record["night"] = 1
                 record["night_mode"] = self.night_mode()
+            if pp:
+                record["pp"] = 1
             self.metrics.insert(record)
             self.record_zones(file_path, int(now.timestamp()), now.strftime("%Y-%m-%d"))
             md.check_reboot(self.metrics, now)
         except Exception as exc:
             log.warning("metadata record failed: %s", exc)
+
+        # Cosmetic enhancement of dark night frames (auto-contrast + denoise).
+        if pp:
+            try:
+                self._postprocess_night(file_path)
+            except Exception as exc:
+                log.warning("night post-process failed: %s", exc)
+
+        # latest.jpg reflects the final (possibly enhanced) frame.
+        tmp_latest = self.latest_path.with_suffix(".jpg.tmp")
+        shutil.copyfile(file_path, tmp_latest)
+        tmp_latest.replace(self.latest_path)
+        meta = {
+            "timestamp": now.isoformat(timespec="seconds"),
+            "path": str(file_path),
+            "size": file_path.stat().st_size,
+        }
+        tmp_meta = self.latest_meta_path.with_suffix(".json.tmp")
+        tmp_meta.write_text(json.dumps(meta, indent=2), encoding="utf-8")
+        tmp_meta.replace(self.latest_meta_path)
 
         self.cleanup_old_history()
         return SnapshotResult(file_path, self.latest_path, now)
@@ -285,6 +298,9 @@ class SnapshotStorage:
         nr = _NR_MODES.get((cam.denoise or "").lower())
         if nr is not None:
             ctrl["NoiseReductionMode"] = nr
+        gains = self.wb_gains()
+        if gains:
+            ctrl["ColourGains"] = (float(gains[0]), float(gains[1]))  # disables AWB
         return ctrl
 
     def image_status(self) -> dict:
@@ -296,7 +312,127 @@ class SnapshotStorage:
             "contrast": cam.img_contrast,
             "saturation": cam.img_saturation,
             "denoise": cam.denoise,
+            "night_postprocess": bool(getattr(cam, "night_postprocess", True)),
+            "wb": self.wb_status(),
         }
+
+    # ---- white-balance lock (flicker-free colour for timelapse) ----
+    def wb_gains(self):
+        try:
+            raw = self.metrics.kv_get("colour_gains")
+            if not raw:
+                return None
+            v = json.loads(raw)
+            if isinstance(v, list) and len(v) == 2:
+                return (float(v[0]), float(v[1]))
+        except Exception:
+            pass
+        return None
+
+    def set_wb(self, mode: str) -> None:
+        if mode == "lock":
+            self.metrics.kv_set("awb_lock", "1")
+            self.metrics.kv_set("awb_pending", "1")
+            self.metrics.kv_set("colour_gains", "")  # re-measure on next frame
+        else:  # auto
+            self.metrics.kv_set("awb_lock", "")
+            self.metrics.kv_set("awb_pending", "")
+            self.metrics.kv_set("colour_gains", "")
+
+    def wb_status(self) -> dict:
+        locked = self.metrics.kv_get("awb_lock") == "1"
+        gains = self.wb_gains()
+        return {
+            "mode": "locked" if locked else "auto",
+            "pending": locked and not gains,
+            "gains": list(gains) if gains else None,
+        }
+
+    def _maybe_lock_wb(self, cam_meta: dict) -> None:
+        """When a WB lock is requested, capture the auto AWB gains from this
+        (still auto) frame once, then reuse them for subsequent captures."""
+        if self.metrics.kv_get("awb_lock") != "1":
+            return
+        if self.wb_gains():
+            return
+        g = (cam_meta or {}).get("ColourGains")
+        if g and len(g) == 2:
+            self.metrics.kv_set("colour_gains", json.dumps([round(float(g[0]), 3), round(float(g[1]), 3)]))
+            self.metrics.kv_set("awb_pending", "")
+            log.info("white balance locked at gains %.3f/%.3f", g[0], g[1])
+
+    def _postprocess_night(self, path: Path) -> None:
+        """Auto-contrast + mild denoise for dark night frames. Re-encodes once;
+        applied only to night frames so daytime quality/metrics are untouched."""
+        from PIL import Image, ImageOps, ImageFilter
+        with Image.open(path) as im:
+            im = im.convert("RGB")
+            im = ImageOps.autocontrast(im, cutoff=1)
+            im = im.filter(ImageFilter.MedianFilter(size=3))
+            tmp = path.with_suffix(".jpg.pp.tmp")
+            im.save(tmp, "JPEG", quality=int(getattr(self.config.camera, "jpeg_quality", 92)))
+            tmp.replace(path)
+
+    def capture_hdr(self, ev_step: float = 2.0, fuse_width: int = 2028):
+        """Capture a 3-shot exposure bracket and merge via exposure fusion
+        (more detail in shadows and highlights). Saves to data_dir/hdr and
+        returns the path."""
+        import numpy as np
+        from PIL import Image
+        self.ensure_dirs()
+        out_dir = self.data_dir / "hdr"
+        tmp_dir = out_dir / ".tmp"
+        tmp_dir.mkdir(parents=True, exist_ok=True)
+        now = datetime.now()
+        last = self.metrics.latest() or {}
+        base = int((last.get("cam") or {}).get("exposure_us") or 10000)
+        base = max(200, min(base, 1_000_000))
+        factor = 2.0 ** ev_step
+        exposures = [max(60, int(base / factor)), base, min(4_000_000, int(base * factor))]
+        image_controls = self._image_controls()
+        frames = []
+        with CameraLock(self.config.paths.lock_file, blocking=True):
+            for i, exp in enumerate(exposures):
+                fp = tmp_dir / f"b{i}.jpg"
+                capture_jpeg_file(
+                    fp, self.config.camera,
+                    controls={"AeEnable": False, "ExposureTime": exp, "AnalogueGain": 1.0},
+                    warmup=exp / 1_000_000.0 + 0.4,
+                    image_controls=image_controls, quality=95)
+                frames.append(fp)
+        arrs, size = [], None
+        for fp in frames:
+            with Image.open(fp) as im:
+                im = im.convert("RGB")
+                if im.width > fuse_width:
+                    im = im.resize((fuse_width, max(1, round(im.height * fuse_width / im.width))))
+                if size is None:
+                    size = im.size
+                elif im.size != size:
+                    im = im.resize(size)
+                arrs.append(np.asarray(im, dtype="float32") / 255.0)
+        eps = 1e-6
+        weights = []
+        for a in arrs:
+            we = np.exp(-((a - 0.5) ** 2) / (2 * 0.2 * 0.2)).prod(axis=2)   # well-exposedness
+            gray = a.mean(axis=2)
+            gy, gx = np.gradient(gray)
+            contrast = np.abs(gy) + np.abs(gx)
+            sat = a.std(axis=2)
+            weights.append(we * (1.0 + contrast) * (1.0 + sat) + eps)
+        W = np.stack(weights, axis=0)
+        W /= W.sum(axis=0, keepdims=True)
+        out = np.zeros_like(arrs[0])
+        for i, a in enumerate(arrs):
+            out += W[i][..., None] * a
+        out_path = out_dir / (now.strftime("%Y-%m-%d_%H-%M-%S") + ".jpg")
+        Image.fromarray((out.clip(0, 1) * 255).astype("uint8")).save(out_path, "JPEG", quality=95)
+        for fp in frames:
+            try:
+                fp.unlink()
+            except Exception:
+                pass
+        return out_path
 
     # ---- adaptive night mode ----
     def night_mode(self) -> str:

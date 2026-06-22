@@ -802,6 +802,7 @@ PAGE_JS = """
         tech.style.display = "";
         tech.innerHTML = "\\uD83C\\uDF19 <b>Tryb nocny \\u2014 d\\u0142uga ekspozycja</b> \\u00B7 ekspozycja " + exp + gain
           + " \\u00B7 AE wy\\u0142. \\u00B7 tryb " + (r.night_mode || "auto")
+          + (r.pp ? " \\u00B7 auto-kontrast+odszum" : "")
           + " \\u00B7 NoIR (czu\\u0142a na podczerwie\\u0144)";
       } else {
         badge.style.display = "none"; if(tech) tech.style.display = "none";
@@ -1044,6 +1045,41 @@ LIVE_JS = """
   }
   if(nightSel) nightSel.addEventListener("change", function(){ nightApi("POST", { mode: nightSel.value }); });
   nightApi("GET");
+
+  /* ---- Feature: white-balance lock ---- */
+  var wbBtn = $("wbBtn");
+  function showWb(s){
+    if(!wbBtn || !s) return;
+    var locked = s.mode === "locked";
+    wbBtn.classList.toggle("btn-primary", locked);
+    wbBtn.textContent = locked ? (s.pending ? "\\uD83C\\uDFA8 WB\\u2026" : "\\uD83C\\uDFA8 WB \\u2713") : "\\uD83C\\uDFA8 WB";
+    wbBtn.title = locked && s.gains ? ("ColourGains " + s.gains[0] + " / " + s.gains[1]) : "Zablokuj balans bieli (stały kolor)";
+  }
+  async function wbApi(method, body){
+    try{ var o = { method: method, headers: { "Content-Type": "application/json" } }; if(body) o.body = JSON.stringify(body);
+      showWb(await (await fetch(withTok("/api/wb"), o)).json()); }catch(e){}
+  }
+  if(wbBtn) wbBtn.addEventListener("click", function(){ wbApi("POST", { mode: wbBtn.classList.contains("btn-primary") ? "auto" : "lock" }); });
+  wbApi("GET");
+
+  /* ---- Feature: HDR bracket (pauses live so the camera is free) ---- */
+  var hdrBtn = $("hdrBtn"), hdrStat = $("hdrStat");
+  async function hdrPoll(){
+    try{
+      var s = await (await fetch(withTok("/api/hdr"))).json();
+      if(s.building){ hdrStat.textContent = "\\uD83D\\uDCF8 HDR\\u2026 (zwalniam kamer\\u0119 ~8s)"; setTimeout(hdrPoll, 2500); return; }
+      if(hdrBtn) hdrBtn.disabled = false;
+      if(s.error){ hdrStat.textContent = "\\uD83D\\uDCF8 HDR b\\u0142\\u0105d"; }
+      else if(s.url){ hdrStat.innerHTML = '<a href="' + s.url + '" target="_blank">\\u2705 HDR gotowe</a>'; }
+      if(!running){ running = true; loadNext(); }   // resume preview
+    }catch(e){ if(hdrBtn) hdrBtn.disabled = false; if(!running){ running = true; loadNext(); } }
+  }
+  if(hdrBtn) hdrBtn.addEventListener("click", async function(){
+    hdrBtn.disabled = true; hdrStat.textContent = "\\uD83D\\uDCF8 HDR\\u2026 start";
+    running = false; setStatus("\\uD83D\\uDCF8 HDR \\u2014 podgl\\u0105d wstrzymany", "");
+    try{ await fetch(withTok("/api/hdr"), { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }); }catch(e){}
+    hdrPoll();
+  });
 
   loadNext();
 })();
@@ -1539,8 +1575,14 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             self._movie_status(parsed.query)
         elif parsed.path == "/compare":
             self._send_html(self._compare_html(parsed.query))
+        elif parsed.path == "/api/wb":
+            self._wb_api(parsed.query)
+        elif parsed.path == "/api/hdr":
+            self._hdr_api(parsed.query)
         elif parsed.path.startswith("/movies/"):
             self._handle_movie(parsed.path, parsed.query)
+        elif parsed.path.startswith("/hdr/"):
+            self._handle_hdr(parsed.path, parsed.query)
         elif parsed.path == "/api/burst/status":
             self._burst_status(parsed.query)
         elif parsed.path == "/api/burst/session":
@@ -1587,6 +1629,10 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             self._canopy_zones(parsed.query)
         elif parsed.path == "/api/night":
             self._night_api(parsed.query)
+        elif parsed.path == "/api/wb":
+            self._wb_api(parsed.query)
+        elif parsed.path == "/api/hdr":
+            self._hdr_api(parsed.query)
         elif parsed.path == "/api/movie/build":
             self._movie_build(parsed.query)
         elif parsed.path == "/api/burst/start":
@@ -2090,6 +2136,65 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             if mode in ("auto", "on", "off"):
                 self.storage.set_night_mode(mode)
         self._send_json(self.storage.night_status())
+
+    def _wb_api(self, query: str) -> None:
+        if not self._authorized(query):
+            self._send_json({"error": "unauthorized"}, HTTPStatus.UNAUTHORIZED)
+            return
+        if self.command == "POST":
+            body = self._read_json_body() or {}
+            mode = body.get("mode")
+            if mode in ("lock", "auto"):
+                self.storage.set_wb(mode)
+        self._send_json(self.storage.wb_status())
+
+    def _hdr_url(self, name):
+        return href("/hdr/" + quote(name), self.app_config.server.auth_token) if name else None
+
+    def _hdr_api(self, query: str) -> None:
+        if not self._authorized(query):
+            self._send_json({"error": "unauthorized"}, HTTPStatus.UNAUTHORIZED)
+            return
+        server = self.server
+        if self.command == "POST":
+            with server.hdr_lock:  # type: ignore[attr-defined]
+                if server.hdr["building"]:  # type: ignore[attr-defined]
+                    self._send_json({"ok": True, "building": True, "already": True})
+                    return
+                server.hdr = {"building": True, "last": server.hdr.get("last"), "error": ""}  # type: ignore[attr-defined]
+            storage = self.storage
+
+            def worker():
+                try:
+                    p = storage.capture_hdr()
+                    server.hdr["last"] = p.name  # type: ignore[attr-defined]
+                    server.hdr["error"] = ""  # type: ignore[attr-defined]
+                except Exception as exc:
+                    server.hdr["error"] = f"{type(exc).__name__}: {exc}"  # type: ignore[attr-defined]
+                    log.warning("hdr capture failed: %s", exc)
+                finally:
+                    server.hdr["building"] = False  # type: ignore[attr-defined]
+
+            threading.Thread(target=worker, daemon=True).start()
+        st = dict(server.hdr)  # type: ignore[attr-defined]
+        st["url"] = self._hdr_url(st.get("last"))
+        self._send_json(st)
+
+    def _handle_hdr(self, path: str, query: str) -> None:
+        if not self._authorized(query):
+            self._send_text("unauthorized\n", "text/plain", HTTPStatus.UNAUTHORIZED)
+            return
+        parts = [unquote(p) for p in path.split("/") if p]
+        if len(parts) == 2:
+            target = (self.storage.data_dir / "hdr" / parts[1])
+            try:
+                target.resolve().relative_to((self.storage.data_dir / "hdr").resolve())
+            except ValueError:
+                self._send_text("bad path\n", "text/plain", HTTPStatus.BAD_REQUEST)
+                return
+            self._send_file(target, immutable=True)
+            return
+        self._send_text("not found\n", "text/plain", HTTPStatus.NOT_FOUND)
 
     def _canopy_zones(self, query: str) -> None:
         if not self._authorized(query):
@@ -2877,6 +2982,9 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
     </select>
   </label>
   <span id="nightStat" class="badge"></span>
+  <button id="wbBtn" class="btn" type="button">🎨 WB</button>
+  <button id="hdrBtn" class="btn" type="button">📸 HDR</button>
+  <span id="hdrStat" class="badge"></span>
   <label class="switch">Płynność
     <select id="liveRate" class="mini" aria-label="Płynność podglądu">
       <option value="500">~2 fps (oszczędnie)</option>
@@ -3123,6 +3231,8 @@ class CameraServer(ThreadingHTTPServer):
         self.canopy_backfill = {"running": False, "done": 0, "total": 0}
         self.movie_lock = threading.Lock()
         self.movie_building = False
+        self.hdr_lock = threading.Lock()
+        self.hdr = {"building": False, "last": None, "error": ""}
 
     def handle_error(self, request, client_address) -> None:
         exc_type, exc, _ = sys.exc_info()
