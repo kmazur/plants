@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import base64
 import collections
+import gzip
 import html
 import json
 import logging
@@ -15,6 +16,7 @@ import subprocess
 import sys
 import threading
 import time
+from email.utils import formatdate, parsedate_to_datetime
 from http import HTTPStatus
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -1245,10 +1247,11 @@ COMPARE_JS = """
     while(lo<hi){ var mid=(lo+hi)>>1; if(a[mid]<t) lo=mid+1; else hi=mid; }
     return (lo>0 && (t-a[lo-1])<=(a[lo]-t)) ? lo-1 : lo;
   }
+  function preload(S, idx){ if(idx>=0 && idx+1<S.frames.length){ var im=new Image(); im.decoding="async"; im.src=url(S.day, S.frames[idx+1]); } }
   function applyTime(t){
     var ia=nearest(A,t), ib=nearest(B,t);
-    if(ia>=0 && ia!==A.cur){ A.cur=ia; over.src=url(A.day,A.frames[ia]); }
-    if(ib>=0 && ib!==B.cur){ B.cur=ib; base.src=url(B.day,B.frames[ib]); }
+    if(ia>=0 && ia!==A.cur){ A.cur=ia; over.src=url(A.day,A.frames[ia]); preload(A,ia); }
+    if(ib>=0 && ib!==B.cur){ B.cur=ib; base.src=url(B.day,B.frames[ib]); preload(B,ib); }
     if(tlabel){ tlabel.textContent="⏱ "+fmt(t)+"  ·  przed "+(ia>=0?fmt(A.sod[ia]):"–")+"  /  po "+(ib>=0?fmt(B.sod[ib]):"–"); }
   }
   function trange(){
@@ -1710,8 +1713,8 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
   <label class="switch">Po <select id="dayB" class="mini"></select></label>
 </div>
 <div id="cmpWrap" class="card hero-card cmp">
-  <img id="cmpB" class="cmp-img" alt="po">
-  <img id="cmpA" class="cmp-img cmp-over" alt="przed">
+  <img id="cmpB" class="cmp-img" alt="po" decoding="async">
+  <img id="cmpA" class="cmp-img cmp-over" alt="przed" decoding="async">
   <div id="cmpDiv" class="cmp-div"></div>
   <span class="cmp-tag cmp-tag-l">przed</span>
   <span class="cmp-tag cmp-tag-r">po</span>
@@ -2137,34 +2140,83 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
                 return
         self._send_text("not found\n", "text/plain", HTTPStatus.NOT_FOUND)
 
-    def _send_json(self, payload: dict, status: HTTPStatus = HTTPStatus.OK) -> None:
-        data = json.dumps(payload, indent=2).encode("utf-8")
+    def _send_body(self, data: bytes, content_type: str, status: HTTPStatus = HTTPStatus.OK,
+                   cache_control: str = "no-store") -> None:
+        """Send a complete in-memory body, gzip-compressing text payloads when
+        the client supports it (big win for the large inline HTML/CSS/JS pages
+        and day-sized JSON over the tunnel)."""
+        encoding = None
+        if len(data) >= 700:
+            accept = self.headers.get("Accept-Encoding", "")
+            if "gzip" in accept:
+                try:
+                    data = gzip.compress(data, 6)
+                    encoding = "gzip"
+                except Exception:
+                    encoding = None
         self.send_response(status)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Type", content_type)
+        if encoding:
+            self.send_header("Content-Encoding", encoding)
+            self.send_header("Vary", "Accept-Encoding")
         self.send_header("Content-Length", str(len(data)))
+        if cache_control:
+            self.send_header("Cache-Control", cache_control)
         self.end_headers()
-        self.wfile.write(data)
+        if self.command != "HEAD":
+            try:
+                self.wfile.write(data)
+            except (BrokenPipeError, ConnectionResetError):
+                pass
+
+    def _send_json(self, payload: dict, status: HTTPStatus = HTTPStatus.OK) -> None:
+        data = json.dumps(payload, separators=(",", ":")).encode("utf-8")
+        self._send_body(data, "application/json; charset=utf-8", status)
 
     def _send_text(self, text: str, content_type: str, status: HTTPStatus = HTTPStatus.OK) -> None:
-        data = text.encode("utf-8")
-        self.send_response(status)
-        self.send_header("Content-Type", content_type + "; charset=utf-8")
-        self.send_header("Content-Length", str(len(data)))
-        self.end_headers()
-        self.wfile.write(data)
+        self._send_body(text.encode("utf-8"), content_type + "; charset=utf-8", status)
 
     def _send_html(self, text: str, status: HTTPStatus = HTTPStatus.OK) -> None:
         self._send_text(text, "text/html", status)
 
-    def _send_file(self, path: Path, cache: bool = False) -> None:
+    def _not_modified(self, etag: str, mtime: float) -> bool:
+        inm = self.headers.get("If-None-Match")
+        if inm and etag in [t.strip() for t in inm.split(",")]:
+            return True
+        ims = self.headers.get("If-Modified-Since")
+        if ims:
+            try:
+                return parsedate_to_datetime(ims).timestamp() >= int(mtime)
+            except Exception:
+                return False
+        return False
+
+    def _send_file(self, path: Path, cache: bool = False, immutable: bool = False) -> None:
         if not path.exists() or not path.is_file():
             self._send_text("not found\n", "text/plain", HTTPStatus.NOT_FOUND)
             return
         content_type = mimetypes.guess_type(str(path))[0] or "application/octet-stream"
-        size = path.stat().st_size
+        st = path.stat()
+        size = st.st_size
+        mtime = st.st_mtime
+        etag = f'"{size:x}-{int(mtime):x}"'
+        # Timestamped frames never change -> immutable; other files revalidate
+        # cheaply via ETag/Last-Modified (304, no body).
+        if immutable:
+            cache_control = "public, max-age=31536000, immutable"
+        elif cache:
+            cache_control = "public, max-age=86400"
+        else:
+            cache_control = "public, max-age=60"
+        rng = self.headers.get("Range")
+        if not rng and self._not_modified(etag, mtime):
+            self.send_response(HTTPStatus.NOT_MODIFIED)
+            self.send_header("ETag", etag)
+            self.send_header("Cache-Control", cache_control)
+            self.end_headers()
+            return
         start, end = 0, size - 1
         partial = False
-        rng = self.headers.get("Range")
         if rng and rng.startswith("bytes="):
             spec = rng.split("=", 1)[1].split(",")[0].strip()
             lo, _, hi = spec.partition("-")
@@ -2190,8 +2242,12 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
         self.send_header("Accept-Ranges", "bytes")
         if partial:
             self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
-        self.send_header("Cache-Control", "public, max-age=86400" if cache else "no-store")
+        self.send_header("ETag", etag)
+        self.send_header("Last-Modified", formatdate(mtime, usegmt=True))
+        self.send_header("Cache-Control", cache_control)
         self.end_headers()
+        if self.command == "HEAD":
+            return
         try:
             with path.open("rb") as fh:
                 fh.seek(start)
@@ -2285,7 +2341,8 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             except ValueError:
                 self._send_text("bad path\n", "text/plain", HTTPStatus.BAD_REQUEST)
                 return
-            self._send_file(target)
+            # Timestamped frames never change; videos get rebuilt so revalidate.
+            self._send_file(target, immutable=not filename.endswith(".mp4"))
             return
         self._send_text("not found\n", "text/plain", HTTPStatus.NOT_FOUND)
 
@@ -2302,7 +2359,7 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             except ValueError:
                 self._send_text("bad path\n", "text/plain", HTTPStatus.BAD_REQUEST)
                 return
-            self._send_file(target)
+            self._send_file(target, immutable=not filename.endswith(".mp4"))
             return
         self._send_text("not found\n", "text/plain", HTTPStatus.NOT_FOUND)
 
