@@ -158,6 +158,32 @@ class LiveCamera:
         self.config = config
         self._picam = None
         self._frame_interval = 1.0 / max(1, config.live_fps)
+        self._roi = None  # absolute ROI (nx, ny, nw, nh) in 0..1 of full sensor
+
+    def set_roi(self, roi) -> None:
+        """roi = (nx, ny, nw, nh) normalized to the full sensor, or None for full."""
+        self._roi = roi
+        self._apply_roi()
+
+    def _apply_roi(self) -> None:
+        if self._picam is None:
+            return
+        try:
+            full = self._picam.camera_properties.get("ScalerCropMaximum")
+            if not full:
+                return
+            fx, fy, fw, fh = full
+            if not self._roi:
+                self._picam.set_controls({"ScalerCrop": tuple(full)})
+                return
+            nx, ny, nw, nh = self._roi
+            cw = max(64, int(nw * fw))
+            ch = max(64, int(nh * fh))
+            cx = int(fx + nx * fw)
+            cy = int(fy + ny * fh)
+            self._picam.set_controls({"ScalerCrop": (cx, cy, cw, ch)})
+        except Exception as exc:
+            log.warning("set ScalerCrop failed: %s", exc)
 
     def start(self) -> None:
         if self._picam is not None:
@@ -188,6 +214,8 @@ class LiveCamera:
                 pass
             raise
         self._picam = picam
+        if self._roi:
+            self._apply_roi()
 
     def stop(self) -> None:
         picam = self._picam

@@ -83,6 +83,7 @@ class LiveSession:
         self._clients = 0
         self._idle_deadline = 0.0
         self._idle_timeout = max(1.0, float(getattr(config.camera, "live_idle_timeout", 8.0)))
+        self._roi = None  # absolute (nx, ny, nw, nh) in 0..1 of full sensor
         self.last_error = ""
         self.started_count = 0
         self._stop = False
@@ -109,6 +110,8 @@ class LiveSession:
             raise
         self._camera = camera
         self.started_count += 1
+        if self._roi:
+            camera.set_roi(self._roi)
         log.info("live camera started")
 
     def _teardown(self) -> None:  # call under self._lock
@@ -157,6 +160,26 @@ class LiveSession:
         with self._lock:
             return self._capture()
 
+    def set_roi(self, nx: float, ny: float, nw: float, nh: float):
+        """Zoom into a rectangle given relative to the CURRENT view; composes
+        into an absolute ROI so repeated selections zoom further in."""
+        with self._lock:
+            cx, cy, cw, ch = self._roi or (0.0, 0.0, 1.0, 1.0)
+            aw = max(0.05, min(nw * cw, 1.0))
+            ah = max(0.05, min(nh * ch, 1.0))
+            ax = min(max(0.0, cx + nx * cw), 1.0 - aw)
+            ay = min(max(0.0, cy + ny * ch), 1.0 - ah)
+            self._roi = (round(ax, 4), round(ay, 4), round(aw, 4), round(ah, 4))
+            if self._camera is not None:
+                self._camera.set_roi(self._roi)
+            return self._roi
+
+    def clear_roi(self):
+        with self._lock:
+            self._roi = None
+            if self._camera is not None:
+                self._camera.set_roi(None)
+
     def _watchdog_loop(self) -> None:
         while not self._stop:
             time.sleep(1.0)
@@ -175,10 +198,13 @@ class LiveSession:
 
     def diag(self) -> dict:
         with self._lock:
+            zoom = round(1.0 / self._roi[2], 1) if self._roi else 1.0
             return {
                 "camera_open": self._camera is not None,
                 "clients": self._clients,
                 "starts": self.started_count,
+                "roi": list(self._roi) if self._roi else None,
+                "zoom": zoom,
                 "last_error": self.last_error,
             }
 
@@ -299,8 +325,10 @@ a:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible{
 .hero-card{position:relative}
 .hero{width:100%;display:block;background:#050807;aspect-ratio:16/9;object-fit:cover}
 .viewer{width:100%;display:block;background:#050807;aspect-ratio:16/9;object-fit:contain}
-.live-frame{background:#050807}
+.live-frame{background:#050807;position:relative}
 .live-frame img{width:100%;display:block}
+#roiOverlay{position:absolute;inset:0;cursor:crosshair;touch-action:none}
+#roiRect{position:absolute;border:2px solid var(--accent);background:rgba(239,155,66,.18);display:none;pointer-events:none}
 .hero-bar{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;padding:.65rem 1rem;border-top:1px solid var(--border)}
 .badge{display:inline-flex;align-items:center;gap:.4rem;font-size:.8rem;font-weight:700;color:var(--muted)}
 .live-dot{width:8px;height:8px;border-radius:50%;background:#e0533f;animation:pulse 1.6s infinite}
@@ -899,6 +927,43 @@ LIVE_JS = """
   });
   window.addEventListener("error", function(e){ logc("JS error: " + (e.message || "")); });
   window.addEventListener("unhandledrejection", function(e){ logc("promise: " + ((e.reason && e.reason.message) || e.reason)); });
+
+  /* ---- Feature: draw a rectangle to hardware-zoom (ScalerCrop) ---- */
+  var overlay = $("roiOverlay"), rectEl = $("roiRect"), zoomEl = $("liveZoom"), resetBtn = $("liveReset");
+  function setZoom(z){ if(zoomEl) zoomEl.textContent = (z && z > 1) ? ("\\uD83D\\uDD0D " + z + "\\u00D7") : ""; }
+  async function postRoi(b){
+    try{
+      var r = await fetch(withTok("/api/live/roi"), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(b) });
+      var j = await r.json();
+      if(j.zoom != null) setZoom(j.zoom);
+    }catch(e){ logc("roi post error"); }
+  }
+  if(overlay){
+    var drag = null;
+    function draw(e){
+      if(!drag) return;
+      var x = Math.min(e.clientX, drag.x0), y = Math.min(e.clientY, drag.y0);
+      rectEl.style.left = (x - drag.r.left) + "px"; rectEl.style.top = (y - drag.r.top) + "px";
+      rectEl.style.width = Math.abs(e.clientX - drag.x0) + "px"; rectEl.style.height = Math.abs(e.clientY - drag.y0) + "px";
+    }
+    overlay.addEventListener("pointerdown", function(e){
+      try{ overlay.setPointerCapture(e.pointerId); }catch(_){}
+      drag = { r: overlay.getBoundingClientRect(), x0: e.clientX, y0: e.clientY };
+      rectEl.style.display = "block"; draw(e);
+    });
+    overlay.addEventListener("pointermove", draw);
+    overlay.addEventListener("pointerup", function(e){
+      if(!drag) return;
+      var r = drag.r, x = Math.min(e.clientX, drag.x0), y = Math.min(e.clientY, drag.y0);
+      var w = Math.abs(e.clientX - drag.x0), h = Math.abs(e.clientY - drag.y0);
+      rectEl.style.display = "none"; drag = null;
+      if(w < 10 || h < 10) return;  // ignore tiny/taps
+      postRoi({ x: (x - r.left) / r.width, y: (y - r.top) / r.height, w: w / r.width, h: h / r.height });
+    });
+  }
+  if(resetBtn) resetBtn.addEventListener("click", function(){ postRoi({ reset: true }); });
+  fetch(withTok("/api/live/roi"), { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }).catch(function(){});
+
   loadNext();
 })();
 """
@@ -1128,6 +1193,8 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             self._burst_stop(parsed.query)
         elif parsed.path == "/api/burst/timelapse":
             self._burst_timelapse(parsed.query)
+        elif parsed.path == "/api/live/roi":
+            self._live_roi(parsed.query)
         else:
             self._send_text("not found\n", "text/plain", HTTPStatus.NOT_FOUND)
 
@@ -1169,6 +1236,27 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             self._send_json({"ok": False, "skipped": True, "message": result.message}, HTTPStatus.CONFLICT)
             return
         self._send_json({"ok": True, "path": str(result.path), "timestamp": result.timestamp.isoformat()})
+
+    def _live_roi(self, query: str) -> None:
+        if not self._authorized(query):
+            self._send_json({"error": "unauthorized"}, HTTPStatus.UNAUTHORIZED)
+            return
+        body = self._read_json_body() or {}
+        if body.get("reset"):
+            self.live.clear_roi()
+            self._send_json({"ok": True, "roi": None, "zoom": 1.0})
+            return
+        if "x" not in body:  # query current state
+            d = self.live.diag()
+            self._send_json({"ok": True, "roi": d.get("roi"), "zoom": d.get("zoom", 1.0)})
+            return
+        try:
+            x = float(body["x"]); y = float(body["y"]); w = float(body["w"]); h = float(body["h"])
+        except (KeyError, TypeError, ValueError):
+            self._send_json({"error": "bad roi"}, HTTPStatus.BAD_REQUEST)
+            return
+        roi = self.live.set_roi(x, y, w, h)
+        self._send_json({"ok": True, "roi": list(roi), "zoom": round(1.0 / roi[2], 1)})
 
     def _burst_status(self, query: str) -> None:
         if not self._authorized(query):
@@ -1984,16 +2072,18 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
         token_js = json.dumps(token)
         body = f"""
 <div class="card hero-card">
-  <div class="live-frame"><img id="liveImg" alt="Podgląd na żywo"></div>
+  <div class="live-frame"><img id="liveImg" alt="Podgląd na żywo"><div id="roiOverlay"></div><div id="roiRect"></div></div>
   <div class="hero-bar">
     <span id="liveStatus" class="badge"><span class="live-dot"></span>Na żywo</span>
     <span id="liveFps" class="badge">… fps</span>
+    <span id="liveZoom" class="badge"></span>
     <span class="spacer"></span>
     <a class="btn" href="{href('/', token)}">← Wróć</a>
   </div>
 </div>
 <div class="ctrlrow">
   <button id="livePause" class="btn" type="button">⏸ Pauza</button>
+  <button id="liveReset" class="btn" type="button">🔍 Reset zoom</button>
   <label class="switch">Płynność
     <select id="liveRate" class="mini" aria-label="Płynność podglądu">
       <option value="500">~2 fps (oszczędnie)</option>
@@ -2006,7 +2096,7 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
   <span class="spacer"></span>
   <button id="diagBtn" class="btn" type="button">🩺 Diagnostyka</button>
 </div>
-<p class="note">Podgląd pobiera klatki pojedynczo i sam dopasowuje tempo do łącza. Gdy coś nie działa, strona nie przestaje próbować — pokazuje status i błąd. „Diagnostyka" zbiera pełny zrzut do skopiowania.</p>
+<p class="note">Podgląd pobiera klatki pojedynczo i sam dopasowuje tempo do łącza. <b>Zaznacz prostokąt na obrazie, aby przybliżyć</b> (sprzętowy zoom = pełna ostrość sensora na tym wycinku, bez wzrostu transferu); zaznaczaj dalej, by przybliżać głębiej, „Reset zoom" wraca do pełnego kadru. „Diagnostyka" zbiera pełny zrzut do skopiowania.</p>
 <div id="diagPanel" class="card pad" style="display:none">
   <div class="ctrlrow" style="margin:0 0 .5rem">
     <strong style="color:var(--ink)">Diagnostyka</strong>
