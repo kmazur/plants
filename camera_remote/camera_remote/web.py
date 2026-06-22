@@ -455,7 +455,16 @@ a:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible{
 .cond .pl{background:var(--card-2,rgba(125,140,130,.12));border:1px solid var(--border);border-radius:999px;padding:.18rem .6rem;font-size:.78rem;color:var(--ink);white-space:nowrap}
 .cond .pl.warn{color:#e0533f;border-color:rgba(224,83,63,.5)}
 .cond .ctime{font-size:.72rem;color:var(--muted);width:100%}
-@media (max-width:560px){.cond .cbig{font-size:1.7rem}.cond .cmain b{font-size:1.15rem}.metarow img,.metarow pre{flex:1 1 100%}}
+@media (max-width:560px){.cond .cbig{font-size:1.7rem}.cond .cmain b{font-size:1.15rem}.metarow .mimgwrap,.metarow pre{flex:1 1 100%}}
+.mimgwrap{position:relative;flex:1 1 320px;max-width:520px}
+.mimgwrap img{width:100%;display:block;border-radius:10px;background:#050807}
+.roiov{position:absolute;inset:0;cursor:crosshair;touch-action:none}
+.roirect{position:absolute;border:2px solid #3da35a;background:rgba(61,163,90,.18);pointer-events:none}
+.cmp{position:relative;overflow:hidden;padding:0;background:#050807;touch-action:none;user-select:none}
+.cmp-img{display:block;width:100%}
+.cmp-over{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover}
+.cmp-div{position:absolute;top:0;bottom:0;left:50%;width:2px;background:var(--accent);pointer-events:none}
+.cmp-div::after{content:"\\21C6";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--accent);color:#10160f;border-radius:999px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:.85rem;box-shadow:0 1px 4px rgba(0,0,0,.4)}
 .term-wrap{background:#0b1410;border:1px solid var(--border);border-radius:12px;padding:8px;box-shadow:var(--shadow);margin-top:.6rem}
 #term{height:64vh;width:100%}
 .term-bar{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin:.6rem 0 0}
@@ -1002,6 +1011,7 @@ METRICS_JS = """
     el.innerHTML='<span class="cbig">'+w[0]+'</span>'+
       '<span class="cmain"><b>'+(o.temp_c!=null?o.temp_c.toFixed(1)+"\\u00B0C":"\\u2013")+'</b><span class="sub">'+w[1]+'</span></span>'+
       '<span class="cgrid">'+
+        pill(r.canopy_pct!=null?("\\uD83C\\uDF3F zieleń "+r.canopy_pct+"%"):"")+
         pill("\\u2601\\uFE0F "+(o.cloud!=null?Math.round(o.cloud)+"%":"\\u2013"))+
         pill("\\uD83D\\uDCA8 "+(o.wind!=null?o.wind+" km/h":"\\u2013"))+
         pill("\\uD83D\\uDCA7 "+(o.precip!=null?o.precip+" mm":"\\u2013"))+
@@ -1065,7 +1075,8 @@ METRICS_JS = """
     var s0=recs[0]||{};
     SUN={ rise:tsec(s0.sunrise), set:tsec(s0.sunset) };
     await loadDayReboots(day);
-    ["chTemp","chWx","chLight","chSys"].forEach(function(id){ var d=document.createElement("div"); d.className="chart"; d.id=id; host.appendChild(d); });
+    ["chCanopy","chTemp","chWx","chLight","chSys"].forEach(function(id){ var d=document.createElement("div"); d.className="chart"; d.id=id; host.appendChild(d); });
+    makeChart($("chCanopy"),"Wzrost — zieleń (canopy %)",[{label:"zieleń %",path:"canopy_pct",color:"#3da35a"}]);
     makeChart($("chTemp"),"Temperatura (°C)",[{label:"CPU",path:"cpu_temp_c",color:"#e0533f"},{label:"zewn.",path:"outdoor.temp_c",color:"#4eb389"}]);
     makeChart($("chWx"),"Pogoda",[{label:"zachmurzenie %",path:"outdoor.cloud",color:"#7d93b5"},{label:"opad mm",path:"outdoor.precip",color:"#5b9bd8",right:true},{label:"wiatr km/h",path:"outdoor.wind",color:"#9aa7a0",right:true}]);
     makeChart($("chLight"),"Światło",[{label:"jasność",path:"brightness",color:"#e6b450"},{label:"lux",path:"cam.lux",color:"#5b9bd8",right:true}]);
@@ -1096,13 +1107,14 @@ METRICS_JS = """
       if(!s.length){ el.innerHTML='<div class="sub">Brak danych historycznych.</div>'; return; }
       var xs=s.map(function(d){ return Date.parse(d.day+"T12:00:00")/1000; });
       var data=[xs,
+        s.map(function(d){ return d.canopy?d.canopy.avg:null; }),
         s.map(function(d){ return d.cpu_temp?d.cpu_temp.avg:null; }),
         s.map(function(d){ return d.outdoor_temp?d.outdoor_temp.max:null; }),
         s.map(function(d){ return d.outdoor_temp?d.outdoor_temp.min:null; }),
         s.map(function(d){ return d.brightness?d.brightness.avg:null; })];
       if(histChart){ try{histChart.destroy();}catch(e){} }
-      histChart=new uPlot({ title:"Historia (dzienne)", width:(el.clientWidth||700), height:260, legend:{live:true},
-        series:[{},{label:"CPU avg",stroke:"#e0533f",scale:"y"},{label:"zewn. max",stroke:"#4eb389",scale:"y"},{label:"zewn. min",stroke:"#5b9bd8",scale:"y"},{label:"jasność avg",stroke:"#e6b450",scale:"y2"}],
+      histChart=new uPlot({ title:"Historia (dzienne) — wzrost i klimat", width:(el.clientWidth||700), height:280, legend:{live:true},
+        series:[{},{label:"zieleń avg %",stroke:"#3da35a",width:2.4,scale:"y"},{label:"CPU avg",stroke:"#e0533f",scale:"y2"},{label:"zewn. max",stroke:"#4eb389",scale:"y2"},{label:"zewn. min",stroke:"#5b9bd8",scale:"y2"},{label:"jasność avg",stroke:"#e6b450",scale:"y3",show:false}],
         axes:[{},{scale:"y"},{scale:"y2",side:1,grid:{show:false}}] }, data, el);
     }catch(e){}
   }
@@ -1119,8 +1131,61 @@ METRICS_JS = """
   if(sel) sel.addEventListener("change", function(){ loadDay(sel.value); });
   window.addEventListener("resize", function(){
     charts.forEach(function(u){ try{ u.setSize({width:u.root.parentNode.clientWidth, height:170}); }catch(e){} });
-    if(histChart){ try{ histChart.setSize({width:histChart.root.parentNode.clientWidth, height:260}); }catch(e){} }
+    if(histChart){ try{ histChart.setSize({width:histChart.root.parentNode.clientWidth, height:280}); }catch(e){} }
   });
+
+  /* ---- Feature: plant region (canopy ROI) + backfill ---- */
+  var ov=$("mRoiOv"), rect=$("mRoiRect"), regionBtn=$("mRegion"), backBtn=$("mBackfill"), cstat=$("mCanopyStat");
+  var regionOn=false;
+  function showRect(roi){
+    if(!rect||!img) return;
+    if(!roi){ rect.style.display="none"; return; }
+    rect.style.display="block";
+    rect.style.left=(roi[0]*100)+"%"; rect.style.top=(roi[1]*100)+"%";
+    rect.style.width=(roi[2]*100)+"%"; rect.style.height=(roi[3]*100)+"%";
+  }
+  async function refreshCanopyStat(){
+    try{
+      var s=await (await fetch(withTok("/api/canopy/status"))).json();
+      showRect(s.roi);
+      var t="";
+      if(s.roi) t+="region ustawiony · ";
+      if(s.running) t+="przeliczanie "+(s.done||0)+"/"+(s.total||0)+"…";
+      else if(s.missing) t+=s.missing+" klatek bez zieleni";
+      else t+="zieleń policzona";
+      if(cstat) cstat.textContent=t;
+      return s;
+    }catch(e){ return {}; }
+  }
+  if(regionBtn) regionBtn.addEventListener("click", function(){
+    regionOn=!regionOn;
+    regionBtn.classList.toggle("btn-primary", regionOn);
+    if(ov) ov.style.display=regionOn?"block":"none";
+  });
+  if(ov){
+    var drag=null;
+    function draw(e){ if(!drag)return; var x=Math.min(e.clientX,drag.x0),y=Math.min(e.clientY,drag.y0);
+      rect.style.display="block"; rect.style.left=(x-drag.r.left)+"px"; rect.style.top=(y-drag.r.top)+"px";
+      rect.style.width=Math.abs(e.clientX-drag.x0)+"px"; rect.style.height=Math.abs(e.clientY-drag.y0)+"px"; }
+    ov.addEventListener("pointerdown", function(e){ try{ov.setPointerCapture(e.pointerId);}catch(_){}
+      drag={r:ov.getBoundingClientRect(),x0:e.clientX,y0:e.clientY}; draw(e); });
+    ov.addEventListener("pointermove", draw);
+    ov.addEventListener("pointerup", async function(e){
+      if(!drag)return; var r=drag.r, x=Math.min(e.clientX,drag.x0),y=Math.min(e.clientY,drag.y0);
+      var w=Math.abs(e.clientX-drag.x0),h=Math.abs(e.clientY-drag.y0); drag=null;
+      if(w<10||h<10){ // tiny = clear region
+        await fetch(withTok("/api/canopy/roi"),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({reset:true})});
+      } else {
+        await fetch(withTok("/api/canopy/roi"),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({x:(x-r.left)/r.width,y:(y-r.top)/r.height,w:w/r.width,h:h/r.height})});
+      }
+      refreshCanopyStat();
+    });
+  }
+  if(backBtn) backBtn.addEventListener("click", async function(){
+    try{ await fetch(withTok("/api/canopy/backfill"),{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"}); }catch(e){}
+    var poll=setInterval(async function(){ var s=await refreshCanopyStat(); if(!s.running){ clearInterval(poll); if(curDay) loadDay(curDay); } }, 1500);
+  });
+
   (async function(){
     var days=[];
     try{ days=((await (await fetch(withTok("/api/metadata/days"))).json()).days)||[]; }catch(e){}
@@ -1128,6 +1193,68 @@ METRICS_JS = """
     if(sel) sel.innerHTML=days.map(function(d){ return '<option>'+d+'</option>'; }).join("");
     show("day");
     loadDay(days[0]);
+    refreshCanopyStat();
+  })();
+})();
+"""
+
+
+MOVIE_JS = """
+(function(){
+  function withTok(p){ var t=window.CAM_TOKEN||""; var u=new URL(p,location.origin); if(t)u.searchParams.set("token",t); return u.pathname+u.search; }
+  var b=document.getElementById("mvBuild"), st=document.getElementById("mvStat"), vid=document.getElementById("mvVid"), dl=document.getElementById("mvDl");
+  if(!b) return;
+  function showVid(s){ var u=withTok("/movies/growth.mp4")+"&t="+(s.mtime||0); if(vid.dataset.t!=String(s.mtime)){ vid.src=u; vid.dataset.t=String(s.mtime); } vid.style.display=""; dl.href=u; dl.style.display=""; }
+  async function status(){ try{ return await (await fetch(withTok("/api/movie/status"))).json(); }catch(e){ return {}; } }
+  async function refresh(){ var s=await status();
+    if(s.building){ st.textContent="buduję film…"; b.disabled=true; }
+    else { b.disabled=false; if(s.exists){ st.textContent="gotowe ("+Math.round((s.size||0)/1048576)+" MB)"; showVid(s); } else { st.textContent = s.ffmpeg? "" : "ffmpeg niedostępny"; } }
+    return s; }
+  b.addEventListener("click", async function(){ st.textContent="startuję…"; b.disabled=true;
+    try{ await fetch(withTok("/api/movie/build"),{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"}); }catch(e){}
+    var poll=setInterval(async function(){ var s=await refresh(); if(!s.building){ clearInterval(poll); } }, 2500); });
+  refresh();
+})();
+"""
+
+
+COMPARE_JS = """
+(function(){
+  function $(id){ return document.getElementById(id); }
+  function withTok(p){ var t=window.CAM_TOKEN||""; var u=new URL(p,location.origin); if(t)u.searchParams.set("token",t); return u.pathname+u.search; }
+  if(!$("cmpRange")) return;
+  var A={day:null,frames:[]}, B={day:null,frames:[]};
+  var over=$("cmpA"), base=$("cmpB"), divEl=$("cmpDiv"), range=$("cmpRange"), wrap=$("cmpWrap");
+  function setDiv(v){ var ins="inset(0 "+(100-v)+"% 0 0)"; over.style.clipPath=ins; over.style.webkitClipPath=ins; divEl.style.left=v+"%"; }
+  function url(day,file){ return withTok("/history/"+encodeURIComponent(day)+"/"+encodeURIComponent(file)); }
+  function fill(sel, items, val){ sel.innerHTML=items.map(function(i){ return '<option'+(i===val?' selected':'')+'>'+i+'</option>'; }).join(""); }
+  async function days(){ try{ return (await (await fetch(withTok("/api/metadata/days"))).json()).days||[]; }catch(e){ return []; } }
+  async function framesFor(day){ try{ var r=(await (await fetch(withTok("/api/metadata?day="+encodeURIComponent(day)))).json()).records||[]; return r.map(function(x){return x.file;}).filter(Boolean); }catch(e){ return []; } }
+  async function loadSide(side){
+    var S=side==="A"?A:B, daySel=$("day"+side), frSel=$("fr"+side), img=side==="A"?over:base;
+    S.day=daySel.value; S.frames=await framesFor(S.day);
+    var def = side==="A"? S.frames[0] : S.frames[S.frames.length-1];
+    fill(frSel, S.frames, def);
+    if(def) img.src=url(S.day, def);
+  }
+  $("dayA").addEventListener("change", function(){ loadSide("A"); });
+  $("dayB").addEventListener("change", function(){ loadSide("B"); });
+  $("frA").addEventListener("change", function(){ over.src=url(A.day,$("frA").value); });
+  $("frB").addEventListener("change", function(){ base.src=url(B.day,$("frB").value); });
+  range.addEventListener("input", function(){ setDiv(parseFloat(range.value)); });
+  base.addEventListener("load", function(){ setDiv(parseFloat(range.value)); });
+  function pctAt(e){ var r=base.getBoundingClientRect(); return Math.max(0,Math.min(100,(e.clientX-r.left)/r.width*100)); }
+  var dragging=false;
+  wrap.addEventListener("pointerdown", function(e){ dragging=true; var v=pctAt(e); range.value=v; setDiv(v); });
+  wrap.addEventListener("pointermove", function(e){ if(dragging){ var v=pctAt(e); range.value=v; setDiv(v); } });
+  window.addEventListener("pointerup", function(){ dragging=false; });
+  (async function(){
+    var ds=await days();
+    if(!ds.length){ wrap.innerHTML='<div class="pad sub">Brak historii do porównania.</div>'; return; }
+    fill($("dayA"), ds, ds[ds.length-1]);
+    fill($("dayB"), ds, ds[0]);
+    await loadSide("A"); await loadSide("B");
+    setDiv(50);
   })();
 })();
 """
@@ -1212,6 +1339,14 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             self._shell_read(parsed.query)
         elif parsed.path == "/api/timelapse/status":
             self._timelapse_status(parsed.query)
+        elif parsed.path == "/api/canopy/status":
+            self._canopy_status(parsed.query)
+        elif parsed.path == "/api/movie/status":
+            self._movie_status(parsed.query)
+        elif parsed.path == "/compare":
+            self._send_html(self._compare_html(parsed.query))
+        elif parsed.path.startswith("/movies/"):
+            self._handle_movie(parsed.path, parsed.query)
         elif parsed.path == "/api/burst/status":
             self._burst_status(parsed.query)
         elif parsed.path == "/api/burst/session":
@@ -1250,6 +1385,12 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             self._shell_close(parsed.query)
         elif parsed.path == "/api/timelapse/build":
             self._timelapse_build(parsed.query)
+        elif parsed.path == "/api/canopy/roi":
+            self._canopy_roi(parsed.query)
+        elif parsed.path == "/api/canopy/backfill":
+            self._canopy_backfill(parsed.query)
+        elif parsed.path == "/api/movie/build":
+            self._movie_build(parsed.query)
         elif parsed.path == "/api/burst/start":
             self._burst_start(parsed.query)
         elif parsed.path == "/api/burst/stop":
@@ -1467,14 +1608,20 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
   <label class="switch">Dzień <select id="mDay" class="mini"></select></label>
   <button id="mTabDay" class="btn btn-primary" type="button">Dzień</button>
   <button id="mTabHist" class="btn" type="button">Historia</button>
+  <button id="mRegion" class="btn" type="button">🌿 Region rośliny</button>
+  <button id="mBackfill" class="btn" type="button">↻ Przelicz zieleń</button>
   <a id="mCsv" class="btn" href="#">⬇️ CSV</a>
+  <span id="mCanopyStat" class="sub"></span>
 </div>
 <div id="dayView">
   <div id="mCond" class="cond card" style="display:none"></div>
   <div id="dayCharts"></div>
   <div class="card pad">
     <div class="scrubber"><input id="mSlider" type="range" min="0" max="0" value="0" aria-label="Przewijaj próbki"></div>
-    <div class="metarow"><img id="mImg" alt="klatka"><pre id="mVals" class="out"></pre></div>
+    <div class="metarow">
+      <div class="mimgwrap"><img id="mImg" alt="klatka"><div id="mRoiOv" class="roiov" style="display:none"></div><div id="mRoiRect" class="roirect" style="display:none"></div></div>
+      <pre id="mVals" class="out"></pre>
+    </div>
     <div id="mEvents" class="evnt"></div>
   </div>
 </div>
@@ -1483,6 +1630,27 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
 <script>{METRICS_JS}</script>
 """
         return self._layout("Dane", body, active="/metrics")
+
+    def _compare_html(self, query: str) -> str:
+        token = self.app_config.server.auth_token
+        token_js = json.dumps(token)
+        body = f"""
+<h1 class="h">Porównaj</h1>
+<p class="sub">Przeciągnij linię (lub suwak), by porównać tę samą roślinę w dwóch momentach. Lewa strona = „przed", prawa = „po".</p>
+<div class="ctrlrow">
+  <label class="switch">Przed <select id="dayA" class="mini"></select> <select id="frA" class="mini"></select></label>
+  <label class="switch">Po <select id="dayB" class="mini"></select> <select id="frB" class="mini"></select></label>
+</div>
+<div id="cmpWrap" class="card hero-card cmp">
+  <img id="cmpB" class="cmp-img" alt="po">
+  <img id="cmpA" class="cmp-img cmp-over" alt="przed">
+  <div id="cmpDiv" class="cmp-div"></div>
+</div>
+<div class="scrubber"><input id="cmpRange" type="range" min="0" max="100" value="50" aria-label="Suwak porównania"></div>
+<script>window.CAM_TOKEN={token_js};</script>
+<script>{COMPARE_JS}</script>
+"""
+        return self._layout("Porównaj", body, active="/compare")
 
     def _diag(self, query: str) -> None:
         if not self._authorized(query):
@@ -1563,6 +1731,151 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
         threading.Thread(target=worker, daemon=True).start()
         log.info("timelapse build started for %s", day)
         self._send_json({"ok": True, "building": True})
+
+    # ---- Feature: canopy (plant green coverage) ----
+    def _canopy_roi(self, query: str) -> None:
+        if not self._authorized(query):
+            self._send_json({"error": "unauthorized"}, HTTPStatus.UNAUTHORIZED)
+            return
+        body = self._read_json_body() or {}
+        if body.get("reset"):
+            self.storage.set_canopy_roi(None)
+            self._send_json({"ok": True, "roi": None})
+            return
+        if "x" not in body:
+            roi = self.storage.canopy_roi()
+            self._send_json({"ok": True, "roi": list(roi) if roi else None})
+            return
+        try:
+            x = float(body["x"]); y = float(body["y"]); w = float(body["w"]); h = float(body["h"])
+        except (KeyError, TypeError, ValueError):
+            self._send_json({"error": "bad roi"}, HTTPStatus.BAD_REQUEST)
+            return
+        w = max(0.02, min(w, 1.0)); h = max(0.02, min(h, 1.0))
+        x = min(max(0.0, x), 1.0 - w); y = min(max(0.0, y), 1.0 - h)
+        roi = (x, y, w, h)
+        self.storage.set_canopy_roi(roi)
+        self._send_json({"ok": True, "roi": [round(v, 4) for v in roi]})
+
+    def _canopy_status(self, query: str) -> None:
+        if not self._authorized(query):
+            self._send_json({"error": "unauthorized"}, HTTPStatus.UNAUTHORIZED)
+            return
+        st = dict(self.server.canopy_backfill)  # type: ignore[attr-defined]
+        st["missing"] = self.storage.metrics.count_missing_canopy()
+        roi = self.storage.canopy_roi()
+        st["roi"] = list(roi) if roi else None
+        self._send_json(st)
+
+    def _canopy_backfill(self, query: str) -> None:
+        if not self._authorized(query):
+            self._send_json({"error": "unauthorized"}, HTTPStatus.UNAUTHORIZED)
+            return
+        server = self.server
+        with server.timelapse_lock:  # type: ignore[attr-defined]
+            if server.canopy_backfill["running"]:  # type: ignore[attr-defined]
+                self._send_json({"ok": True, "running": True, "already": True})
+                return
+            total = self.storage.metrics.count_missing_canopy()
+            server.canopy_backfill = {"running": True, "done": 0, "total": total}  # type: ignore[attr-defined]
+        storage = self.storage
+
+        def worker():
+            try:
+                storage.backfill_canopy(progress=lambda d: server.canopy_backfill.__setitem__("done", d))  # type: ignore[attr-defined]
+            except Exception as exc:
+                log.warning("canopy backfill failed: %s", exc)
+            finally:
+                server.canopy_backfill["running"] = False  # type: ignore[attr-defined]
+
+        threading.Thread(target=worker, daemon=True).start()
+        log.info("canopy backfill started (%d rows)", total)
+        self._send_json({"ok": True, "running": True, "total": total})
+
+    # ---- Feature: multi-day "growth movie" with burned-in captions ----
+    def _movie_build(self, query: str) -> None:
+        if not self._authorized(query):
+            self._send_json({"error": "unauthorized"}, HTTPStatus.UNAUTHORIZED)
+            return
+        if not have_ffmpeg():
+            self._send_json({"error": "ffmpeg not installed"}, HTTPStatus.NOT_IMPLEMENTED)
+            return
+        try:
+            days = int(parse_qs(query).get("days", ["0"])[0])
+        except ValueError:
+            days = 0
+        server = self.server
+        with server.movie_lock:  # type: ignore[attr-defined]
+            if server.movie_building:  # type: ignore[attr-defined]
+                self._send_json({"ok": True, "building": True, "already": True})
+                return
+            server.movie_building = True  # type: ignore[attr-defined]
+        storage = self.storage
+
+        def worker():
+            try:
+                from . import timelapse as tl
+                sel = sorted(storage.metrics.days())
+                if days > 0:
+                    sel = sel[-days:]
+                if not sel:
+                    return
+                frames = tl.gather_frames(storage.data_dir, sel[0], sel[-1])
+                capmap = {}
+                for d in sel:
+                    for rec in storage.metrics.query_day(d):
+                        capmap[(d, rec.get("file"))] = rec
+
+                def caption(p):
+                    rec = capmap.get((p.parent.name, p.name)) or {}
+                    parts = [p.parent.name + " " + p.stem.replace("-", ":")[:5]]
+                    od = rec.get("outdoor") or {}
+                    if od.get("temp_c") is not None:
+                        parts.append(f"{od['temp_c']}°C")
+                    if rec.get("canopy_pct") is not None:
+                        parts.append(f"zielen {rec['canopy_pct']}%")
+                    return "   ".join(parts)
+
+                tl.build_movie(frames, storage.movies_dir / "growth.mp4",
+                               caption=caption, max_frames=900, force=True)
+            except Exception as exc:
+                log.warning("growth movie failed: %s", exc)
+            finally:
+                server.movie_building = False  # type: ignore[attr-defined]
+
+        threading.Thread(target=worker, daemon=True).start()
+        log.info("growth movie build started (days=%s)", days or "all")
+        self._send_json({"ok": True, "building": True})
+
+    def _movie_status(self, query: str) -> None:
+        if not self._authorized(query):
+            self._send_json({"error": "unauthorized"}, HTTPStatus.UNAUTHORIZED)
+            return
+        out = self.storage.movies_dir / "growth.mp4"
+        exists = out.exists()
+        self._send_json({
+            "exists": exists,
+            "building": self.server.movie_building,  # type: ignore[attr-defined]
+            "size": out.stat().st_size if exists else 0,
+            "mtime": int(out.stat().st_mtime) if exists else 0,
+            "ffmpeg": have_ffmpeg(),
+        })
+
+    def _handle_movie(self, path: str, query: str) -> None:
+        if not self._authorized(query):
+            self._send_text("unauthorized\n", "text/plain", HTTPStatus.UNAUTHORIZED)
+            return
+        parts = [unquote(p) for p in path.split("/") if p]
+        if len(parts) == 2:
+            target = self.storage.movies_dir / parts[1]
+            try:
+                target.resolve().relative_to(self.storage.movies_dir.resolve())
+            except ValueError:
+                self._send_text("bad path\n", "text/plain", HTTPStatus.BAD_REQUEST)
+                return
+            self._send_file(target)
+            return
+        self._send_text("not found\n", "text/plain", HTTPStatus.NOT_FOUND)
 
     def _admin_enabled(self) -> bool:
         return bool(self.app_config.server.admin_enabled)
@@ -2013,6 +2326,7 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             ("/", "Kamera"),
             ("/live", "Live"),
             ("/history", "Historia"),
+            ("/compare", "Porównaj"),
             ("/burst", "Burst"),
             ("/metrics", "Dane"),
             ("/checklista-tatry.html", "Tatry"),
@@ -2195,10 +2509,25 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
                 f'<div class="dc-body"><span class="dc-day">{day_h}</span>'
                 f'<span class="dc-n">{len(images)}</span></div></a>'
             )
+        movie_block = (
+            '<div class="card pad" id="movieCard">'
+            '<div class="ctrlrow" style="margin:0">'
+            '<b>🎬 Film wzrostu</b>'
+            '<span class="sub">wszystkie dni, z datą/temp./zielenią wypaloną w kadrze</span>'
+            '<span class="spacer"></span>'
+            '<button id="mvBuild" class="btn btn-primary" type="button">▶ Zbuduj film</button>'
+            '<a id="mvDl" class="btn" style="display:none" download="growth.mp4">⬇️ MP4</a>'
+            '<span id="mvStat" class="sub"></span></div>'
+            '<video id="mvVid" class="viewer" controls preload="metadata" playsinline '
+            'style="display:none;margin-top:.6rem"></video>'
+            '</div>'
+        )
         body = (
             f'<h1 class="h">Historia</h1>'
             f'<p class="sub">{len(days)} dni z zapisanymi klatkami.</p>'
+            f'{movie_block}'
             f'<div class="grid-days">{"".join(cards)}</div>'
+            f'<script>{MOVIE_JS}</script>'
         )
         return self._layout("Historia", body, active="/history")
 
@@ -2368,6 +2697,9 @@ class CameraServer(ThreadingHTTPServer):
         self.timelapse_lock = threading.Lock()
         self.timelapse_building: set = set()
         self.burst_building: set = set()
+        self.canopy_backfill = {"running": False, "done": 0, "total": 0}
+        self.movie_lock = threading.Lock()
+        self.movie_building = False
 
     def handle_error(self, request, client_address) -> None:
         exc_type, exc, _ = sys.exc_info()

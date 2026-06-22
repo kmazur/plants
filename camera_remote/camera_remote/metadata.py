@@ -70,6 +70,34 @@ def brightness(path):
         return None
 
 
+def canopy_pct(path, roi=None):
+    """Fraction of the frame (0..100) covered by green vegetation, using the
+    Excess-Green index ExG = (2G - R - B) / (R + G + B). ``roi`` is an optional
+    normalized (x, y, w, h) rectangle to measure only the plant region."""
+    try:
+        from PIL import Image
+        import numpy as np
+        with Image.open(path) as im:
+            im = im.convert("RGB")
+            im.thumbnail((160, 160))
+            arr = np.asarray(im, dtype="float32")
+        if roi:
+            h, w = arr.shape[0], arr.shape[1]
+            x, y, rw, rh = roi
+            x0 = max(0, int(x * w)); y0 = max(0, int(y * h))
+            x1 = min(w, int((x + rw) * w)); y1 = min(h, int((y + rh) * h))
+            if x1 > x0 and y1 > y0:
+                arr = arr[y0:y1, x0:x1]
+        r = arr[..., 0]; g = arr[..., 1]; b = arr[..., 2]
+        s = r + g + b + 1e-6
+        exg = (2.0 * g - r - b) / s
+        veg = exg > 0.12
+        return round(100.0 * float(veg.mean()), 1)
+    except Exception as exc:
+        log.debug("canopy failed: %s", exc)
+        return None
+
+
 def system_brief(data_dir) -> dict:
     out = {}
     try:
@@ -154,7 +182,8 @@ def outdoor(latitude, longitude, cache_path, ttl: int = WEATHER_TTL) -> dict:
         return stale or {}
 
 
-def build_record(now: datetime, file_name: str, file_path, data_dir, location, cam_meta) -> dict:
+def build_record(now: datetime, file_name: str, file_path, data_dir, location, cam_meta,
+                 canopy_roi=None) -> dict:
     record = {"ts": now.isoformat(timespec="seconds"), "file": file_name}
     for key, fn in (("cpu_temp_c", cpu_temp_c), ("cpu_freq_mhz", cpu_freq_mhz), ("throttled", throttled)):
         val = fn()
@@ -163,6 +192,9 @@ def build_record(now: datetime, file_name: str, file_path, data_dir, location, c
     bright = brightness(file_path)
     if bright is not None:
         record["brightness"] = bright
+    cap = canopy_pct(file_path, canopy_roi)
+    if cap is not None:
+        record["canopy_pct"] = cap
     try:
         record["size"] = Path(file_path).stat().st_size
     except Exception:

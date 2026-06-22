@@ -31,6 +31,7 @@ class SnapshotStorage:
         self.data_dir = config.paths.data_dir
         self.history_dir = self.data_dir / "history"
         self.burst_dir = self.data_dir / "burst"
+        self.movies_dir = self.data_dir / "movies"
         self.latest_path = self.data_dir / "latest.jpg"
         self.latest_meta_path = self.data_dir / "latest.json"
         self.data_dir.mkdir(parents=True, exist_ok=True)
@@ -45,6 +46,7 @@ class SnapshotStorage:
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self.history_dir.mkdir(parents=True, exist_ok=True)
         self.burst_dir.mkdir(parents=True, exist_ok=True)
+        self.movies_dir.mkdir(parents=True, exist_ok=True)
 
     def date_dirs(self) -> list[Path]:
         if not self.history_dir.exists():
@@ -127,7 +129,8 @@ class SnapshotStorage:
         try:
             from . import metadata as md
             record = md.build_record(now, file_path.name, file_path, self.data_dir,
-                                     getattr(self.config, "location", None), cam_meta)
+                                     getattr(self.config, "location", None), cam_meta,
+                                     canopy_roi=self.canopy_roi())
             self.metrics.insert(record)
             md.check_reboot(self.metrics, now)
         except Exception as exc:
@@ -212,3 +215,51 @@ class SnapshotStorage:
             return json.loads(self.latest_meta_path.read_text(encoding="utf-8"))
         except Exception:
             return {}
+
+    def canopy_roi(self):
+        """Normalized (x, y, w, h) plant region for canopy measurement, or None
+        for the whole frame. Stored in the shared metrics DB so the capture and
+        web processes agree."""
+        try:
+            raw = self.metrics.kv_get("canopy_roi")
+            if not raw:
+                return None
+            v = json.loads(raw)
+            if isinstance(v, list) and len(v) == 4:
+                return tuple(float(x) for x in v)
+        except Exception:
+            pass
+        return None
+
+    def set_canopy_roi(self, roi) -> None:
+        if roi is None:
+            self.metrics.kv_set("canopy_roi", "")
+        else:
+            self.metrics.kv_set("canopy_roi", json.dumps([round(float(x), 4) for x in roi]))
+
+    def backfill_canopy(self, limit: int = 20000, progress=None) -> int:
+        """Compute canopy_pct for stored rows that lack it (e.g. captured before
+        the feature existed) by reading the history image. Returns rows updated.
+        ``progress`` is an optional callable(done:int) called periodically."""
+        from . import metadata as md
+        roi = self.canopy_roi()
+        done = 0
+        for row in self.metrics.rows_missing_canopy(limit):
+            img = self.history_dir / (row.get("day") or "") / (row.get("file") or "")
+            if not img.exists():
+                continue
+            val = md.canopy_pct(img, roi)
+            if val is not None:
+                self.metrics.update_canopy(row["ts"], val)
+                done += 1
+                if progress and done % 20 == 0:
+                    try:
+                        progress(done)
+                    except Exception:
+                        pass
+        if progress:
+            try:
+                progress(done)
+            except Exception:
+                pass
+        return done

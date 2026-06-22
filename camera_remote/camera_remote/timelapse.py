@@ -25,6 +25,11 @@ TIMELAPSE_NAME = "timelapse.mp4"
 DEFAULT_FPS = 24
 DEFAULT_WIDTH = 1280
 
+_FONT_CANDIDATES = [
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+]
+
 # Preferred encoders, best first. Hardware h264_v4l2m2m is cheap thermally on a
 # Pi; libx264 is the portable software fallback; mpeg4 is a last resort.
 _ENCODERS: List[Tuple[str, List[str]]] = [
@@ -118,6 +123,101 @@ def build_dir(
     os.replace(tmp, out_path)
     log.info("wrote %s (%d bytes)", out_path, out_path.stat().st_size)
     return out_path
+
+
+def _font(size: int):
+    from PIL import ImageFont
+    for path in _FONT_CANDIDATES:
+        try:
+            return ImageFont.truetype(path, size)
+        except Exception:
+            continue
+    return ImageFont.load_default()
+
+
+def _annotate(src: Path, dst: Path, text: str, width: int) -> None:
+    """Render ``src`` scaled to ``width`` with a caption bar at the bottom."""
+    from PIL import Image, ImageDraw
+    text = text or ""
+    with Image.open(src) as raw:
+        im = raw.convert("RGBA")
+    if im.width != width:
+        im = im.resize((width, max(1, round(im.height * width / im.width))))
+    size = max(14, width // 48)
+    font = _font(size)
+    pad = max(4, size // 3)
+    draw = ImageDraw.Draw(im)
+    try:
+        box = draw.textbbox((0, 0), text or " ", font=font)
+        tw, th = box[2] - box[0], box[3] - box[1]
+        oy = box[1]
+    except Exception:
+        tw, th, oy = len(text) * size // 2, size, 0
+    bar = th + 2 * pad
+    overlay = Image.new("RGBA", im.size, (0, 0, 0, 0))
+    ImageDraw.Draw(overlay).rectangle(
+        [0, im.height - bar, im.width, im.height], fill=(0, 0, 0, 140))
+    im = Image.alpha_composite(im, overlay)
+    ImageDraw.Draw(im).text((pad, im.height - bar + pad - oy), text, fill=(255, 255, 255), font=font)
+    im.convert("RGB").save(dst, "JPEG", quality=88)
+
+
+def gather_frames(data_dir, start_day: str, end_day: str) -> List[Path]:
+    """All history JPEGs between ``start_day`` and ``end_day`` (inclusive), in
+    chronological order across day directories."""
+    history = Path(data_dir) / "history"
+    if not history.is_dir():
+        return []
+    frames: List[Path] = []
+    for d in sorted(p.name for p in history.iterdir() if p.is_dir()):
+        if start_day <= d <= end_day:
+            frames.extend(sorted((history / d).glob("*.jpg")))
+    return frames
+
+
+def build_movie(
+    frames: List[Path],
+    out_path,
+    *,
+    fps: int = DEFAULT_FPS,
+    width: int = DEFAULT_WIDTH,
+    caption=None,
+    max_frames: int = 0,
+    force: bool = False,
+    timeout: int = 3600,
+) -> Optional[Path]:
+    """Encode an arbitrary ordered list of frames into ``out_path``. When
+    ``caption`` (a callable frame_path -> str) is given, each frame is
+    re-rendered with a burned-in caption first. ``max_frames`` downsamples
+    evenly so long ranges stay quick to build and small to download."""
+    import tempfile
+    frames = [Path(f) for f in frames if Path(f).exists()]
+    if not frames:
+        return None
+    if max_frames and len(frames) > max_frames:
+        step = (len(frames) + max_frames - 1) // max_frames
+        frames = frames[::step]
+    if not have_ffmpeg():
+        raise RuntimeError("ffmpeg is not installed")
+    out_path = Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_dir = Path(tempfile.mkdtemp(prefix="movie_"))
+    try:
+        for i, f in enumerate(frames):
+            dst = tmp_dir / f"{i:06d}.jpg"
+            if caption is not None:
+                try:
+                    _annotate(f, dst, caption(f), width)
+                    continue
+                except Exception as exc:
+                    log.debug("annotate failed for %s: %s", f, exc)
+            try:
+                os.symlink(f.resolve(), dst)
+            except Exception:
+                shutil.copyfile(f, dst)
+        return build_dir(tmp_dir, out_path, fps=fps, width=width, force=True, timeout=timeout)
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
 def build_day(

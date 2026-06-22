@@ -19,7 +19,7 @@ log = logging.getLogger(__name__)
 _COLUMNS = [
     "ts", "day", "file",
     "cpu_temp", "cpu_freq_mhz", "throttled",
-    "brightness", "size",
+    "brightness", "canopy_pct", "size",
     "load1", "mem_used_pct", "disk_used_pct", "uptime_s",
     "exposure_us", "gain", "lux", "colour_temp",
     "out_temp", "out_humidity", "out_wind", "out_cloud", "out_precip", "out_code",
@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS metadata (
   ts INTEGER PRIMARY KEY,
   day TEXT, file TEXT,
   cpu_temp REAL, cpu_freq_mhz INTEGER, throttled INTEGER,
-  brightness REAL, size INTEGER,
+  brightness REAL, canopy_pct REAL, size INTEGER,
   load1 REAL, mem_used_pct REAL, disk_used_pct REAL, uptime_s INTEGER,
   exposure_us INTEGER, gain REAL, lux REAL, colour_temp INTEGER,
   out_temp REAL, out_humidity REAL, out_wind REAL, out_cloud REAL, out_precip REAL, out_code INTEGER,
@@ -59,7 +59,8 @@ def _flatten(record: dict) -> dict:
         "ts": unix, "day": (ts or "")[:10], "file": record.get("file"),
         "cpu_temp": record.get("cpu_temp_c"), "cpu_freq_mhz": record.get("cpu_freq_mhz"),
         "throttled": record.get("throttled"),
-        "brightness": record.get("brightness"), "size": record.get("size"),
+        "brightness": record.get("brightness"), "canopy_pct": record.get("canopy_pct"),
+        "size": record.get("size"),
         "load1": record.get("load1"), "mem_used_pct": record.get("mem_used_pct"),
         "disk_used_pct": record.get("disk_used_pct"), "uptime_s": record.get("uptime_s"),
         "exposure_us": cam.get("exposure_us"), "gain": cam.get("gain"),
@@ -79,7 +80,8 @@ def _nest(row: sqlite3.Row) -> dict:
         "unix": r["ts"], "file": r.get("file"),
     }
     for key, col in (("cpu_temp_c", "cpu_temp"), ("cpu_freq_mhz", "cpu_freq_mhz"),
-                     ("throttled", "throttled"), ("brightness", "brightness"), ("size", "size"),
+                     ("throttled", "throttled"), ("brightness", "brightness"),
+                     ("canopy_pct", "canopy_pct"), ("size", "size"),
                      ("load1", "load1"), ("mem_used_pct", "mem_used_pct"),
                      ("disk_used_pct", "disk_used_pct"), ("uptime_s", "uptime_s"),
                      ("is_day", "is_day"), ("sunrise", "sunrise"), ("sunset", "sunset")):
@@ -113,6 +115,11 @@ class MetricsDB:
     def _init(self) -> None:
         with self._conn() as conn:
             conn.executescript(_SCHEMA)
+            # Migrate older databases that predate added columns.
+            have = {r["name"] for r in conn.execute("PRAGMA table_info(metadata)").fetchall()}
+            for col, decl in (("canopy_pct", "REAL"),):
+                if col not in have:
+                    conn.execute(f"ALTER TABLE metadata ADD COLUMN {col} {decl}")
 
     def insert(self, record: dict) -> None:
         row = _flatten(record)
@@ -142,16 +149,35 @@ class MetricsDB:
                 """SELECT day, COUNT(*) n,
                           AVG(cpu_temp) cpu_avg, MIN(cpu_temp) cpu_min, MAX(cpu_temp) cpu_max,
                           AVG(out_temp) out_avg, MIN(out_temp) out_min, MAX(out_temp) out_max,
-                          AVG(brightness) br_avg, MIN(brightness) br_min, MAX(brightness) br_max
+                          AVG(brightness) br_avg, MIN(brightness) br_min, MAX(brightness) br_max,
+                          AVG(canopy_pct) cn_avg, MIN(canopy_pct) cn_min, MAX(canopy_pct) cn_max
                    FROM metadata GROUP BY day ORDER BY day DESC LIMIT ?""", (limit,)).fetchall()
         def agg(r, p):
             if r[p + "_avg"] is None:
                 return None
             return {"avg": round(r[p + "_avg"], 1), "min": round(r[p + "_min"], 1), "max": round(r[p + "_max"], 1)}
         out = [{"day": r["day"], "n": r["n"], "cpu_temp": agg(r, "cpu"),
-                "outdoor_temp": agg(r, "out"), "brightness": agg(r, "br")} for r in rows]
+                "outdoor_temp": agg(r, "out"), "brightness": agg(r, "br"),
+                "canopy": agg(r, "cn")} for r in rows]
         out.reverse()
         return out
+
+    def rows_missing_canopy(self, limit: int = 5000) -> list:
+        with self._conn() as conn:
+            rows = conn.execute(
+                "SELECT ts, day, file FROM metadata WHERE canopy_pct IS NULL AND file IS NOT NULL "
+                "ORDER BY ts LIMIT ?", (limit,)).fetchall()
+        return [{"ts": r["ts"], "day": r["day"], "file": r["file"]} for r in rows]
+
+    def count_missing_canopy(self) -> int:
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT COUNT(*) c FROM metadata WHERE canopy_pct IS NULL").fetchone()
+        return int(row["c"]) if row else 0
+
+    def update_canopy(self, ts: int, value: float) -> None:
+        with self._conn() as conn:
+            conn.execute("UPDATE metadata SET canopy_pct=? WHERE ts=?", (value, int(ts)))
 
     def add_event(self, ts: int, etype: str, detail: str = "") -> None:
         with self._conn() as conn:
