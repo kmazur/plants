@@ -135,6 +135,7 @@ class SnapshotStorage:
                                      getattr(self.config, "location", None), cam_meta,
                                      canopy_roi=self.canopy_roi())
             self.metrics.insert(record)
+            self.record_zones(file_path, int(now.timestamp()), now.strftime("%Y-%m-%d"))
             md.check_reboot(self.metrics, now)
         except Exception as exc:
             log.warning("metadata record failed: %s", exc)
@@ -259,20 +260,74 @@ class SnapshotStorage:
         else:
             self.metrics.kv_set("canopy_roi", json.dumps([round(float(x), 4) for x in roi]))
 
-    def backfill_canopy(self, limit: int = 20000, progress=None) -> int:
-        """Compute canopy_pct for stored rows that lack it (e.g. captured before
-        the feature existed) by reading the history image. Returns rows updated.
-        ``progress`` is an optional callable(done:int) called periodically."""
+    def zones(self) -> list:
+        """Named measurement zones: [{name, x, y, w, h}, ...] (normalized)."""
+        try:
+            raw = self.metrics.kv_get("canopy_zones")
+            v = json.loads(raw) if raw else []
+            return v if isinstance(v, list) else []
+        except Exception:
+            return []
+
+    def set_zones(self, zones) -> None:
+        clean = []
+        for z in (zones or [])[:8]:
+            try:
+                clean.append({"name": str(z["name"])[:24],
+                              "x": round(float(z["x"]), 4), "y": round(float(z["y"]), 4),
+                              "w": round(float(z["w"]), 4), "h": round(float(z["h"]), 4)})
+            except (KeyError, TypeError, ValueError):
+                continue
+        self.metrics.kv_set("canopy_zones", json.dumps(clean))
+        # Zone definitions changed -> drop cached series so backfill recomputes.
+        self.metrics.clear_zones()
+
+    def _zone_canopy(self, img, zones) -> dict:
         from . import metadata as md
-        roi = self.canopy_roi()
+        return {z["name"]: md.canopy_pct(img, (z["x"], z["y"], z["w"], z["h"])) for z in zones}
+
+    def record_zones(self, file_path, ts: int, day: str) -> None:
+        zones = self.zones()
+        if zones:
+            self.metrics.insert_zones(ts, day, self._zone_canopy(file_path, zones))
+
+    def backfill_zones(self, limit: int = 20000, progress=None) -> int:
+        zones = self.zones()
+        if not zones:
+            return 0
         done = 0
-        for row in self.metrics.rows_missing_canopy(limit):
+        for row in self.metrics.rows_missing_zones(limit):
             img = self.history_dir / (row.get("day") or "") / (row.get("file") or "")
             if not img.exists():
                 continue
-            val = md.canopy_pct(img, roi)
-            if val is not None:
-                self.metrics.update_canopy(row["ts"], val)
+            self.metrics.insert_zones(row["ts"], row.get("day") or "", self._zone_canopy(img, zones))
+            done += 1
+            if progress and done % 20 == 0:
+                try:
+                    progress(done)
+                except Exception:
+                    pass
+        if progress:
+            try:
+                progress(done)
+            except Exception:
+                pass
+        return done
+
+    def backfill_image_metrics(self, limit: int = 20000, progress=None) -> int:
+        """Compute canopy_pct and sharpness for rows that lack them, reading each
+        history image once. Returns rows updated. ``progress`` is optional."""
+        from . import metadata as md
+        roi = self.canopy_roi()
+        done = 0
+        for row in self.metrics.rows_missing_image_metrics(limit):
+            img = self.history_dir / (row.get("day") or "") / (row.get("file") or "")
+            if not img.exists():
+                continue
+            canopy = md.canopy_pct(img, roi) if row.get("canopy_pct") is None else None
+            sharp = md.sharpness(img) if row.get("sharpness") is None else None
+            if canopy is not None or sharp is not None:
+                self.metrics.update_image_metrics(row["ts"], canopy, sharp)
                 done += 1
                 if progress and done % 20 == 0:
                     try:
@@ -285,3 +340,44 @@ class SnapshotStorage:
             except Exception:
                 pass
         return done
+
+    def mask_for(self, src: Path, key: str, roi=None, width: int = 720) -> Path:
+        """Cached overlay that tints the pixels counted as vegetation (and draws
+        the measurement ROI). ``key`` already encodes the ROI so it re-renders
+        when the region changes."""
+        dst = self.thumbs_dir / "mask" / key
+        try:
+            if dst.exists() and dst.stat().st_mtime >= src.stat().st_mtime:
+                return dst
+        except OSError:
+            pass
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        from PIL import Image, ImageDraw
+        import numpy as np
+        with Image.open(src) as im:
+            im = im.convert("RGB")
+            if im.width > width:
+                im = im.resize((width, max(1, round(im.height * width / im.width))))
+        arr = np.asarray(im, dtype="float32")
+        r = arr[..., 0]; g = arr[..., 1]; b = arr[..., 2]
+        s = r + g + b + 1e-6
+        mask = (2.0 * g - r - b) / s > 0.12
+        h, w = mask.shape
+        if roi:
+            x, y, rw, rh = roi
+            x0 = max(0, int(x * w)); y0 = max(0, int(y * h))
+            x1 = min(w, int((x + rw) * w)); y1 = min(h, int((y + rh) * h))
+            keep = np.zeros_like(mask)
+            keep[y0:y1, x0:x1] = True
+            mask = mask & keep
+        out = arr.copy()
+        out[mask] = out[mask] * 0.30 + np.array([60.0, 235.0, 90.0]) * 0.70
+        img = Image.fromarray(out.clip(0, 255).astype("uint8"))
+        if roi:
+            d = ImageDraw.Draw(img)
+            d.rectangle([roi[0] * w, roi[1] * h, (roi[0] + roi[2]) * w, (roi[1] + roi[3]) * h],
+                        outline=(255, 180, 60), width=3)
+        tmp = dst.with_suffix(".jpg.tmp")
+        img.save(tmp, "JPEG", quality=82)
+        tmp.replace(dst)
+        return dst

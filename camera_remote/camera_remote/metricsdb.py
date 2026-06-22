@@ -19,19 +19,25 @@ log = logging.getLogger(__name__)
 _COLUMNS = [
     "ts", "day", "file",
     "cpu_temp", "cpu_freq_mhz", "throttled",
-    "brightness", "canopy_pct", "size",
+    "brightness", "canopy_pct", "sharpness", "size",
     "load1", "mem_used_pct", "disk_used_pct", "uptime_s",
     "exposure_us", "gain", "lux", "colour_temp",
     "out_temp", "out_humidity", "out_wind", "out_cloud", "out_precip", "out_code",
     "is_day", "sunrise", "sunset",
 ]
 
+# Columns exposed to the time-of-day heatmap / "average day" view.
+HOURLY_METRICS = {
+    "brightness": "brightness", "canopy_pct": "canopy_pct", "sharpness": "sharpness",
+    "cpu_temp": "cpu_temp", "out_temp": "out_temp", "lux": "lux",
+}
+
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS metadata (
   ts INTEGER PRIMARY KEY,
   day TEXT, file TEXT,
   cpu_temp REAL, cpu_freq_mhz INTEGER, throttled INTEGER,
-  brightness REAL, canopy_pct REAL, size INTEGER,
+  brightness REAL, canopy_pct REAL, sharpness REAL, size INTEGER,
   load1 REAL, mem_used_pct REAL, disk_used_pct REAL, uptime_s INTEGER,
   exposure_us INTEGER, gain REAL, lux REAL, colour_temp INTEGER,
   out_temp REAL, out_humidity REAL, out_wind REAL, out_cloud REAL, out_precip REAL, out_code INTEGER,
@@ -43,6 +49,11 @@ CREATE TABLE IF NOT EXISTS events (
 );
 CREATE INDEX IF NOT EXISTS idx_events_ts ON events(ts);
 CREATE TABLE IF NOT EXISTS meta_kv (k TEXT PRIMARY KEY, v TEXT);
+CREATE TABLE IF NOT EXISTS zone_metrics (
+  ts INTEGER, day TEXT, zone TEXT, canopy REAL,
+  PRIMARY KEY (ts, zone)
+);
+CREATE INDEX IF NOT EXISTS idx_zone_day ON zone_metrics(day);
 """
 
 
@@ -60,7 +71,7 @@ def _flatten(record: dict) -> dict:
         "cpu_temp": record.get("cpu_temp_c"), "cpu_freq_mhz": record.get("cpu_freq_mhz"),
         "throttled": record.get("throttled"),
         "brightness": record.get("brightness"), "canopy_pct": record.get("canopy_pct"),
-        "size": record.get("size"),
+        "sharpness": record.get("sharpness"), "size": record.get("size"),
         "load1": record.get("load1"), "mem_used_pct": record.get("mem_used_pct"),
         "disk_used_pct": record.get("disk_used_pct"), "uptime_s": record.get("uptime_s"),
         "exposure_us": cam.get("exposure_us"), "gain": cam.get("gain"),
@@ -81,7 +92,7 @@ def _nest(row: sqlite3.Row) -> dict:
     }
     for key, col in (("cpu_temp_c", "cpu_temp"), ("cpu_freq_mhz", "cpu_freq_mhz"),
                      ("throttled", "throttled"), ("brightness", "brightness"),
-                     ("canopy_pct", "canopy_pct"), ("size", "size"),
+                     ("canopy_pct", "canopy_pct"), ("sharpness", "sharpness"), ("size", "size"),
                      ("load1", "load1"), ("mem_used_pct", "mem_used_pct"),
                      ("disk_used_pct", "disk_used_pct"), ("uptime_s", "uptime_s"),
                      ("is_day", "is_day"), ("sunrise", "sunrise"), ("sunset", "sunset")):
@@ -117,7 +128,7 @@ class MetricsDB:
             conn.executescript(_SCHEMA)
             # Migrate older databases that predate added columns.
             have = {r["name"] for r in conn.execute("PRAGMA table_info(metadata)").fetchall()}
-            for col, decl in (("canopy_pct", "REAL"),):
+            for col, decl in (("canopy_pct", "REAL"), ("sharpness", "REAL")):
                 if col not in have:
                     conn.execute(f"ALTER TABLE metadata ADD COLUMN {col} {decl}")
 
@@ -162,22 +173,115 @@ class MetricsDB:
         out.reverse()
         return out
 
-    def rows_missing_canopy(self, limit: int = 5000) -> list:
+    def rows_missing_image_metrics(self, limit: int = 20000) -> list:
+        """Rows still missing canopy and/or sharpness (computed from the image)."""
         with self._conn() as conn:
             rows = conn.execute(
-                "SELECT ts, day, file FROM metadata WHERE canopy_pct IS NULL AND file IS NOT NULL "
+                "SELECT ts, day, file, canopy_pct, sharpness FROM metadata "
+                "WHERE (canopy_pct IS NULL OR sharpness IS NULL) AND file IS NOT NULL "
                 "ORDER BY ts LIMIT ?", (limit,)).fetchall()
-        return [{"ts": r["ts"], "day": r["day"], "file": r["file"]} for r in rows]
+        return [dict(r) for r in rows]
 
-    def count_missing_canopy(self) -> int:
+    def count_missing_image_metrics(self) -> int:
         with self._conn() as conn:
             row = conn.execute(
-                "SELECT COUNT(*) c FROM metadata WHERE canopy_pct IS NULL").fetchone()
+                "SELECT COUNT(*) c FROM metadata WHERE canopy_pct IS NULL OR sharpness IS NULL"
+            ).fetchone()
         return int(row["c"]) if row else 0
 
-    def update_canopy(self, ts: int, value: float) -> None:
+    def update_image_metrics(self, ts: int, canopy=None, sharpness=None) -> None:
+        sets, vals = [], []
+        if canopy is not None:
+            sets.append("canopy_pct=?"); vals.append(canopy)
+        if sharpness is not None:
+            sets.append("sharpness=?"); vals.append(sharpness)
+        if not sets:
+            return
+        vals.append(int(ts))
         with self._conn() as conn:
-            conn.execute("UPDATE metadata SET canopy_pct=? WHERE ts=?", (value, int(ts)))
+            conn.execute(f"UPDATE metadata SET {', '.join(sets)} WHERE ts=?", vals)
+
+    def best_frame(self, day: str) -> dict:
+        """Sharpest reasonably-exposed frame of a day (for thumbnails/posters)."""
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT file, ts, sharpness, brightness FROM metadata "
+                "WHERE day=? AND sharpness IS NOT NULL AND brightness BETWEEN 40 AND 235 "
+                "ORDER BY sharpness DESC LIMIT 1", (day,)).fetchone()
+        return dict(row) if row else {}
+
+    def hourly_matrix(self, metric: str, days: int = 30) -> dict:
+        """Per-(day, hour-of-day) averages of a metric, plus an across-days
+        'average day' profile. Drives the calendar heatmap + typical-day view."""
+        col = HOURLY_METRICS.get(metric)
+        if not col:
+            return {"metric": metric, "matrix": [], "avgday": []}
+        with self._conn() as conn:
+            rows = conn.execute(
+                f"SELECT day, CAST(strftime('%H', ts, 'unixepoch', 'localtime') AS INTEGER) h, "
+                f"AVG({col}) v FROM metadata WHERE {col} IS NOT NULL "
+                f"GROUP BY day, h ORDER BY day", ()).fetchall()
+        by_day = {}
+        for r in rows:
+            by_day.setdefault(r["day"], {})[r["h"]] = r["v"]
+        sel_days = sorted(by_day)[-days:]
+        matrix = [{"day": d,
+                   "hours": [round(by_day[d][h], 1) if h in by_day[d] else None for h in range(24)]}
+                  for d in sel_days]
+        avgday = []
+        for h in range(24):
+            vals = [by_day[d][h] for d in sel_days if h in by_day[d]]
+            if vals:
+                avgday.append({"h": h, "avg": round(sum(vals) / len(vals), 1),
+                               "min": round(min(vals), 1), "max": round(max(vals), 1)})
+            else:
+                avgday.append({"h": h, "avg": None, "min": None, "max": None})
+        return {"metric": metric, "matrix": matrix, "avgday": avgday}
+
+    # ---- multi-zone canopy ----
+    def insert_zones(self, ts: int, day: str, values: dict) -> None:
+        rows = [(int(ts), day, name, val) for name, val in values.items() if val is not None]
+        if not rows:
+            return
+        with self._conn() as conn:
+            conn.executemany(
+                "INSERT OR REPLACE INTO zone_metrics (ts, day, zone, canopy) VALUES (?,?,?,?)", rows)
+
+    def clear_zones(self) -> None:
+        with self._conn() as conn:
+            conn.execute("DELETE FROM zone_metrics")
+
+    def rows_missing_zones(self, limit: int = 20000) -> list:
+        with self._conn() as conn:
+            rows = conn.execute(
+                "SELECT ts, day, file FROM metadata WHERE file IS NOT NULL "
+                "AND ts NOT IN (SELECT DISTINCT ts FROM zone_metrics) ORDER BY ts LIMIT ?",
+                (limit,)).fetchall()
+        return [{"ts": r["ts"], "day": r["day"], "file": r["file"]} for r in rows]
+
+    def count_missing_zones(self) -> int:
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT COUNT(*) c FROM metadata WHERE file IS NOT NULL "
+                "AND ts NOT IN (SELECT DISTINCT ts FROM zone_metrics)").fetchone()
+        return int(row["c"]) if row else 0
+
+    def zones_day(self, day: str) -> dict:
+        """Per-zone canopy series for a day: {names:[...], rows:[{ts, <zone>:v}]}."""
+        with self._conn() as conn:
+            rows = conn.execute(
+                "SELECT ts, zone, canopy FROM zone_metrics WHERE day=? ORDER BY ts", (day,)).fetchall()
+        names, by_ts = [], {}
+        for r in rows:
+            if r["zone"] not in names:
+                names.append(r["zone"])
+            by_ts.setdefault(r["ts"], {})[r["zone"]] = r["canopy"]
+        out_rows = []
+        for ts in sorted(by_ts):
+            rec = {"ts": datetime.fromtimestamp(ts).isoformat(timespec="seconds")}
+            rec.update(by_ts[ts])
+            out_rows.append(rec)
+        return {"names": sorted(names), "rows": out_rows}
 
     def add_event(self, ts: int, etype: str, detail: str = "") -> None:
         with self._conn() as conn:

@@ -469,6 +469,14 @@ a:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible{
 .cmp-div::after{content:"\\21C6";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--accent);color:#10160f;border-radius:999px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:.85rem;box-shadow:0 1px 4px rgba(0,0,0,.4)}
 .cmp-tag{position:absolute;top:8px;font-size:.72rem;font-weight:700;color:#fff;background:rgba(0,0,0,.5);padding:.12rem .5rem;border-radius:999px;pointer-events:none}
 .cmp-tag-l{left:8px}.cmp-tag-r{right:8px}
+.zonechips{display:inline-flex;flex-wrap:wrap;gap:.3rem;align-items:center}
+.zonechip{background:rgba(61,163,90,.15);border:1px solid var(--border);border-radius:999px;padding:.1rem .55rem;font-size:.74rem;color:var(--ink);display:inline-flex;gap:.35rem;align-items:center}
+.zonechip b{cursor:pointer;color:#e0533f;font-weight:700}
+#patHeat{overflow-x:auto}
+.heatgrid{display:grid;grid-template-columns:auto repeat(24,minmax(14px,1fr));gap:1px;min-width:540px}
+.heatcell{height:16px;font-size:.6rem;display:flex;align-items:center;justify-content:center;color:var(--muted)}
+.heathdr{height:14px}
+.heatday{justify-content:flex-end;padding-right:4px;white-space:nowrap;font-variant-numeric:tabular-nums}
 .term-wrap{background:#0b1410;border:1px solid var(--border);border-radius:12px;padding:8px;box-shadow:var(--shadow);margin-top:.6rem}
 #term{height:64vh;width:100%}
 .term-bar{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin:.6rem 0 0}
@@ -1000,6 +1008,7 @@ METRICS_JS = """
   if(!$("dayCharts")) return;
   if(!window.uPlot){ $("dayCharts").innerHTML='<div class="card pad">Nie udało się załadować uPlot (sieć?).</div>'; return; }
   var charts=[], recs=[], curDay=null, histChart=null, gidx=[];
+  var maskOn=false, zoneChart=null, zoneDefs=[], patChart=null;
   var SUN={rise:null,set:null}, REBOOTS=[];
   function buildGidx(n, cap){ gidx=[]; if(n<=cap){ for(var i=0;i<n;i++) gidx.push(i); return; } var step=(n-1)/(cap-1); for(var k=0;k<cap;k++) gidx.push(Math.round(k*step)); }
   function num(r, path){ var ps=path.split("."), v=r; for(var i=0;i<ps.length;i++){ if(v==null)return null; v=v[ps[i]]; } return (typeof v==="number")?v:null; }
@@ -1020,6 +1029,7 @@ METRICS_JS = """
       '<span class="cgrid">'+
         pill(r.canopy_pct!=null?("\\uD83C\\uDF3F zieleń "+r.canopy_pct+"%"):"")+
         pill(r.brightness!=null?("\\uD83D\\uDCA1 jasność "+r.brightness):"")+
+        pill(r.sharpness!=null?("\\uD83D\\uDD0E ostrość "+r.sharpness):"")+
         pill("\\u2601\\uFE0F "+(o.cloud!=null?Math.round(o.cloud)+"%":"\\u2013"))+
         pill("\\uD83D\\uDCA8 "+(o.wind!=null?o.wind+" km/h":"\\u2013"))+
         pill("\\uD83D\\uDCA7 "+(o.precip!=null?o.precip+" mm":"\\u2013"))+
@@ -1053,7 +1063,7 @@ METRICS_JS = """
     if(i==null||i<0||i>=recs.length) return;
     if(slider) slider.value=String(i);
     var r=recs[i];
-    if(withImage && img && r.file) img.src=withTok("/history/"+encodeURIComponent(curDay)+"/"+encodeURIComponent(r.file));
+    if(withImage && img && r.file){ var u="/history/"+encodeURIComponent(curDay)+"/"+encodeURIComponent(r.file)+(maskOn?"?mask=1":""); img.src=withTok(u); }
     if(vals) vals.textContent=JSON.stringify(r,null,2);
     renderCond(r);
   }
@@ -1085,7 +1095,8 @@ METRICS_JS = """
     SUN={ rise:tsec(s0.sunrise), set:tsec(s0.sunset) };
     await loadDayReboots(day);
     ["chCanopy","chTemp","chWx","chLight","chSys"].forEach(function(id){ var d=document.createElement("div"); d.className="chart"; d.id=id; host.appendChild(d); });
-    makeChart($("chCanopy"),"Wzrost — zieleń (canopy %)",[{label:"zieleń %",path:"canopy_pct",color:"#3da35a"}]);
+    makeChart($("chCanopy"),"Wzrost i jakość obrazu",[{label:"zieleń %",path:"canopy_pct",color:"#3da35a"},{label:"ostrość",path:"sharpness",color:"#b08968",right:true}]);
+    loadZones(day);
     makeChart($("chTemp"),"Temperatura (°C)",[{label:"CPU",path:"cpu_temp_c",color:"#e0533f"},{label:"zewn.",path:"outdoor.temp_c",color:"#4eb389"}]);
     makeChart($("chWx"),"Pogoda",[{label:"zachmurzenie %",path:"outdoor.cloud",color:"#7d93b5"},{label:"opad mm",path:"outdoor.precip",color:"#5b9bd8",right:true},{label:"wiatr km/h",path:"outdoor.wind",color:"#9aa7a0",right:true}]);
     makeChart($("chLight"),"Światło",[{label:"jasność",path:"brightness",color:"#e6b450"},{label:"lux",path:"cam.lux",color:"#5b9bd8",right:true}]);
@@ -1130,10 +1141,14 @@ METRICS_JS = """
   function show(tab){
     $("dayView").style.display = tab==="day"?"":"none";
     $("histView").style.display = tab==="hist"?"":"none";
+    $("patView").style.display = tab==="pat"?"":"none";
     $("mTabDay").classList.toggle("btn-primary", tab==="day");
     $("mTabHist").classList.toggle("btn-primary", tab==="hist");
+    $("mTabPat").classList.toggle("btn-primary", tab==="pat");
     if(tab==="hist") loadHist();
+    if(tab==="pat") loadPatterns();
   }
+  $("mTabPat").addEventListener("click", function(){ show("pat"); });
   $("mTabDay").addEventListener("click", function(){ show("day"); });
   $("mTabHist").addEventListener("click", function(){ show("hist"); });
   var sel=$("mDay");
@@ -1143,33 +1158,53 @@ METRICS_JS = """
     if(histChart){ try{ histChart.setSize({width:histChart.root.parentNode.clientWidth, height:280}); }catch(e){} }
   });
 
-  /* ---- Feature: plant region (canopy ROI) + backfill ---- */
-  var ov=$("mRoiOv"), rect=$("mRoiRect"), regionBtn=$("mRegion"), backBtn=$("mBackfill"), cstat=$("mCanopyStat");
-  var regionOn=false;
+  /* ---- Features: plant region, green mask, zones, backfill ---- */
+  var ov=$("mRoiOv"), rect=$("mRoiRect"), regionBtn=$("mRegion"), maskBtn=$("mMask"),
+      zoneAddBtn=$("mZoneAdd"), zoneSaveBtn=$("mZoneSave"), backBtn=$("mBackfill"),
+      cstat=$("mCanopyStat"), zoneListEl=$("mZoneList");
+  var drawMode=null;
   function showRect(roi){
-    if(!rect||!img) return;
+    if(!rect) return;
     if(!roi){ rect.style.display="none"; return; }
     rect.style.display="block";
     rect.style.left=(roi[0]*100)+"%"; rect.style.top=(roi[1]*100)+"%";
     rect.style.width=(roi[2]*100)+"%"; rect.style.height=(roi[3]*100)+"%";
   }
+  function renderZoneChips(){
+    if(!zoneListEl) return;
+    zoneListEl.innerHTML=zoneDefs.map(function(z,i){ return '<span class="zonechip">'+(z.name||("strefa"+(i+1)))+' <b data-i="'+i+'">\\u00D7</b></span>'; }).join("");
+    Array.prototype.forEach.call(zoneListEl.querySelectorAll("b"), function(b){
+      b.addEventListener("click", function(){ zoneDefs.splice(parseInt(b.getAttribute("data-i"),10),1); renderZoneChips(); if(zoneSaveBtn) zoneSaveBtn.style.display=""; });
+    });
+  }
   async function refreshCanopyStat(){
     try{
       var s=await (await fetch(withTok("/api/canopy/status"))).json();
-      showRect(s.roi);
+      if(!drawMode) showRect(s.roi);
+      if(Array.isArray(s.zones)){ zoneDefs=s.zones.slice(); renderZoneChips(); }
       var t="";
       if(s.roi) t+="region ustawiony · ";
       if(s.running) t+="przeliczanie "+(s.done||0)+"/"+(s.total||0)+"…";
-      else if(s.missing) t+=s.missing+" klatek bez zieleni";
-      else t+="zieleń policzona";
+      else if(s.missing) t+=s.missing+" klatek do przeliczenia";
+      else t+="policzone";
       if(cstat) cstat.textContent=t;
       return s;
     }catch(e){ return {}; }
   }
-  if(regionBtn) regionBtn.addEventListener("click", function(){
-    regionOn=!regionOn;
-    regionBtn.classList.toggle("btn-primary", regionOn);
-    if(ov) ov.style.display=regionOn?"block":"none";
+  function setMode(m){
+    drawMode=(drawMode===m)?null:m;
+    if(regionBtn) regionBtn.classList.toggle("btn-primary", drawMode==="region");
+    if(zoneAddBtn) zoneAddBtn.classList.toggle("btn-primary", drawMode==="zone");
+    if(ov) ov.style.display=drawMode?"block":"none";
+    if(!drawMode) refreshCanopyStat();
+  }
+  if(regionBtn) regionBtn.addEventListener("click", function(){ setMode("region"); });
+  if(zoneAddBtn) zoneAddBtn.addEventListener("click", function(){ setMode("zone"); });
+  if(maskBtn) maskBtn.addEventListener("click", function(){ maskOn=!maskOn; maskBtn.classList.toggle("btn-primary", maskOn); if(slider) setSlider(parseInt(slider.value,10), true); });
+  if(zoneSaveBtn) zoneSaveBtn.addEventListener("click", async function(){
+    try{ await fetch(withTok("/api/canopy/zones"),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({zones:zoneDefs})}); }catch(e){}
+    zoneSaveBtn.style.display="none";
+    var poll=setInterval(async function(){ var s=await refreshCanopyStat(); if(!s.running){ clearInterval(poll); if(curDay) loadZones(curDay); } }, 1500);
   });
   if(ov){
     var drag=null;
@@ -1181,19 +1216,64 @@ METRICS_JS = """
     ov.addEventListener("pointermove", draw);
     ov.addEventListener("pointerup", async function(e){
       if(!drag)return; var r=drag.r, x=Math.min(e.clientX,drag.x0),y=Math.min(e.clientY,drag.y0);
-      var w=Math.abs(e.clientX-drag.x0),h=Math.abs(e.clientY-drag.y0); drag=null;
-      if(w<10||h<10){ // tiny = clear region
-        await fetch(withTok("/api/canopy/roi"),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({reset:true})});
+      var w=Math.abs(e.clientX-drag.x0),h=Math.abs(e.clientY-drag.y0); drag=null; rect.style.display="none";
+      var nx=(x-r.left)/r.width, ny=(y-r.top)/r.height, nw=w/r.width, nh=h/r.height;
+      if(drawMode==="zone"){
+        if(w<10||h<10) return;
+        var name=prompt("Nazwa strefy:", "strefa "+(zoneDefs.length+1)); if(name===null) return;
+        zoneDefs.push({name:name||("strefa"+(zoneDefs.length+1)),x:nx,y:ny,w:nw,h:nh});
+        renderZoneChips(); if(zoneSaveBtn) zoneSaveBtn.style.display="";
       } else {
-        await fetch(withTok("/api/canopy/roi"),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({x:(x-r.left)/r.width,y:(y-r.top)/r.height,w:w/r.width,h:h/r.height})});
+        if(w<10||h<10){ await fetch(withTok("/api/canopy/roi"),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({reset:true})}); }
+        else { await fetch(withTok("/api/canopy/roi"),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({x:nx,y:ny,w:nw,h:nh})}); }
+        refreshCanopyStat();
       }
-      refreshCanopyStat();
     });
   }
   if(backBtn) backBtn.addEventListener("click", async function(){
     try{ await fetch(withTok("/api/canopy/backfill"),{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"}); }catch(e){}
-    var poll=setInterval(async function(){ var s=await refreshCanopyStat(); if(!s.running){ clearInterval(poll); if(curDay) loadDay(curDay); } }, 1500);
+    var poll=setInterval(async function(){ var s=await refreshCanopyStat(); if(!s.running){ clearInterval(poll); if(curDay){ loadDay(curDay); } } }, 1500);
   });
+
+  async function loadZones(day){
+    var el=$("chZones"); if(!el) return;
+    try{
+      var zd=await (await fetch(withTok("/api/metadata/zones?day="+encodeURIComponent(day)))).json();
+      if(zoneChart){ try{zoneChart.destroy();}catch(e){} zoneChart=null; }
+      if(!zd.names||!zd.names.length||!zd.rows.length){ el.style.display="none"; return; }
+      el.style.display=""; el.innerHTML="";
+      var pal=["#3da35a","#e6b450","#5b9bd8","#e0533f","#a585d0","#4eb389","#ef9b42","#7d93b5"];
+      var xs=zd.rows.map(function(r){ return Date.parse(r.ts)/1000; }); var data=[xs]; var series=[{}];
+      zd.names.forEach(function(nm,i){ data.push(zd.rows.map(function(r){ return (r[nm]!=null)?r[nm]:null; })); series.push({label:nm,stroke:pal[i%pal.length],width:1.8,scale:"y",spanGaps:true}); });
+      zoneChart=new uPlot({title:"Strefy — zieleń %",width:(el.clientWidth||700),height:200,legend:{live:true},cursor:{sync:{key:"m"}},series:series,axes:[{},{scale:"y"}],hooks:{drawClear:[bandHook]}},data,el);
+    }catch(e){ el.style.display="none"; }
+  }
+
+  async function loadPatterns(){
+    var metric=$("patMetric").value, avgEl=$("patAvg"), heatEl=$("patHeat");
+    try{
+      var d=await (await fetch(withTok("/api/metadata/hourly?metric="+encodeURIComponent(metric)+"&days=30"))).json();
+      var xs=d.avgday.map(function(a){return a.h;}), avg=d.avgday.map(function(a){return a.avg;}),
+          mn=d.avgday.map(function(a){return a.min;}), mx=d.avgday.map(function(a){return a.max;});
+      if(patChart){ try{patChart.destroy();}catch(e){} } avgEl.innerHTML="";
+      patChart=new uPlot({title:"Typowy dzień — "+metric+" (godzina 0–23)",width:(avgEl.clientWidth||700),height:220,legend:{live:true},
+        scales:{x:{time:false}},
+        series:[{label:"godz"},{label:"max",stroke:"#c2cbc4",scale:"y"},{label:"średnia",stroke:"#3da35a",width:2.4,scale:"y"},{label:"min",stroke:"#9aa7a0",scale:"y"}],
+        axes:[{},{scale:"y"}]},[xs,mx,avg,mn],avgEl);
+      var all=[]; d.matrix.forEach(function(row){ row.hours.forEach(function(v){ if(v!=null) all.push(v); }); });
+      var lo=all.length?Math.min.apply(null,all):0, hi=all.length?Math.max.apply(null,all):1; if(hi<=lo) hi=lo+1;
+      function color(v){ if(v==null) return "transparent"; var t=(v-lo)/(hi-lo); return "rgb("+Math.round(20+t*235)+","+Math.min(255,Math.round(60+t*120))+","+Math.max(0,Math.round(90-t*60))+")"; }
+      var out='<div class="heatgrid"><div class="heatcell heathdr"></div>';
+      for(var h=0;h<24;h++) out+='<div class="heatcell heathdr">'+h+'</div>';
+      d.matrix.slice().reverse().forEach(function(row){
+        out+='<div class="heatcell heatday">'+row.day.slice(5)+'</div>';
+        row.hours.forEach(function(v,hh){ out+='<div class="heatcell" style="background:'+color(v)+'" title="'+row.day+' '+hh+':00 = '+(v==null?"–":v)+'"></div>'; });
+      });
+      out+='</div>';
+      heatEl.innerHTML=out;
+    }catch(e){ heatEl.innerHTML='<div class="sub">Brak danych.</div>'; }
+  }
+  $("patMetric").addEventListener("change", loadPatterns);
 
   (async function(){
     var days=[];
@@ -1387,6 +1467,10 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             self._history_days(parsed.query)
         elif parsed.path == "/api/metadata/summary":
             self._metadata_summary(parsed.query)
+        elif parsed.path == "/api/metadata/zones":
+            self._metadata_zones(parsed.query)
+        elif parsed.path == "/api/metadata/hourly":
+            self._metadata_hourly(parsed.query)
         elif parsed.path == "/api/metadata/events":
             self._metadata_events(parsed.query)
         elif parsed.path == "/metrics":
@@ -1447,6 +1531,8 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             self._canopy_roi(parsed.query)
         elif parsed.path == "/api/canopy/backfill":
             self._canopy_backfill(parsed.query)
+        elif parsed.path == "/api/canopy/zones":
+            self._canopy_zones(parsed.query)
         elif parsed.path == "/api/movie/build":
             self._movie_build(parsed.query)
         elif parsed.path == "/api/burst/start":
@@ -1661,6 +1747,28 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             limit = 30
         self._send_json({"summary": self.storage.metrics.summary(max(1, limit))})
 
+    def _metadata_zones(self, query: str) -> None:
+        if not self._authorized(query):
+            self._send_json({"error": "unauthorized"}, HTTPStatus.UNAUTHORIZED)
+            return
+        day = parse_qs(query).get("day", [""])[0]
+        if not _valid_day(day):
+            self._send_json({"error": "bad day"}, HTTPStatus.BAD_REQUEST)
+            return
+        self._send_json(self.storage.metrics.zones_day(day))
+
+    def _metadata_hourly(self, query: str) -> None:
+        if not self._authorized(query):
+            self._send_json({"error": "unauthorized"}, HTTPStatus.UNAUTHORIZED)
+            return
+        params = parse_qs(query)
+        metric = params.get("metric", ["brightness"])[0]
+        try:
+            days = int(params.get("days", ["30"])[0])
+        except ValueError:
+            days = 30
+        self._send_json(self.storage.metrics.hourly_matrix(metric, max(1, min(days, 120))))
+
     def _metadata_events(self, query: str) -> None:
         if not self._authorized(query):
             self._send_json({"error": "unauthorized"}, HTTPStatus.UNAUTHORIZED)
@@ -1685,14 +1793,22 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
   <label class="switch">Dzień <select id="mDay" class="mini"></select></label>
   <button id="mTabDay" class="btn btn-primary" type="button">Dzień</button>
   <button id="mTabHist" class="btn" type="button">Historia</button>
-  <button id="mRegion" class="btn" type="button">🌿 Region rośliny</button>
-  <button id="mBackfill" class="btn" type="button">↻ Przelicz zieleń</button>
+  <button id="mTabPat" class="btn" type="button">Wzorce</button>
   <a id="mCsv" class="btn" href="#">⬇️ CSV</a>
-  <span id="mCanopyStat" class="sub"></span>
 </div>
 <div id="dayView">
   <div id="mCond" class="cond card" style="display:none"></div>
+  <div class="ctrlrow" style="margin:.2rem 0 .4rem">
+    <button id="mRegion" class="btn" type="button">🌿 Region</button>
+    <button id="mMask" class="btn" type="button">🟢 Maska zieleni</button>
+    <button id="mZoneAdd" class="btn" type="button">➕ Strefa</button>
+    <button id="mZoneSave" class="btn" type="button" style="display:none">💾 Zapisz strefy</button>
+    <button id="mBackfill" class="btn" type="button">↻ Przelicz</button>
+    <span id="mZoneList" class="zonechips"></span>
+    <span id="mCanopyStat" class="sub"></span>
+  </div>
   <div id="dayCharts"></div>
+  <div id="chZones" class="chart" style="display:none"></div>
   <div class="card pad">
     <div class="scrubber"><input id="mSlider" type="range" min="0" max="0" value="0" aria-label="Przewijaj próbki"></div>
     <div class="metarow">
@@ -1703,6 +1819,23 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
   </div>
 </div>
 <div id="histView" style="display:none"><div id="chHist" class="chart"></div></div>
+<div id="patView" style="display:none">
+  <div class="ctrlrow">
+    <label class="switch">Metryka
+      <select id="patMetric" class="mini">
+        <option value="brightness">jasność</option>
+        <option value="canopy_pct">zieleń %</option>
+        <option value="sharpness">ostrość</option>
+        <option value="cpu_temp">temp CPU</option>
+        <option value="out_temp">temp zewn.</option>
+        <option value="lux">lux</option>
+      </select>
+    </label>
+  </div>
+  <div id="patAvg" class="chart"></div>
+  <div class="card pad"><div class="sub" style="margin-bottom:.4rem">Heatmapa: dzień (wiersze) × godzina (kolumny)</div>
+    <div id="patHeat"></div></div>
+</div>
 <script>window.CAM_TOKEN={token_js};</script>
 <script>{METRICS_JS}</script>
 """
@@ -1852,9 +1985,10 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             self._send_json({"error": "unauthorized"}, HTTPStatus.UNAUTHORIZED)
             return
         st = dict(self.server.canopy_backfill)  # type: ignore[attr-defined]
-        st["missing"] = self.storage.metrics.count_missing_canopy()
+        st["missing"] = self.storage.metrics.count_missing_image_metrics()
         roi = self.storage.canopy_roi()
         st["roi"] = list(roi) if roi else None
+        st["zones"] = self.storage.zones()
         self._send_json(st)
 
     def _canopy_backfill(self, query: str) -> None:
@@ -1866,21 +2000,55 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             if server.canopy_backfill["running"]:  # type: ignore[attr-defined]
                 self._send_json({"ok": True, "running": True, "already": True})
                 return
-            total = self.storage.metrics.count_missing_canopy()
+            total = (self.storage.metrics.count_missing_image_metrics()
+                     + self.storage.metrics.count_missing_zones())
             server.canopy_backfill = {"running": True, "done": 0, "total": total}  # type: ignore[attr-defined]
         storage = self.storage
 
         def worker():
             try:
-                storage.backfill_canopy(progress=lambda d: server.canopy_backfill.__setitem__("done", d))  # type: ignore[attr-defined]
+                base = [0]
+
+                def bump(d):
+                    server.canopy_backfill["done"] = base[0] + d  # type: ignore[attr-defined]
+
+                n = storage.backfill_image_metrics(progress=bump)
+                base[0] = n
+                storage.backfill_zones(progress=bump)
             except Exception as exc:
-                log.warning("canopy backfill failed: %s", exc)
+                log.warning("image-metrics backfill failed: %s", exc)
             finally:
                 server.canopy_backfill["running"] = False  # type: ignore[attr-defined]
 
         threading.Thread(target=worker, daemon=True).start()
-        log.info("canopy backfill started (%d rows)", total)
+        log.info("image-metrics backfill started (%d rows)", total)
         self._send_json({"ok": True, "running": True, "total": total})
+
+    def _canopy_zones(self, query: str) -> None:
+        if not self._authorized(query):
+            self._send_json({"error": "unauthorized"}, HTTPStatus.UNAUTHORIZED)
+            return
+        body = self._read_json_body() or {}
+        if "zones" in body:
+            self.storage.set_zones(body.get("zones") or [])
+            # Recompute zone series in the background (definitions changed).
+            server = self.server
+            storage = self.storage
+            with server.timelapse_lock:  # type: ignore[attr-defined]
+                if not server.canopy_backfill["running"]:  # type: ignore[attr-defined]
+                    server.canopy_backfill = {"running": True, "done": 0,  # type: ignore[attr-defined]
+                                              "total": storage.metrics.count_missing_zones()}
+
+                    def worker():
+                        try:
+                            storage.backfill_zones(progress=lambda d: server.canopy_backfill.__setitem__("done", d))  # type: ignore[attr-defined]
+                        except Exception as exc:
+                            log.warning("zone backfill failed: %s", exc)
+                        finally:
+                            server.canopy_backfill["running"] = False  # type: ignore[attr-defined]
+
+                    threading.Thread(target=worker, daemon=True).start()
+        self._send_json({"ok": True, "zones": self.storage.zones()})
 
     # ---- Feature: multi-day "growth movie" with burned-in captions ----
     def _movie_build(self, query: str) -> None:
@@ -2350,7 +2518,18 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             except ValueError:
                 self._send_text("bad path\n", "text/plain", HTTPStatus.BAD_REQUEST)
                 return
-            if "thumb" in parse_qs(query) and filename.endswith(".jpg"):
+            q = parse_qs(query)
+            if "mask" in q and filename.endswith(".jpg"):
+                try:
+                    roi = self.storage.canopy_roi()
+                    tag = ("r%d" % (abs(hash(tuple(roi))) % 100000)) if roi else "full"
+                    self._send_file(
+                        self.storage.mask_for(target, f"history/{day}/{tag}_{filename}", roi=roi),
+                        immutable=False)
+                    return
+                except Exception as exc:
+                    log.debug("history mask failed: %s", exc)
+            if "thumb" in q and filename.endswith(".jpg"):
                 try:
                     self._send_file(self.storage.thumb_for(target, f"history/{day}/{filename}"),
                                     immutable=True)
@@ -2661,7 +2840,10 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             day_h = html.escape(day.name)
             day_link = href(f"/history/{quote(day.name)}", token)
             if images:
-                thumb_url = href(f"/history/{quote(day.name)}/{quote(images[0].name)}?thumb=1", token)
+                best = (self.storage.metrics.best_frame(day.name) or {}).get("file")
+                names = {p.name for p in images}
+                pick = best if best in names else images[0].name
+                thumb_url = href(f"/history/{quote(day.name)}/{quote(pick)}?thumb=1", token)
                 thumb = f'<img src="{thumb_url}" alt="{day_h}" loading="lazy" decoding="async">'
             else:
                 thumb = ""

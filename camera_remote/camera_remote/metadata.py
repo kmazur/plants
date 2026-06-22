@@ -98,6 +98,31 @@ def canopy_pct(path, roi=None):
         return None
 
 
+def sharpness(path, roi=None):
+    """Focus/sharpness score = variance of the Laplacian over a grayscale
+    thumbnail. Higher means crisper; useful to pick the best frame of a day."""
+    try:
+        from PIL import Image
+        import numpy as np
+        with Image.open(path) as im:
+            g = im.convert("L")
+            g.thumbnail((240, 240))
+            arr = np.asarray(g, dtype="float32")
+        if roi:
+            h, w = arr.shape
+            x, y, rw, rh = roi
+            x0 = max(0, int(x * w)); y0 = max(0, int(y * h))
+            x1 = min(w, int((x + rw) * w)); y1 = min(h, int((y + rh) * h))
+            if x1 - x0 > 4 and y1 - y0 > 4:
+                arr = arr[y0:y1, x0:x1]
+        lap = (-4.0 * arr[1:-1, 1:-1] + arr[:-2, 1:-1] + arr[2:, 1:-1]
+               + arr[1:-1, :-2] + arr[1:-1, 2:])
+        return round(float(lap.var()), 1)
+    except Exception as exc:
+        log.debug("sharpness failed: %s", exc)
+        return None
+
+
 def system_brief(data_dir) -> dict:
     out = {}
     try:
@@ -195,6 +220,9 @@ def build_record(now: datetime, file_name: str, file_path, data_dir, location, c
     cap = canopy_pct(file_path, canopy_roi)
     if cap is not None:
         record["canopy_pct"] = cap
+    sh = sharpness(file_path)
+    if sh is not None:
+        record["sharpness"] = sh
     try:
         record["size"] = Path(file_path).stat().st_size
     except Exception:
