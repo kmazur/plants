@@ -3,6 +3,7 @@ from __future__ import annotations
 import bisect
 import json
 import logging
+import re
 import shutil
 import time
 from dataclasses import dataclass
@@ -65,33 +66,223 @@ class SnapshotStorage:
         return sorted(root.glob("*.jpg"), reverse=newest_first)
 
     def cleanup_old_history(self) -> None:
-        retain_days = self.config.snapshot.retain_days
-        if retain_days <= 0:
-            return
-        cutoff = datetime.now().date() - timedelta(days=retain_days)
+        """Backwards-compatible entry point: full lifecycle maintenance."""
+        self.maintain_storage()
+
+    # ------------------------------------------------------------------
+    # Storage lifecycle: age data gracefully and reclaim under disk pressure.
+    # ------------------------------------------------------------------
+    def _disk_pct(self) -> float:
+        u = shutil.disk_usage(str(self.data_dir))
+        return 100.0 * u.used / u.total
+
+    def disk_status(self) -> dict:
+        u = shutil.disk_usage(str(self.data_dir))
+        snap = self.config.snapshot
+        return {
+            "used_pct": round(100.0 * u.used / u.total, 1),
+            "free_gb": round(u.free / 1e9, 1),
+            "total_gb": round(u.total / 1e9, 1),
+            "high_pct": snap.disk_high_pct,
+            "low_pct": snap.disk_low_pct,
+            "paused": self.capture_paused(),
+        }
+
+    def capture_paused(self) -> bool:
+        return self.metrics.kv_get("capture_paused") == "1"
+
+    def _history_day_dirs(self, exclude_today: bool = True) -> list:
+        today = datetime.now().strftime("%Y-%m-%d")
+        out = []
         if self.history_dir.exists():
-            for day_dir in self.history_dir.iterdir():
-                if not day_dir.is_dir():
+            for d in sorted(self.history_dir.iterdir()):
+                if not d.is_dir():
                     continue
                 try:
-                    day = datetime.strptime(day_dir.name, "%Y-%m-%d").date()
+                    datetime.strptime(d.name, "%Y-%m-%d")
                 except ValueError:
                     continue
-                if day < cutoff:
-                    log.info("removing old history directory: %s", day_dir)
-                    shutil.rmtree(day_dir, ignore_errors=True)
-                    shutil.rmtree(self.thumbs_dir / "history" / day_dir.name, ignore_errors=True)
-        if self.burst_dir.exists():
-            for session_dir in self.burst_dir.iterdir():
-                if not session_dir.is_dir():
+                if exclude_today and d.name == today:
                     continue
-                try:
-                    day = datetime.strptime(session_dir.name[:10], "%Y-%m-%d").date()
-                except ValueError:
-                    continue
-                if day < cutoff:
-                    log.info("removing old burst session: %s", session_dir)
-                    shutil.rmtree(session_dir, ignore_errors=True)
+                out.append(d)
+        return out  # ascending: oldest first
+
+    def _ensure_timelapse(self, day_dir: Path) -> bool:
+        video = day_dir / "timelapse.mp4"
+        try:
+            from .timelapse import build_day, have_ffmpeg
+            if have_ffmpeg():
+                build_day(self.data_dir, day_dir.name)
+        except Exception as exc:
+            log.warning("timelapse build for %s failed: %s", day_dir.name, exc)
+        return video.exists()
+
+    def _thin_day(self, day_dir: Path, minutes: int) -> int:
+        """Keep one frame per ``minutes`` window for an older day (after building
+        its timelapse). Idempotent via a marker file."""
+        if (day_dir / ".tier2").exists() or (day_dir / ".tier3").exists():
+            return 0
+        self._ensure_timelapse(day_dir)
+        keep_best = (self.metrics.best_frame(day_dir.name) or {}).get("file")
+        window = max(1, minutes) * 60
+        seen, removed = set(), 0
+        for f in sorted(day_dir.glob("*.jpg")):
+            m = re.match(r"(\d{2})-(\d{2})-(\d{2})", f.name)
+            if not m:
+                continue
+            bucket = (int(m[1]) * 3600 + int(m[2]) * 60 + int(m[3])) // window
+            if bucket in seen and f.name != keep_best:
+                f.unlink(missing_ok=True)
+                removed += 1
+            else:
+                seen.add(bucket)
+        (day_dir / ".tier2").write_text("")
+        return removed
+
+    def _video_only_day(self, day_dir: Path) -> int:
+        """Keep only the day's timelapse + best frame + metrics; drop the rest.
+        Never destroys frames unless the video record exists."""
+        if (day_dir / ".tier3").exists():
+            return 0
+        if not self._ensure_timelapse(day_dir):
+            return 0  # no video -> keep frames rather than lose the day
+        keep_best = (self.metrics.best_frame(day_dir.name) or {}).get("file")
+        removed = 0
+        for f in sorted(day_dir.glob("*.jpg")):
+            if f.name != keep_best:
+                f.unlink(missing_ok=True)
+                removed += 1
+        shutil.rmtree(self.thumbs_dir / "history" / day_dir.name, ignore_errors=True)
+        shutil.rmtree(self.thumbs_dir / "mask" / day_dir.name, ignore_errors=True)
+        (day_dir / ".tier3").write_text("")
+        return removed
+
+    def _downscale_day(self, day_dir: Path, width: int) -> int:
+        try:
+            from PIL import Image
+        except Exception:
+            return 0
+        n = 0
+        for f in sorted(day_dir.glob("*.jpg")):
+            try:
+                with Image.open(f) as im:
+                    if im.width <= width:
+                        continue
+                    im = im.convert("RGB").resize((width, max(1, round(im.height * width / im.width))))
+                tmp = f.with_suffix(".jpg.ds")
+                im.save(tmp, "JPEG", quality=85)
+                tmp.replace(f)
+                n += 1
+            except Exception:
+                pass
+        return n
+
+    def _drop_caches(self) -> int:
+        today = datetime.now().strftime("%Y-%m-%d")
+        freed = 0
+        for base in ("history", "mask", "burst"):
+            d = self.thumbs_dir / base
+            if d.exists():
+                for sub in d.iterdir():
+                    if sub.name != today:
+                        shutil.rmtree(sub, ignore_errors=True)
+                        freed += 1
+        return freed
+
+    def _cleanup_burst(self) -> None:
+        retain = self.config.snapshot.retain_days
+        if retain <= 0 or not self.burst_dir.exists():
+            return
+        cutoff = datetime.now().date() - timedelta(days=retain)
+        for s in self.burst_dir.iterdir():
+            if not s.is_dir():
+                continue
+            try:
+                day = datetime.strptime(s.name[:10], "%Y-%m-%d").date()
+            except ValueError:
+                continue
+            if day < cutoff:
+                shutil.rmtree(s, ignore_errors=True)
+
+    def _age_history(self) -> None:
+        snap = self.config.snapshot
+        today = datetime.now().date()
+        for d in self._history_day_dirs():
+            try:
+                age = (today - datetime.strptime(d.name, "%Y-%m-%d").date()).days
+            except ValueError:
+                continue
+            if snap.retain_days > 0 and age > snap.retain_days:
+                self._video_only_day(d)
+            elif snap.keep_full_days > 0 and age > snap.keep_full_days:
+                self._thin_day(d, snap.thin_minutes)
+
+    def _reclaim(self) -> None:
+        snap = self.config.snapshot
+        if self._disk_pct() < snap.disk_high_pct:
+            if self.capture_paused() and self._disk_pct() < snap.disk_low_pct:
+                self.metrics.kv_set("capture_paused", "")
+                log.info("disk back below %.0f%%, capture resumed", snap.disk_low_pct)
+            return
+        log.warning("disk %.1f%% >= %.0f%%: reclaiming", self._disk_pct(), snap.disk_high_pct)
+        self.metrics.add_event(int(time.time()), "disk_reclaim", f"{self._disk_pct():.0f}% used")
+        today = datetime.now().date()
+
+        def done():
+            return self._disk_pct() < snap.disk_low_pct
+
+        self._drop_caches()
+        if done():
+            return
+        # video-only oldest -> newest beyond the full-resolution window
+        for d in self._history_day_dirs():
+            age = (today - datetime.strptime(d.name, "%Y-%m-%d").date()).days
+            if age > snap.keep_full_days:
+                self._video_only_day(d)
+                if done():
+                    return
+        # downscale remaining frames (recent non-today days)
+        for d in self._history_day_dirs():
+            self._downscale_day(d, snap.downscale_width)
+            if done():
+                return
+        # delete whole oldest days as a last resort
+        for d in self._history_day_dirs():
+            shutil.rmtree(d, ignore_errors=True)
+            shutil.rmtree(self.thumbs_dir / "history" / d.name, ignore_errors=True)
+            if done():
+                return
+        if self._disk_pct() >= snap.disk_high_pct:
+            self.metrics.kv_set("capture_paused", "1")
+            self.metrics.add_event(int(time.time()), "capture_paused", "disk full after reclaim")
+            log.error("disk still %.1f%% after reclaim; capture paused", self._disk_pct())
+
+    def maintain_storage(self) -> None:
+        """Periodic housekeeping: gentle aging + burst retention + pressure
+        reclamation. Safe to run from a background thread (only touches days
+        other than today, which the capture writer owns)."""
+        for fn in (self._age_history, self._cleanup_burst, self._reclaim):
+            try:
+                fn()
+            except Exception as exc:
+                log.warning("maintenance step %s failed: %s", fn.__name__, exc)
+
+    def _post_capture_maintenance(self) -> None:
+        """Light, fast housekeeping safe to run inside the capture cycle. Heavy
+        work (ffmpeg, thinning, reclaim) is left to the background thread; here
+        we only trim bursts and apply an emergency pause if the disk is full."""
+        try:
+            self._cleanup_burst()
+        except Exception as exc:
+            log.warning("burst cleanup failed: %s", exc)
+        try:
+            if self._disk_pct() >= self.config.snapshot.disk_high_pct and not self.capture_paused():
+                self.metrics.kv_set("capture_paused", "1")
+                self.metrics.add_event(int(time.time()), "capture_paused", "disk high (emergency)")
+                log.warning("disk %.1f%% high; capture paused, maintenance will reclaim",
+                            self._disk_pct())
+        except Exception as exc:
+            log.warning("disk pressure check failed: %s", exc)
 
     def capture_once(self, blocking: bool = True) -> SnapshotResult:
         self.ensure_dirs()
@@ -99,6 +290,10 @@ class SnapshotStorage:
         day_dir = self.history_dir / now.strftime("%Y-%m-%d")
         file_path = day_dir / f"{now.strftime('%H-%M-%S')}.jpg"
         blocking_lock = blocking or not self.config.snapshot.skip_when_camera_busy
+
+        if self.capture_paused():
+            return SnapshotResult(file_path, self.latest_path, now, skipped=True,
+                                  message="capture paused (disk full)")
 
         night = self._is_night()
         controls, warmup, night_exp = self._night_controls() if night else (None, None, None)
@@ -167,7 +362,7 @@ class SnapshotStorage:
         tmp_meta.write_text(json.dumps(meta, indent=2), encoding="utf-8")
         tmp_meta.replace(self.latest_meta_path)
 
-        self.cleanup_old_history()
+        self._post_capture_maintenance()
         return SnapshotResult(file_path, self.latest_path, now)
 
     def burst_sessions(self) -> list[Path]:

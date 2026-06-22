@@ -50,6 +50,11 @@ class SnapshotConfig:
     retain_days: int
     skip_when_camera_busy: bool
     interval_seconds: int
+    disk_high_pct: float
+    disk_low_pct: float
+    keep_full_days: int
+    thin_minutes: int
+    downscale_width: int
 
 
 @dataclass(frozen=True)
@@ -148,6 +153,11 @@ def load_config(path: Union[str, Path]) -> AppConfig:
         retain_days=_get_int(parser, "snapshot", "retain_days", 14),
         skip_when_camera_busy=_get_bool(parser, "snapshot", "skip_when_camera_busy", True),
         interval_seconds=_get_int(parser, "snapshot", "interval_seconds", 60),
+        disk_high_pct=_get_float(parser, "snapshot", "disk_high_pct", 95.0),
+        disk_low_pct=_get_float(parser, "snapshot", "disk_low_pct", 85.0),
+        keep_full_days=_get_int(parser, "snapshot", "keep_full_days", 3),
+        thin_minutes=_get_int(parser, "snapshot", "thin_minutes", 10),
+        downscale_width=_get_int(parser, "snapshot", "downscale_width", 1280),
     )
     paths = PathConfig(
         data_dir=Path(_get_str(parser, "paths", "data_dir", "/home/user/camera-remote-data")).expanduser(),

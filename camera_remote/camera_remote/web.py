@@ -1986,6 +1986,7 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             "ffmpeg": have_ffmpeg(),
             "live": self.server.live.diag(),  # type: ignore[attr-defined]
             "image": self.storage.image_status(),
+            "disk": self.storage.disk_status(),
             "night": self.storage.night_status(),
             "burst": self.server.burst.status(),  # type: ignore[attr-defined]
             "system": read_system_stats(self.storage.data_dir),
@@ -3228,6 +3229,18 @@ class CameraServer(ThreadingHTTPServer):
         self.timelapse_lock = threading.Lock()
         self.timelapse_building: set = set()
         self.burst_building: set = set()
+        self._maint_stop = threading.Event()
+        threading.Thread(target=self._maintenance_loop, name="maintenance", daemon=True).start()
+
+    def _maintenance_loop(self) -> None:
+        """Periodic storage housekeeping (aging + disk-pressure reclamation)."""
+        self._maint_stop.wait(30)  # let startup settle
+        while not self._maint_stop.is_set():
+            try:
+                self.storage.maintain_storage()
+            except Exception as exc:
+                log.warning("maintenance loop error: %s", exc)
+            self._maint_stop.wait(1200)  # every 20 min
         self.canopy_backfill = {"running": False, "done": 0, "total": 0}
         self.movie_lock = threading.Lock()
         self.movie_building = False
