@@ -447,6 +447,15 @@ a:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible{
 .metarow pre{flex:1 1 240px;margin:0;max-height:320px}
 .evnt{font-size:.78rem;color:var(--muted);margin-top:.6rem}
 .evnt b{color:#e0533f}
+.cond{display:flex;align-items:center;gap:.9rem;flex-wrap:wrap;padding:.7rem 1rem;margin-bottom:.7rem}
+.cond .cbig{font-size:2.1rem;line-height:1}
+.cond .cmain{display:flex;flex-direction:column;line-height:1.15}
+.cond .cmain b{font-size:1.35rem;color:var(--ink)}
+.cond .cgrid{display:flex;flex-wrap:wrap;gap:.4rem;flex:1 1 auto}
+.cond .pl{background:var(--card-2,rgba(125,140,130,.12));border:1px solid var(--border);border-radius:999px;padding:.18rem .6rem;font-size:.78rem;color:var(--ink);white-space:nowrap}
+.cond .pl.warn{color:#e0533f;border-color:rgba(224,83,63,.5)}
+.cond .ctime{font-size:.72rem;color:var(--muted);width:100%}
+@media (max-width:560px){.cond .cbig{font-size:1.7rem}.cond .cmain b{font-size:1.15rem}.metarow img,.metarow pre{flex:1 1 100%}}
 .term-wrap{background:#0b1410;border:1px solid var(--border);border-radius:12px;padding:8px;box-shadow:var(--shadow);margin-top:.6rem}
 #term{height:64vh;width:100%}
 .term-bar{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin:.6rem 0 0}
@@ -976,8 +985,50 @@ METRICS_JS = """
   if(!$("dayCharts")) return;
   if(!window.uPlot){ $("dayCharts").innerHTML='<div class="card pad">Nie udało się załadować uPlot (sieć?).</div>'; return; }
   var charts=[], recs=[], curDay=null, histChart=null;
+  var SUN={rise:null,set:null}, REBOOTS=[];
   function num(r, path){ var ps=path.split("."), v=r; for(var i=0;i<ps.length;i++){ if(v==null)return null; v=v[ps[i]]; } return (typeof v==="number")?v:null; }
   function destroyCharts(){ charts.forEach(function(c){ try{c.destroy();}catch(e){} }); charts=[]; }
+  function tsec(s){ var t=Date.parse(s); return isNaN(t)?null:t/1000; }
+
+  var WMO={0:["\\u2600\\uFE0F","bezchmurnie"],1:["\\uD83C\\uDF24\\uFE0F","przejaśnienia"],2:["\\u26C5","częśc. zachmurzenie"],3:["\\u2601\\uFE0F","zachmurzenie"],45:["\\uD83C\\uDF2B\\uFE0F","mgła"],48:["\\uD83C\\uDF2B\\uFE0F","szadź"],51:["\\uD83C\\uDF26\\uFE0F","mżawka"],53:["\\uD83C\\uDF26\\uFE0F","mżawka"],55:["\\uD83C\\uDF26\\uFE0F","mżawka"],61:["\\uD83C\\uDF27\\uFE0F","deszcz"],63:["\\uD83C\\uDF27\\uFE0F","deszcz"],65:["\\uD83C\\uDF27\\uFE0F","ulewa"],71:["\\uD83C\\uDF28\\uFE0F","śnieg"],73:["\\uD83C\\uDF28\\uFE0F","śnieg"],75:["\\u2744\\uFE0F","śnieg"],80:["\\uD83C\\uDF26\\uFE0F","przelotny deszcz"],81:["\\uD83C\\uDF27\\uFE0F","przelotny deszcz"],82:["\\u26C8\\uFE0F","ulewa"],95:["\\u26C8\\uFE0F","burza"],96:["\\u26C8\\uFE0F","burza"],99:["\\u26C8\\uFE0F","burza"]};
+  function wmo(c){ return WMO[c]||["\\uD83C\\uDF21\\uFE0F",""]; }
+  function thr(v){ if(v==null)return ""; if(v===0)return "\\u2713 zasilanie OK"; var s=[]; if(v&1)s.push("under-volt"); if(v&8)s.push("throttling"); if(v&0x20000)s.push("było throttling"); if(v&0x10000)s.push("był under-volt"); return "\\u26A0 "+(s.join(", ")||("0x"+v.toString(16))); }
+  function pill(txt,warn){ return txt?('<span class="pl'+(warn?" warn":"")+'">'+txt+'</span>'):""; }
+  function renderCond(r){
+    var el=$("mCond"); if(!el||!r){ if(el)el.style.display="none"; return; }
+    var o=r.outdoor||{}, w=wmo(o.code), day=r.is_day?"\\uD83C\\uDF1E dzień":"\\uD83C\\uDF19 noc";
+    var tv=thr(r.throttled), warn=tv.indexOf("\\u26A0")===0;
+    el.style.display="";
+    el.innerHTML='<span class="cbig">'+w[0]+'</span>'+
+      '<span class="cmain"><b>'+(o.temp_c!=null?o.temp_c.toFixed(1)+"\\u00B0C":"\\u2013")+'</b><span class="sub">'+w[1]+'</span></span>'+
+      '<span class="cgrid">'+
+        pill("\\u2601\\uFE0F "+(o.cloud!=null?Math.round(o.cloud)+"%":"\\u2013"))+
+        pill("\\uD83D\\uDCA8 "+(o.wind!=null?o.wind+" km/h":"\\u2013"))+
+        pill("\\uD83D\\uDCA7 "+(o.precip!=null?o.precip+" mm":"\\u2013"))+
+        pill(day)+
+        pill("CPU "+(r.cpu_temp_c!=null?r.cpu_temp_c+"\\u00B0C":"\\u2013"))+
+        pill(r.cpu_freq_mhz!=null?(r.cpu_freq_mhz+" MHz"):"")+
+        pill(tv,warn)+
+      '</span>'+
+      '<span class="ctime">'+(SUN.rise?("\\uD83C\\uDF05 "+(r.sunrise||"").slice(11)+"  \\uD83C\\uDF07 "+(r.sunset||"").slice(11)+"   \\u00B7   "):"")+(r.ts||"").replace("T"," ")+'</span>';
+  }
+
+  function bandHook(u){
+    var ctx=u.ctx, x0=u.scales.x.min, x1=u.scales.x.max;
+    if(x0==null||x1==null) return;
+    var L=u.bbox.left, T=u.bbox.top, H=u.bbox.height, W=u.bbox.width;
+    ctx.save();
+    function px(v){ return u.valToPos(v,"x",true); }
+    ctx.fillStyle="rgba(70,90,130,0.16)";
+    function band(a,b){ if(b<=x0||a>=x1)return; a=Math.max(a,x0); b=Math.min(b,x1); var pa=px(a),pb=px(b); ctx.fillRect(pa,T,pb-pa,H); }
+    if(SUN.rise) band(x0,SUN.rise);
+    if(SUN.set) band(SUN.set,x1);
+    function vline(t,color,dash){ if(t==null||t<x0||t>x1)return; var p=px(t); ctx.beginPath(); ctx.setLineDash(dash||[]); ctx.strokeStyle=color; ctx.lineWidth=1.4; ctx.moveTo(p,T); ctx.lineTo(p,T+H); ctx.stroke(); ctx.setLineDash([]); }
+    vline(SUN.rise,"rgba(230,180,80,0.85)");
+    vline(SUN.set,"rgba(120,140,210,0.85)");
+    REBOOTS.forEach(function(t){ vline(t,"rgba(224,83,63,0.85)",[4,3]); });
+    ctx.restore();
+  }
 
   var slider=$("mSlider"), img=$("mImg"), vals=$("mVals");
   function setSlider(i, withImage){
@@ -986,6 +1037,7 @@ METRICS_JS = """
     var r=recs[i];
     if(withImage && img && r.file) img.src=withTok("/history/"+encodeURIComponent(curDay)+"/"+encodeURIComponent(r.file));
     if(vals) vals.textContent=JSON.stringify(r,null,2);
+    renderCond(r);
   }
   if(slider) slider.addEventListener("input", function(){ setSlider(parseInt(slider.value,10), true); });
 
@@ -1000,7 +1052,7 @@ METRICS_JS = """
     if(usesRight) axes.push({scale:"y2", side:1, grid:{show:false}});
     var opts={ title:title, width:(el.clientWidth||700), height:170, legend:{live:true},
       cursor:{sync:{key:"m"}, focus:{prox:20}}, series:series, axes:axes,
-      hooks:{ setCursor:[function(u){ if(u.cursor.idx!=null) setSlider(u.cursor.idx, false); }] } };
+      hooks:{ drawClear:[bandHook], setCursor:[function(u){ if(u.cursor.idx!=null) setSlider(u.cursor.idx, false); }] } };
     charts.push(new uPlot(opts, data, el));
   }
 
@@ -1009,15 +1061,26 @@ METRICS_JS = """
     try{ recs=((await (await fetch(withTok("/api/metadata?day="+encodeURIComponent(day)))).json()).records)||[]; }
     catch(e){ recs=[]; }
     var host=$("dayCharts"); host.innerHTML="";
-    if(!recs.length){ host.innerHTML='<div class="card pad sub">Brak danych dla tego dnia.</div>'; return; }
-    ["chTemp","chLight","chSys"].forEach(function(id){ var d=document.createElement("div"); d.className="chart"; d.id=id; host.appendChild(d); });
+    if(!recs.length){ host.innerHTML='<div class="card pad sub">Brak danych dla tego dnia.</div>'; renderCond(null); return; }
+    var s0=recs[0]||{};
+    SUN={ rise:tsec(s0.sunrise), set:tsec(s0.sunset) };
+    await loadDayReboots(day);
+    ["chTemp","chWx","chLight","chSys"].forEach(function(id){ var d=document.createElement("div"); d.className="chart"; d.id=id; host.appendChild(d); });
     makeChart($("chTemp"),"Temperatura (°C)",[{label:"CPU",path:"cpu_temp_c",color:"#e0533f"},{label:"zewn.",path:"outdoor.temp_c",color:"#4eb389"}]);
+    makeChart($("chWx"),"Pogoda",[{label:"zachmurzenie %",path:"outdoor.cloud",color:"#7d93b5"},{label:"opad mm",path:"outdoor.precip",color:"#5b9bd8",right:true},{label:"wiatr km/h",path:"outdoor.wind",color:"#9aa7a0",right:true}]);
     makeChart($("chLight"),"Światło",[{label:"jasność",path:"brightness",color:"#e6b450"},{label:"lux",path:"cam.lux",color:"#5b9bd8",right:true}]);
     makeChart($("chSys"),"System",[{label:"RAM %",path:"mem_used_pct",color:"#a585d0"},{label:"dysk %",path:"disk_used_pct",color:"#698075"},{label:"load",path:"load1",color:"#ef9b42",right:true}]);
     if(slider){ slider.max=String(recs.length-1); }
     setSlider(recs.length-1, true);
     var csv=$("mCsv"); if(csv) csv.href=withTok("/api/metadata?day="+encodeURIComponent(day)+"&format=csv");
     loadEvents();
+  }
+  async function loadDayReboots(day){
+    REBOOTS=[];
+    try{
+      var ev=(await (await fetch(withTok("/api/metadata/events"))).json()).events||[];
+      ev.forEach(function(e){ if(e.type==="reboot" && (e.ts||"").slice(0,10)===day){ var t=tsec(e.ts); if(t)REBOOTS.push(t); } });
+    }catch(e){}
   }
   async function loadEvents(){
     var el=$("mEvents"); if(!el) return;
@@ -1407,6 +1470,7 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
   <a id="mCsv" class="btn" href="#">⬇️ CSV</a>
 </div>
 <div id="dayView">
+  <div id="mCond" class="cond card" style="display:none"></div>
   <div id="dayCharts"></div>
   <div class="card pad">
     <div class="scrubber"><input id="mSlider" type="range" min="0" max="0" value="0" aria-label="Przewijaj próbki"></div>
