@@ -106,6 +106,19 @@ def capture_jpeg_file(output_path: Path, config: CameraConfig, size: Optional[Tu
         forced_exp = bool(controls and "ExposureTime" in controls)
         if not forced_exp:
             _wait_for_ae(picam, getattr(config, "ae_settle_timeout", 2.5))
+            # Pin the AE-converged exposure/gain before the shot. picamera2 may
+            # otherwise return metadata from a different frame than the captured
+            # still, and the still can be grabbed mid-adjustment -> frame-to-frame
+            # brightness jitter even when the reported exposure barely moves.
+            try:
+                md = picam.capture_metadata() or {}
+                et, ag = md.get("ExposureTime"), md.get("AnalogueGain")
+                if et and ag:
+                    picam.set_controls({"AeEnable": False, "ExposureTime": int(et),
+                                        "AnalogueGain": float(ag)})
+                    time.sleep(0.2)
+            except Exception as exc:
+                log.debug("could not pin AE exposure: %s", exc)
         picam.capture_file(str(tmp_path), format="jpeg")
         try:
             meta = picam.capture_metadata() or {}
