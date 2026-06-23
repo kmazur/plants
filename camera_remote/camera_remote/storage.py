@@ -5,6 +5,7 @@ import json
 import logging
 import re
 import shutil
+import statistics
 import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -298,6 +299,19 @@ class SnapshotStorage:
         night = self._is_night()
         controls, warmup, night_exp = self._night_controls() if night else (None, None, None)
 
+        # Seed daytime AE from the previous daytime frame so it converges from
+        # near-correct instead of the sensor default (smoother dawn/dusk, faster
+        # capture). Skipped right after the night->day handoff (last frame is a
+        # night frame in a different exposure regime).
+        ae_seed = None
+        if not night:
+            last = self.metrics.latest() or {}
+            if not last.get("night"):
+                lc = last.get("cam") or {}
+                et, ag = lc.get("exposure_us"), lc.get("gain")
+                if et and ag:
+                    ae_seed = (et, ag)
+
         cam_meta = {}
         try:
             with CameraLock(self.config.paths.lock_file, blocking=blocking_lock):
@@ -307,7 +321,7 @@ class SnapshotStorage:
                         cam_meta = capture_jpeg_file(
                             file_path, self.config.camera, controls=controls, warmup=warmup,
                             image_controls=self._image_controls(),
-                            quality=self.config.camera.jpeg_quality) or {}
+                            quality=self.config.camera.jpeg_quality, ae_seed=ae_seed) or {}
                         break
                     except Exception as exc:
                         last_error = exc
@@ -316,24 +330,32 @@ class SnapshotStorage:
                             time.sleep(self.config.camera.retry_delay_seconds)
                 else:
                     raise RuntimeError(f"snapshot failed after retries: {last_error}")
-                # Daytime black-frame guard: auto-exposure occasionally misses at
-                # dawn/dusk and produces a near-black frame while the scene is
-                # actually bright. Recapture once so it doesn't poison the
-                # brightness graph and the timelapse.
+                # Daytime dark-frame guard: auto-exposure occasionally misses at
+                # dawn/dusk and produces a too-dark frame while the scene is
+                # actually bright. Catch both the absolute case (near-black) and
+                # the relative case (well below the recent daytime level -- the
+                # flicker we saw, b~50 against ~110), then recapture once so it
+                # doesn't poison the brightness graph and the timelapse.
                 if not night:
                     try:
                         from . import metadata as md
                         b = md.brightness(file_path)
                         lux = float(cam_meta.get("Lux") or 0)
-                        if (b is not None and b < self.config.camera.black_frame_floor
-                                and lux > 200):
-                            log.info("daytime black frame (b=%.0f, lux=%.0f); recapturing", b, lux)
+                        recent = self.metrics.recent_brightness(15)
+                        med = statistics.median(recent) if len(recent) >= 5 else None
+                        ratio = float(getattr(self.config.camera, "dark_frame_ratio", 0.6))
+                        too_dark = b is not None and (
+                            (b < self.config.camera.black_frame_floor and lux > 200)
+                            or (med is not None and med > 40 and b < ratio * med))
+                        if too_dark:
+                            log.info("daytime dark frame (b=%.0f, med=%s, lux=%.0f); recapturing",
+                                     b, round(med) if med else None, lux)
                             cam_meta = capture_jpeg_file(
                                 file_path, self.config.camera, controls=controls, warmup=warmup,
                                 image_controls=self._image_controls(),
-                                quality=self.config.camera.jpeg_quality) or cam_meta
+                                quality=self.config.camera.jpeg_quality, ae_seed=ae_seed) or cam_meta
                     except Exception as exc:
-                        log.warning("black-frame guard failed: %s", exc)
+                        log.warning("dark-frame guard failed: %s", exc)
         except CameraBusy:
             return SnapshotResult(file_path, self.latest_path, now, skipped=True, message="camera busy")
         if night and night_exp:

@@ -156,6 +156,17 @@ class MetricsDB:
             row = conn.execute("SELECT * FROM metadata ORDER BY ts DESC LIMIT 1").fetchone()
         return _nest(row) if row else {}
 
+    def recent_brightness(self, limit: int = 15) -> list:
+        """Brightness of the most recent daytime frames (newest first), for the
+        relative dark-frame guard. Night frames are excluded because their
+        post-processed brightness lives in a different regime."""
+        with self._conn() as conn:
+            rows = conn.execute(
+                "SELECT brightness FROM metadata WHERE brightness IS NOT NULL "
+                "AND (night IS NULL OR night=0) ORDER BY ts DESC LIMIT ?",
+                (int(limit),)).fetchall()
+        return [r["brightness"] for r in rows]
+
     def days(self) -> list:
         with self._conn() as conn:
             rows = conn.execute("SELECT DISTINCT day FROM metadata ORDER BY day DESC").fetchall()

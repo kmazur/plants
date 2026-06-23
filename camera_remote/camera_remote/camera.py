@@ -144,14 +144,19 @@ def _capture_stacked(picam, tmp_path: Path, frames: int, quality: int, config: C
 
 def capture_jpeg_file(output_path: Path, config: CameraConfig, size: Optional[Tuple[int, int]] = None,
                       controls: Optional[dict] = None, warmup: Optional[float] = None,
-                      image_controls: Optional[dict] = None, quality: Optional[int] = None) -> dict:
+                      image_controls: Optional[dict] = None, quality: Optional[int] = None,
+                      ae_seed: Optional[Tuple[float, float]] = None) -> dict:
     """Capture a full still to ``output_path``. Returns the camera metadata
     (exposure, gain, lux, ...) for that capture, or an empty dict.
 
     ``controls`` forces exposure/gain (adaptive night mode) and is applied via
     the configuration so it holds from the first frame; ``image_controls``
     (sharpness/contrast/saturation/denoise) is applied best-effort after start;
-    ``quality`` sets the JPEG quality; ``warmup`` overrides the settle time."""
+    ``quality`` sets the JPEG quality; ``warmup`` overrides the settle time.
+    ``ae_seed`` is an (exposure_us, gain) hint from the previous frame used to
+    seed the auto-exposure starting point (AE stays enabled) so it converges
+    from near-correct instead of the sensor default -- this avoids the wild,
+    sometimes dark first frames at dawn/dusk when light changes fast."""
     output_path.parent.mkdir(parents=True, exist_ok=True)
     width, height = size or (config.snapshot_width, config.snapshot_height)
     tmp_path = output_path.with_suffix(output_path.suffix + ".tmp")
@@ -162,6 +167,12 @@ def capture_jpeg_file(output_path: Path, config: CameraConfig, size: Optional[Tu
         cfg_kwargs = dict(main={"size": (width, height)}, transform=_transform(config))
         if controls:
             cfg_kwargs["controls"] = dict(controls)
+        elif ae_seed and ae_seed[0] and ae_seed[1]:
+            # Seed only the AGC starting point; AeEnable stays at its default
+            # (auto), so the loop still refines and our later AE-lock + pin path
+            # runs unchanged.
+            cfg_kwargs["controls"] = {"ExposureTime": int(ae_seed[0]),
+                                      "AnalogueGain": float(ae_seed[1])}
         still_config = picam.create_still_configuration(**cfg_kwargs)
         picam.configure(still_config)
         if quality:
