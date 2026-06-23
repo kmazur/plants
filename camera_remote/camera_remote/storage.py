@@ -344,6 +344,7 @@ class SnapshotStorage:
         # so canopy/brightness/sharpness stay comparable and the night exposure
         # loop sees the true brightness.
         pp = night and bool(getattr(self.config.camera, "night_postprocess", True))
+        record = {}
         try:
             from . import metadata as md
             record = md.build_record(now, file_path.name, file_path, self.data_dir,
@@ -380,8 +381,35 @@ class SnapshotStorage:
         tmp_meta.write_text(json.dumps(meta, indent=2), encoding="utf-8")
         tmp_meta.replace(self.latest_meta_path)
 
+        self._maybe_auto_hdr(night, record, now)
         self._post_capture_maintenance()
         return SnapshotResult(file_path, self.latest_path, now)
+
+    def _maybe_auto_hdr(self, night: bool, record: dict, now: datetime) -> None:
+        """Fire an HDR exposure bracket when a daytime scene clips its highlights
+        (exceeds the sensor's dynamic range), rate-limited by a cooldown. Results
+        go to the dedicated HDR gallery, so the timelapse history stays uniform.
+        Runs synchronously: this is a one-shot capture process, so a background
+        thread would be killed on exit."""
+        cam = self.config.camera
+        if night or not getattr(cam, "hdr_auto", False):
+            return
+        clip = record.get("clip_hi")
+        if clip is None or clip < getattr(cam, "hdr_clip_threshold", 3.0):
+            return
+        try:
+            last = float(self.metrics.kv_get("hdr_last_ts") or 0)
+        except (TypeError, ValueError):
+            last = 0.0
+        nowt = now.timestamp()
+        if nowt - last < getattr(cam, "hdr_min_interval_seconds", 900):
+            return
+        try:
+            log.info("auto-HDR: highlights clipping %.1f%% >= %.1f%%", clip, cam.hdr_clip_threshold)
+            self.metrics.kv_set("hdr_last_ts", str(nowt))
+            self.capture_hdr()
+        except Exception as exc:
+            log.warning("auto-HDR failed: %s", exc)
 
     def burst_sessions(self) -> list[Path]:
         if not self.burst_dir.exists():

@@ -49,6 +49,9 @@ class CameraConfig:
     stack_gain_threshold: float
     stack_max_seconds: float
     stack_unsharp: bool
+    hdr_auto: bool
+    hdr_clip_threshold: float
+    hdr_min_interval_seconds: int
 
 
 @dataclass(frozen=True)
@@ -160,6 +163,9 @@ def load_config(path: Union[str, Path]) -> AppConfig:
         stack_gain_threshold=_get_float(parser, "camera", "stack_gain_threshold", 2.0),
         stack_max_seconds=_get_float(parser, "camera", "stack_max_seconds", 8.0),
         stack_unsharp=_get_bool(parser, "camera", "stack_unsharp", True),
+        hdr_auto=_get_bool(parser, "camera", "hdr_auto", True),
+        hdr_clip_threshold=_get_float(parser, "camera", "hdr_clip_threshold", 3.0),
+        hdr_min_interval_seconds=_get_int(parser, "camera", "hdr_min_interval_seconds", 900),
     )
     snapshot = SnapshotConfig(
         retain_days=_get_int(parser, "snapshot", "retain_days", 14),

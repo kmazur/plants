@@ -70,6 +70,25 @@ def brightness(path):
         return None
 
 
+def clip_pct(path):
+    """Percentage of blown-out highlight pixels (luma >= 250). A high value in
+    daylight means the scene exceeds the sensor's dynamic range (e.g. bright sky
+    over shaded plants) and is a good trigger for an HDR exposure bracket."""
+    try:
+        from PIL import Image
+        with Image.open(path) as im:
+            gray = im.convert("L")
+            gray.thumbnail((160, 160))
+            pixels = list(gray.getdata())
+        if not pixels:
+            return None
+        hi = sum(1 for p in pixels if p >= 250)
+        return round(100.0 * hi / len(pixels), 2)
+    except Exception as exc:
+        log.debug("clip_pct failed: %s", exc)
+        return None
+
+
 def canopy_pct(path, roi=None):
     """Fraction of the frame (0..100) covered by green vegetation, using the
     Excess-Green index ExG = (2G - R - B) / (R + G + B). ``roi`` is an optional
@@ -223,6 +242,9 @@ def build_record(now: datetime, file_name: str, file_path, data_dir, location, c
     sh = sharpness(file_path)
     if sh is not None:
         record["sharpness"] = sh
+    clip = clip_pct(file_path)
+    if clip is not None:
+        record["clip_hi"] = clip
     try:
         record["size"] = Path(file_path).stat().st_size
     except Exception:
