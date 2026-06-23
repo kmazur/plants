@@ -64,6 +64,42 @@ def _wait_for_ae(picam, timeout: float) -> bool:
     return False
 
 
+def _apply_pinned_exposure(picam, et: int, ag: float, settle_frames: int = 6,
+                           timeout: float = 2.0) -> None:
+    """Lock AE at the converged exposure/gain, then wait until the sensor has
+    actually applied it before the caller takes the still.
+
+    picamera2 control changes reach the sensor a few frames later. A still
+    grabbed right after pinning can therefore still carry the previous
+    (mid-convergence, darker) integration time even though ``capture_metadata``
+    already reports the new value -- which shows up as frame-to-frame brightness
+    flicker at dawn/dusk where the pre-pin exposure differs a lot from the
+    target. Drain frames until the reported exposure matches the pin on two
+    consecutive frames (bounded by ``settle_frames`` / ``timeout``)."""
+    try:
+        picam.set_controls({"AeEnable": False, "ExposureTime": int(et),
+                            "AnalogueGain": float(ag)})
+    except Exception as exc:
+        log.debug("could not pin AE exposure: %s", exc)
+        return
+    tol = max(50, int(int(et) * 0.04))
+    deadline = time.monotonic() + max(0.0, timeout)
+    matched = 0
+    for _ in range(max(2, settle_frames)):
+        if time.monotonic() >= deadline:
+            break
+        try:
+            cur = (picam.capture_metadata() or {}).get("ExposureTime")
+        except Exception:
+            break
+        if cur and abs(int(cur) - int(et)) <= tol:
+            matched += 1
+            if matched >= 2:
+                return
+        else:
+            matched = 0
+
+
 def _stack_frames(gain: float, exp_us: float, config: CameraConfig) -> int:
     """How many frames to average for this capture. Noise scales ~1/sqrt(N) and
     sensor noise grows with analogue gain, so we stack roughly proportionally to
@@ -159,12 +195,12 @@ def capture_jpeg_file(output_path: Path, config: CameraConfig, size: Optional[Tu
             # brightness jitter even when the reported exposure barely moves.
             et, ag = md.get("ExposureTime"), md.get("AnalogueGain")
             if et and ag:
+                _apply_pinned_exposure(picam, int(et), float(ag))
+                # Re-read so the recorded metadata matches the applied frame.
                 try:
-                    picam.set_controls({"AeEnable": False, "ExposureTime": int(et),
-                                        "AnalogueGain": float(ag)})
-                    time.sleep(0.2)
-                except Exception as exc:
-                    log.debug("could not pin AE exposure: %s", exc)
+                    md = picam.capture_metadata() or md
+                except Exception:
+                    pass
         # Gain-adaptive multi-frame stacking: average several frames when the
         # gain is high (night) to suppress noise. The scene is static, so this
         # is safe; bright daylight (gain ~1) stays a single frame.
