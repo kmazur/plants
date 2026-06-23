@@ -1169,14 +1169,22 @@ METRICS_JS = """
   function makeChart(el, title, defs){
     var xs=gidx.map(function(i){ return Date.parse(recs[i].ts)/1000; });
     var data=[xs];
-    defs.forEach(function(d){ var col=gidx.map(function(i){ return num(recs[i],d.path); }); if(d.smooth) col=smoothMedian(col,5); data.push(col); });
+    defs.forEach(function(d){
+      var col=gidx.map(function(i){ return num(recs[i],d.path); });
+      if(d.smooth) col=smoothMedian(col,5);
+      if(d.log) col=col.map(function(v){ return (v==null)?null:Math.max(v,0.05); });
+      data.push(col);
+    });
     var usesRight=defs.some(function(d){return d.right;});
+    var usesLog=defs.some(function(d){return d.log;});
     var series=[{}];
-    defs.forEach(function(d){ series.push({label:d.label, stroke:d.color, width:1.6, scale:(d.right?"y2":"y"), spanGaps:true}); });
+    defs.forEach(function(d){ series.push({label:d.label, stroke:d.color, width:1.6, scale:(d.log?"ylog":(d.right?"y2":"y")), spanGaps:true}); });
     var axes=[{}, {scale:"y"}];
     if(usesRight) axes.push({scale:"y2", side:1, grid:{show:false}});
+    if(usesLog) axes.push({scale:"ylog", side:1, grid:{show:false}});
+    var scales={}; if(usesLog) scales.ylog={distr:3};
     var opts={ title:title, width:(el.clientWidth||700), height:170, legend:{live:true},
-      cursor:{sync:{key:"m"}, focus:{prox:20}}, series:series, axes:axes,
+      cursor:{sync:{key:"m"}, focus:{prox:20}}, series:series, axes:axes, scales:scales,
       hooks:{ drawClear:[bandHook], setCursor:[function(u){ if(u.cursor.idx!=null) setSlider(gidx[u.cursor.idx], false); }] } };
     charts.push(new uPlot(opts, data, el));
   }
@@ -1196,7 +1204,7 @@ METRICS_JS = """
     loadZones(day);
     makeChart($("chTemp"),"Temperatura (°C)",[{label:"CPU",path:"cpu_temp_c",color:"#e0533f"},{label:"zewn.",path:"outdoor.temp_c",color:"#4eb389"}]);
     makeChart($("chWx"),"Pogoda",[{label:"zachmurzenie %",path:"outdoor.cloud",color:"#7d93b5"},{label:"opad mm",path:"outdoor.precip",color:"#5b9bd8",right:true},{label:"wiatr km/h",path:"outdoor.wind",color:"#9aa7a0",right:true}]);
-    makeChart($("chLight"),"Światło",[{label:"jasność (med.)",path:"brightness",color:"#e6b450",smooth:true},{label:"lux",path:"cam.lux",color:"#5b9bd8",right:true}]);
+    makeChart($("chLight"),"Światło",[{label:"jasność klatki (med.)",path:"brightness",color:"#e6b450",smooth:true},{label:"światło lux (log)",path:"cam.lux",color:"#5b9bd8",log:true}]);
     makeChart($("chSys"),"System",[{label:"RAM %",path:"mem_used_pct",color:"#a585d0"},{label:"dysk %",path:"disk_used_pct",color:"#698075"},{label:"load",path:"load1",color:"#ef9b42",right:true}]);
     if(slider){ slider.max=String(recs.length-1); }
     setSlider(recs.length-1, true);
