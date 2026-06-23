@@ -3248,6 +3248,11 @@ class CameraServer(ThreadingHTTPServer):
         self.timelapse_lock = threading.Lock()
         self.timelapse_building: set = set()
         self.burst_building: set = set()
+        self.canopy_backfill = {"running": False, "done": 0, "total": 0}
+        self.movie_lock = threading.Lock()
+        self.movie_building = False
+        self.hdr_lock = threading.Lock()
+        self.hdr = {"building": False, "last": None, "error": ""}
         self._maint_stop = threading.Event()
         threading.Thread(target=self._maintenance_loop, name="maintenance", daemon=True).start()
 
@@ -3260,11 +3265,6 @@ class CameraServer(ThreadingHTTPServer):
             except Exception as exc:
                 log.warning("maintenance loop error: %s", exc)
             self._maint_stop.wait(1200)  # every 20 min
-        self.canopy_backfill = {"running": False, "done": 0, "total": 0}
-        self.movie_lock = threading.Lock()
-        self.movie_building = False
-        self.hdr_lock = threading.Lock()
-        self.hdr = {"building": False, "last": None, "error": ""}
 
     def handle_error(self, request, client_address) -> None:
         exc_type, exc, _ = sys.exc_info()
