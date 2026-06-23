@@ -48,6 +48,22 @@ def _transform(config: CameraConfig):
     return libcamera.Transform(hflip=config.hflip, vflip=config.vflip)
 
 
+def _wait_for_ae(picam, timeout: float) -> bool:
+    """Block (up to ``timeout`` seconds) until the auto-exposure loop reports
+    AeLocked. ``capture_metadata`` waits for each new frame, so this naturally
+    paces at the sensor frame rate and gives AGC/AEC time to converge before a
+    still is taken. Returns True if AE locked, False on timeout."""
+    deadline = time.monotonic() + max(0.0, timeout)
+    while time.monotonic() < deadline:
+        try:
+            md = picam.capture_metadata() or {}
+        except Exception:
+            return False
+        if md.get("AeLocked"):
+            return True
+    return False
+
+
 def capture_jpeg_file(output_path: Path, config: CameraConfig, size: Optional[Tuple[int, int]] = None,
                       controls: Optional[dict] = None, warmup: Optional[float] = None,
                       image_controls: Optional[dict] = None, quality: Optional[int] = None) -> dict:
@@ -81,7 +97,15 @@ def capture_jpeg_file(output_path: Path, config: CameraConfig, size: Optional[Tu
                 picam.set_controls(dict(image_controls))
             except Exception as exc:
                 log.warning("could not apply image controls: %s", exc)
-        time.sleep(warmup if warmup is not None else config.warmup_seconds)
+        settle = warmup if warmup is not None else config.warmup_seconds
+        time.sleep(settle)
+        # With a forced exposure (night mode) the frame is deterministic after
+        # the settle. In auto mode the AGC/AEC needs several frames to converge,
+        # especially at dawn/dusk when light changes fast; capturing too early
+        # yields near-black frames. Wait for AE to lock (bounded) before the shot.
+        forced_exp = bool(controls and "ExposureTime" in controls)
+        if not forced_exp:
+            _wait_for_ae(picam, getattr(config, "ae_settle_timeout", 2.5))
         picam.capture_file(str(tmp_path), format="jpeg")
         try:
             meta = picam.capture_metadata() or {}

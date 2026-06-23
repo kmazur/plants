@@ -43,6 +43,8 @@ class CameraConfig:
     img_saturation: float
     denoise: str
     night_postprocess: bool
+    ae_settle_timeout: float
+    black_frame_floor: float
 
 
 @dataclass(frozen=True)
@@ -148,6 +150,8 @@ def load_config(path: Union[str, Path]) -> AppConfig:
         img_saturation=_get_float(parser, "camera", "img_saturation", 1.0),
         denoise=_get_str(parser, "camera", "denoise", "high"),
         night_postprocess=_get_bool(parser, "camera", "night_postprocess", True),
+        ae_settle_timeout=_get_float(parser, "camera", "ae_settle_timeout", 2.5),
+        black_frame_floor=_get_float(parser, "camera", "black_frame_floor", 25.0),
     )
     snapshot = SnapshotConfig(
         retain_days=_get_int(parser, "snapshot", "retain_days", 14),

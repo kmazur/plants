@@ -316,6 +316,24 @@ class SnapshotStorage:
                             time.sleep(self.config.camera.retry_delay_seconds)
                 else:
                     raise RuntimeError(f"snapshot failed after retries: {last_error}")
+                # Daytime black-frame guard: auto-exposure occasionally misses at
+                # dawn/dusk and produces a near-black frame while the scene is
+                # actually bright. Recapture once so it doesn't poison the
+                # brightness graph and the timelapse.
+                if not night:
+                    try:
+                        from . import metadata as md
+                        b = md.brightness(file_path)
+                        lux = float(cam_meta.get("Lux") or 0)
+                        if (b is not None and b < self.config.camera.black_frame_floor
+                                and lux > 200):
+                            log.info("daytime black frame (b=%.0f, lux=%.0f); recapturing", b, lux)
+                            cam_meta = capture_jpeg_file(
+                                file_path, self.config.camera, controls=controls, warmup=warmup,
+                                image_controls=self._image_controls(),
+                                quality=self.config.camera.jpeg_quality) or cam_meta
+                    except Exception as exc:
+                        log.warning("black-frame guard failed: %s", exc)
         except CameraBusy:
             return SnapshotResult(file_path, self.latest_path, now, skipped=True, message="camera busy")
         if night and night_exp:

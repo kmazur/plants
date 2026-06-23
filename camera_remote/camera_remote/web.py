@@ -1155,10 +1155,21 @@ METRICS_JS = """
   }
   if(slider) slider.addEventListener("input", function(){ setSlider(parseInt(slider.value,10), true); });
 
+  function smoothMedian(arr, win){
+    var half=Math.floor(win/2), out=new Array(arr.length);
+    for(var i=0;i<arr.length;i++){
+      var w=[];
+      for(var j=Math.max(0,i-half);j<=Math.min(arr.length-1,i+half);j++){ if(arr[j]!=null) w.push(arr[j]); }
+      if(!w.length){ out[i]=null; continue; }
+      w.sort(function(a,b){return a-b;});
+      out[i]=w[Math.floor(w.length/2)];
+    }
+    return out;
+  }
   function makeChart(el, title, defs){
     var xs=gidx.map(function(i){ return Date.parse(recs[i].ts)/1000; });
     var data=[xs];
-    defs.forEach(function(d){ data.push(gidx.map(function(i){ return num(recs[i],d.path); })); });
+    defs.forEach(function(d){ var col=gidx.map(function(i){ return num(recs[i],d.path); }); if(d.smooth) col=smoothMedian(col,5); data.push(col); });
     var usesRight=defs.some(function(d){return d.right;});
     var series=[{}];
     defs.forEach(function(d){ series.push({label:d.label, stroke:d.color, width:1.6, scale:(d.right?"y2":"y"), spanGaps:true}); });
@@ -1185,7 +1196,7 @@ METRICS_JS = """
     loadZones(day);
     makeChart($("chTemp"),"Temperatura (°C)",[{label:"CPU",path:"cpu_temp_c",color:"#e0533f"},{label:"zewn.",path:"outdoor.temp_c",color:"#4eb389"}]);
     makeChart($("chWx"),"Pogoda",[{label:"zachmurzenie %",path:"outdoor.cloud",color:"#7d93b5"},{label:"opad mm",path:"outdoor.precip",color:"#5b9bd8",right:true},{label:"wiatr km/h",path:"outdoor.wind",color:"#9aa7a0",right:true}]);
-    makeChart($("chLight"),"Światło",[{label:"jasność",path:"brightness",color:"#e6b450"},{label:"lux",path:"cam.lux",color:"#5b9bd8",right:true}]);
+    makeChart($("chLight"),"Światło",[{label:"jasność (med.)",path:"brightness",color:"#e6b450",smooth:true},{label:"lux",path:"cam.lux",color:"#5b9bd8",right:true}]);
     makeChart($("chSys"),"System",[{label:"RAM %",path:"mem_used_pct",color:"#a585d0"},{label:"dysk %",path:"disk_used_pct",color:"#698075"},{label:"load",path:"load1",color:"#ef9b42",right:true}]);
     if(slider){ slider.max=String(recs.length-1); }
     setSlider(recs.length-1, true);
