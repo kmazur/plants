@@ -64,6 +64,48 @@ def _wait_for_ae(picam, timeout: float) -> bool:
     return False
 
 
+def _stack_frames(gain: float, exp_us: float, config: CameraConfig) -> int:
+    """How many frames to average for this capture. Noise scales ~1/sqrt(N) and
+    sensor noise grows with analogue gain, so we stack roughly proportionally to
+    gain (frames ~= gain): none in bright day (gain 1), heavy at night (gain 16).
+    This is driven by gain rather than time-of-day so it ramps smoothly at
+    dawn/dusk and never stacks a clean daylight frame (avoiding wind ghosting).
+    Bounded by a wall-clock budget so long night exposures don't run away."""
+    maxf = int(getattr(config, "stack_max_frames", 1))
+    thr = float(getattr(config, "stack_gain_threshold", 2.0))
+    budget = float(getattr(config, "stack_max_seconds", 8.0))
+    if maxf <= 1 or gain <= thr:
+        return 1
+    n = min(maxf, max(2, int(round(gain))))
+    frame_time = exp_us / 1_000_000.0 + 0.15
+    if frame_time > 0:
+        n = min(n, max(1, int(budget / frame_time)))
+    return max(1, n)
+
+
+def _capture_stacked(picam, tmp_path: Path, frames: int, quality: int, config: CameraConfig) -> None:
+    """Capture ``frames`` consecutive stills from the open camera and average
+    them to cut noise. Averaging happens in the decoded RGB domain (same proven
+    path as the exposure-fusion code), which sidesteps libcamera array colour-
+    order quirks. A mild unsharp mask after denoising recovers crisp edges."""
+    import numpy as np
+    from PIL import Image, ImageFilter
+
+    acc = None
+    for _ in range(frames):
+        buf = io.BytesIO()
+        picam.capture_file(buf, format="jpeg")
+        buf.seek(0)
+        with Image.open(buf) as im:
+            a = np.asarray(im.convert("RGB"), dtype="float32")
+        acc = a if acc is None else acc + a
+    acc /= frames
+    out = Image.fromarray(np.clip(acc, 0, 255).astype("uint8"))
+    if getattr(config, "stack_unsharp", True):
+        out = out.filter(ImageFilter.UnsharpMask(radius=1.5, percent=80, threshold=2))
+    out.save(str(tmp_path), "JPEG", quality=int(quality))
+
+
 def capture_jpeg_file(output_path: Path, config: CameraConfig, size: Optional[Tuple[int, int]] = None,
                       controls: Optional[dict] = None, warmup: Optional[float] = None,
                       image_controls: Optional[dict] = None, quality: Optional[int] = None) -> dict:
@@ -106,24 +148,38 @@ def capture_jpeg_file(output_path: Path, config: CameraConfig, size: Optional[Tu
         forced_exp = bool(controls and "ExposureTime" in controls)
         if not forced_exp:
             _wait_for_ae(picam, getattr(config, "ae_settle_timeout", 2.5))
+        try:
+            md = picam.capture_metadata() or {}
+        except Exception:
+            md = {}
+        if not forced_exp:
             # Pin the AE-converged exposure/gain before the shot. picamera2 may
             # otherwise return metadata from a different frame than the captured
             # still, and the still can be grabbed mid-adjustment -> frame-to-frame
             # brightness jitter even when the reported exposure barely moves.
-            try:
-                md = picam.capture_metadata() or {}
-                et, ag = md.get("ExposureTime"), md.get("AnalogueGain")
-                if et and ag:
+            et, ag = md.get("ExposureTime"), md.get("AnalogueGain")
+            if et and ag:
+                try:
                     picam.set_controls({"AeEnable": False, "ExposureTime": int(et),
                                         "AnalogueGain": float(ag)})
                     time.sleep(0.2)
-            except Exception as exc:
-                log.debug("could not pin AE exposure: %s", exc)
-        picam.capture_file(str(tmp_path), format="jpeg")
+                except Exception as exc:
+                    log.debug("could not pin AE exposure: %s", exc)
+        # Gain-adaptive multi-frame stacking: average several frames when the
+        # gain is high (night) to suppress noise. The scene is static, so this
+        # is safe; bright daylight (gain ~1) stays a single frame.
+        gain = float(md.get("AnalogueGain") or (controls or {}).get("AnalogueGain") or 1.0)
+        exp_us = float(md.get("ExposureTime") or (controls or {}).get("ExposureTime") or 10000)
+        frames = _stack_frames(gain, exp_us, config)
+        if frames > 1:
+            log.info("stacking %d frames (gain=%.1f, exp=%dus)", frames, gain, int(exp_us))
+            _capture_stacked(picam, tmp_path, frames, quality or config.jpeg_quality, config)
+        else:
+            picam.capture_file(str(tmp_path), format="jpeg")
         try:
-            meta = picam.capture_metadata() or {}
+            meta = picam.capture_metadata() or md or {}
         except Exception:
-            meta = {}
+            meta = md or {}
         tmp_path.replace(output_path)
     finally:
         try:

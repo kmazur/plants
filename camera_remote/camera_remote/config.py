@@ -45,6 +45,10 @@ class CameraConfig:
     night_postprocess: bool
     ae_settle_timeout: float
     black_frame_floor: float
+    stack_max_frames: int
+    stack_gain_threshold: float
+    stack_max_seconds: float
+    stack_unsharp: bool
 
 
 @dataclass(frozen=True)
@@ -152,6 +156,10 @@ def load_config(path: Union[str, Path]) -> AppConfig:
         night_postprocess=_get_bool(parser, "camera", "night_postprocess", True),
         ae_settle_timeout=_get_float(parser, "camera", "ae_settle_timeout", 2.5),
         black_frame_floor=_get_float(parser, "camera", "black_frame_floor", 25.0),
+        stack_max_frames=_get_int(parser, "camera", "stack_max_frames", 16),
+        stack_gain_threshold=_get_float(parser, "camera", "stack_gain_threshold", 2.0),
+        stack_max_seconds=_get_float(parser, "camera", "stack_max_seconds", 8.0),
+        stack_unsharp=_get_bool(parser, "camera", "stack_unsharp", True),
     )
     snapshot = SnapshotConfig(
         retain_days=_get_int(parser, "snapshot", "retain_days", 14),
