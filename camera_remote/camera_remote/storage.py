@@ -299,19 +299,6 @@ class SnapshotStorage:
         night = self._is_night()
         controls, warmup, night_exp = self._night_controls() if night else (None, None, None)
 
-        # Seed daytime AE from the previous daytime frame so it converges from
-        # near-correct instead of the sensor default (smoother dawn/dusk, faster
-        # capture). Skipped right after the night->day handoff (last frame is a
-        # night frame in a different exposure regime).
-        ae_seed = None
-        if not night:
-            last = self.metrics.latest() or {}
-            if not last.get("night"):
-                lc = last.get("cam") or {}
-                et, ag = lc.get("exposure_us"), lc.get("gain")
-                if et and ag:
-                    ae_seed = (et, ag)
-
         cam_meta = {}
         try:
             with CameraLock(self.config.paths.lock_file, blocking=blocking_lock):
@@ -321,7 +308,7 @@ class SnapshotStorage:
                         cam_meta = capture_jpeg_file(
                             file_path, self.config.camera, controls=controls, warmup=warmup,
                             image_controls=self._image_controls(),
-                            quality=self.config.camera.jpeg_quality, ae_seed=ae_seed) or {}
+                            quality=self.config.camera.jpeg_quality) or {}
                         break
                     except Exception as exc:
                         last_error = exc
@@ -353,7 +340,7 @@ class SnapshotStorage:
                             cam_meta = capture_jpeg_file(
                                 file_path, self.config.camera, controls=controls, warmup=warmup,
                                 image_controls=self._image_controls(),
-                                quality=self.config.camera.jpeg_quality, ae_seed=ae_seed) or cam_meta
+                                quality=self.config.camera.jpeg_quality) or cam_meta
                     except Exception as exc:
                         log.warning("dark-frame guard failed: %s", exc)
         except CameraBusy:
