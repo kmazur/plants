@@ -224,23 +224,34 @@ def build_movie(
     out_path.parent.mkdir(parents=True, exist_ok=True)
     tmp_dir = Path(tempfile.mkdtemp(prefix="movie_"))
     total = len(frames)
-    try:
-        for i, f in enumerate(frames):
-            dst = tmp_dir / f"{i:06d}.jpg"
-            if caption is not None:
-                try:
-                    _annotate(f, dst, caption(f), width)
-                    if progress:
-                        progress("Renderowanie napisow", i + 1, total)
-                    continue
-                except Exception as exc:
-                    log.debug("annotate failed for %s: %s", f, exc)
+
+    def stage_one(i, f):
+        """Prepare frame i in tmp_dir (annotate with caption, else link/copy)."""
+        dst = tmp_dir / f"{i:06d}.jpg"
+        if caption is not None:
             try:
-                os.symlink(f.resolve(), dst)
-            except Exception:
-                shutil.copyfile(f, dst)
-            if progress:
-                progress("Renderowanie napisow", i + 1, total)
+                _annotate(f, dst, caption(f), width)
+                return
+            except Exception as exc:
+                log.debug("annotate failed for %s: %s", f, exc)
+        try:
+            os.symlink(f.resolve(), dst)
+        except Exception:
+            shutil.copyfile(f, dst)
+
+    try:
+        # Render frames in parallel: PIL decode/resize/encode release the GIL,
+        # so a small thread pool turns the caption pass (the slow phase) from
+        # serial into ~core-bound. Order is fixed by the i:06d filename, so
+        # completion order does not matter.
+        import concurrent.futures
+        workers = max(1, min(4, (os.cpu_count() or 2)))
+        with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as ex:
+            futs = [ex.submit(stage_one, i, f) for i, f in enumerate(frames)]
+            for k, fut in enumerate(concurrent.futures.as_completed(futs)):
+                fut.result()
+                if progress:
+                    progress("Renderowanie napisow", k + 1, total)
         return build_dir(tmp_dir, out_path, fps=fps, width=width, force=True,
                          timeout=timeout, progress=progress)
     finally:
