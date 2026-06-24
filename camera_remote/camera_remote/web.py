@@ -1412,7 +1412,8 @@ MOVIE_JS = """
   function withTok(p){ var t=window.CAM_TOKEN||""; var u=new URL(p,location.origin); if(t)u.searchParams.set("token",t); return u.pathname+u.search; }
   var b=document.getElementById("mvBuild"), st=document.getElementById("mvStat"), vid=document.getElementById("mvVid"), dl=document.getElementById("mvDl");
   if(!b) return;
-  function showVid(s){ var u=withTok("/movies/growth.mp4")+"&t="+(s.mtime||0); if(vid.dataset.t!=String(s.mtime)){ vid.src=u; vid.dataset.t=String(s.mtime); } vid.style.display=""; dl.href=u; dl.style.display=""; }
+  function movUrl(mt){ var u=new URL("/movies/growth.mp4",location.origin); if(window.CAM_TOKEN)u.searchParams.set("token",window.CAM_TOKEN); u.searchParams.set("t",mt||0); return u.pathname+u.search; }
+  function showVid(s){ var u=movUrl(s.mtime); if(vid.dataset.t!=String(s.mtime)){ vid.src=u; vid.dataset.t=String(s.mtime); } vid.style.display=""; dl.href=u; dl.style.display=""; }
   async function status(){ try{ return await (await fetch(withTok("/api/movie/status"))).json(); }catch(e){ return {}; } }
   async function refresh(){ var s=await status();
     if(s.building){ st.textContent="buduję film…"; b.disabled=true; }
