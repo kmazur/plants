@@ -365,10 +365,27 @@ class LiveCamera:
                 self._picam.set_controls({"ScalerCrop": tuple(full)})
                 return
             nx, ny, nw, nh = self._roi
-            cw = max(64, int(nw * fw))
-            ch = max(64, int(nh * fh))
-            cx = int(fx + nx * fw)
-            cy = int(fy + ny * fh)
+            # The output stream has a fixed aspect ratio; libcamera scales the
+            # ScalerCrop region to fill it. A crop of a different aspect ratio is
+            # therefore stretched. Expand the drawn box to the output aspect
+            # (centered on the selection), so the zoom keeps the correct shape.
+            target = self.config.live_width / max(1, self.config.live_height)
+            bw = nw * fw
+            bh = nh * fh
+            bcx = fx + (nx + nw / 2.0) * fw
+            bcy = fy + (ny + nh / 2.0) * fh
+            if bw / max(1.0, bh) > target:
+                bh = bw / target
+            else:
+                bw = bh * target
+            if bw > fw:
+                bw, bh = fw, fw / target
+            if bh > fh:
+                bw, bh = fh * target, fh
+            cw = max(64, int(round(bw)))
+            ch = max(64, int(round(bh)))
+            cx = max(fx, min(int(round(bcx - cw / 2.0)), fx + fw - cw))
+            cy = max(fy, min(int(round(bcy - ch / 2.0)), fy + fh - ch))
             self._picam.set_controls({"ScalerCrop": (cx, cy, cw, ch)})
         except Exception as exc:
             log.warning("set ScalerCrop failed: %s", exc)
