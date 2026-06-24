@@ -15,6 +15,7 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 from datetime import date, timedelta
 from pathlib import Path
 from typing import List, Optional, Tuple
@@ -77,9 +78,12 @@ def build_dir(
     width: int = DEFAULT_WIDTH,
     force: bool = False,
     timeout: int = 1800,
+    progress=None,
 ) -> Optional[Path]:
     """Encode all ``*.jpg`` in ``frames_dir`` into the H.264 file ``out_path``.
-    Returns the path, None when there are no frames, raises on ffmpeg errors."""
+    Returns the path, None when there are no frames, raises on ffmpeg errors.
+    ``progress`` is an optional callable(stage:str, current:int, total:int) used
+    to report live encode progress."""
     frames_dir = Path(frames_dir)
     out_path = Path(out_path)
     frames = sorted(frames_dir.glob("*.jpg"))
@@ -92,6 +96,7 @@ def build_dir(
 
     name, enc_args = pick_encoder(_available_encoders())
     tmp = out_path.with_suffix(out_path.suffix + ".tmp.mp4")
+    total = len(frames)
     cmd = [
         "ffmpeg", "-hide_banner", "-nostdin", "-y",
         "-framerate", str(fps),
@@ -101,25 +106,38 @@ def build_dir(
         *enc_args,
         "-r", str(fps),
         "-movflags", "+faststart",
+        "-progress", "pipe:1", "-nostats",
         str(tmp),
     ]
-    log.info("building timelapse %s with %s (%d frames)", out_path, name, len(frames))
+    log.info("building timelapse %s with %s (%d frames)", out_path, name, total)
+    if progress:
+        progress("Kodowanie", 0, total)
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    deadline = time.monotonic() + timeout
     try:
-        subprocess.run(cmd, check=True, capture_output=True, timeout=timeout)
-    except subprocess.CalledProcessError as exc:
+        for line in proc.stdout:  # ffmpeg -progress emits key=value lines
+            if progress and line.startswith("frame="):
+                try:
+                    progress("Kodowanie", min(int(line.split("=", 1)[1]), total), total)
+                except ValueError:
+                    pass
+            if time.monotonic() > deadline:
+                proc.kill()
+                tmp.unlink(missing_ok=True)
+                raise RuntimeError(f"ffmpeg timed out after {timeout}s\ncommand: {' '.join(cmd)}")
+        stderr = proc.stderr.read()
+        rc = proc.wait()
+    finally:
+        proc.stdout.close()
+        proc.stderr.close()
+    if rc != 0:
         tmp.unlink(missing_ok=True)
-        stderr = (exc.stderr or b"").decode("utf-8", "replace")[-4000:]
-        stdout = (exc.stdout or b"").decode("utf-8", "replace")[-1000:]
         raise RuntimeError(
-            f"ffmpeg exited {exc.returncode}\n"
-            f"encoder: {name}\n"
-            f"frames: {len(frames)} in {frames_dir}\n"
-            f"command: {' '.join(cmd)}\n"
-            f"--- stderr ---\n{stderr}\n--- stdout ---\n{stdout}"
-        ) from exc
-    except subprocess.TimeoutExpired as exc:
-        tmp.unlink(missing_ok=True)
-        raise RuntimeError(f"ffmpeg timed out after {timeout}s\ncommand: {' '.join(cmd)}") from exc
+            f"ffmpeg exited {rc}\nencoder: {name}\n"
+            f"frames: {total} in {frames_dir}\ncommand: {' '.join(cmd)}\n"
+            f"--- stderr ---\n{stderr[-4000:]}")
+    if progress:
+        progress("Kodowanie", total, total)
     os.replace(tmp, out_path)
     log.info("wrote %s (%d bytes)", out_path, out_path.stat().st_size)
     return out_path
@@ -185,11 +203,14 @@ def build_movie(
     max_frames: int = 0,
     force: bool = False,
     timeout: int = 3600,
+    progress=None,
 ) -> Optional[Path]:
     """Encode an arbitrary ordered list of frames into ``out_path``. When
     ``caption`` (a callable frame_path -> str) is given, each frame is
     re-rendered with a burned-in caption first. ``max_frames`` downsamples
-    evenly so long ranges stay quick to build and small to download."""
+    evenly so long ranges stay quick to build and small to download.
+    ``progress`` is an optional callable(stage, current, total) reporting the
+    render and encode phases."""
     import tempfile
     frames = [Path(f) for f in frames if Path(f).exists()]
     if not frames:
@@ -202,12 +223,15 @@ def build_movie(
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     tmp_dir = Path(tempfile.mkdtemp(prefix="movie_"))
+    total = len(frames)
     try:
         for i, f in enumerate(frames):
             dst = tmp_dir / f"{i:06d}.jpg"
             if caption is not None:
                 try:
                     _annotate(f, dst, caption(f), width)
+                    if progress:
+                        progress("Renderowanie napisow", i + 1, total)
                     continue
                 except Exception as exc:
                     log.debug("annotate failed for %s: %s", f, exc)
@@ -215,7 +239,10 @@ def build_movie(
                 os.symlink(f.resolve(), dst)
             except Exception:
                 shutil.copyfile(f, dst)
-        return build_dir(tmp_dir, out_path, fps=fps, width=width, force=True, timeout=timeout)
+            if progress:
+                progress("Renderowanie napisow", i + 1, total)
+        return build_dir(tmp_dir, out_path, fps=fps, width=width, force=True,
+                         timeout=timeout, progress=progress)
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
 

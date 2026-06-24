@@ -485,6 +485,20 @@ a:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible{
 .term-wrap{background:#0b1410;border:1px solid var(--border);border-radius:12px;padding:8px;box-shadow:var(--shadow);margin-top:.6rem}
 #term{height:64vh;width:100%}
 .term-bar{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin:.6rem 0 0}
+.jobspanel{position:fixed;right:12px;bottom:12px;width:300px;max-width:92vw;z-index:60;
+  background:var(--card);border:1px solid var(--border-strong);border-radius:14px;
+  box-shadow:0 8px 28px rgba(0,0,0,.28);padding:.7rem .8rem;color:var(--ink);font-size:.85rem}
+.jobspanel[hidden]{display:none}
+.jp-h{font-weight:800;margin-bottom:.4rem;letter-spacing:.02em}
+.jp-job{margin:.5rem 0}
+.jp-top{display:flex;justify-content:space-between;gap:.5rem;align-items:baseline}
+.jp-lbl{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.jp-pct{color:var(--muted);font-variant-numeric:tabular-nums}
+.jp-bar{height:6px;border-radius:5px;background:var(--border);overflow:hidden;margin:.3rem 0}
+.jp-fill{height:100%;width:0;background:var(--primary);transition:width .4s ease}
+.jp-job.done .jp-fill{background:var(--accent)}
+.jp-job.err .jp-fill{background:#d9534f}
+.jp-sub{color:var(--muted);font-size:.78rem}
 """
 
 PAGE_JS = """
@@ -1412,6 +1426,44 @@ MOVIE_JS = """
 """
 
 
+JOBS_JS = r"""
+(function(){
+  function withTok(p){ var t=window.CAM_TOKEN||""; var u=new URL(p,location.origin); if(t)u.searchParams.set("token",t); return u.pathname+u.search; }
+  var panel=document.getElementById("jobsPanel");
+  if(!panel) return;
+  function fmt(s){ s=Math.max(0,Math.round(s||0)); var m=Math.floor(s/60), x=s%60; return m? (m+"m "+(x<10?"0":"")+x+"s") : (x+"s"); }
+  function esc(t){ var d=document.createElement("div"); d.textContent=(t==null?"":String(t)); return d.innerHTML; }
+  function render(jobs){
+    if(!jobs || !jobs.length){ panel.hidden=true; panel.innerHTML=""; return; }
+    var h='<div class="jp-h">⚙ Zadania w tle</div>';
+    jobs.forEach(function(j){
+      var pct=Math.max(0,Math.min(100,j.percent||0));
+      var cls=j.error?"err":(j.done?"done":"run"), sub;
+      if(j.error){ sub="błąd: "+esc(j.error); }
+      else if(j.done){ sub="✅ gotowe · "+fmt(j.elapsed_s); }
+      else { sub=esc(j.stage||"…"); if(j.total){ sub+=" "+(j.current||0)+"/"+j.total; } sub+=" · "+fmt(j.elapsed_s); }
+      h+='<div class="jp-job '+cls+'">'
+        +'<div class="jp-top"><span class="jp-lbl">'+esc(j.label||j.id)+'</span><span class="jp-pct">'+pct+'%</span></div>'
+        +'<div class="jp-bar"><div class="jp-fill" style="width:'+pct+'%"></div></div>'
+        +'<div class="jp-sub">'+sub+'</div></div>';
+    });
+    panel.innerHTML=h; panel.hidden=false;
+  }
+  var timer=null;
+  async function tick(){
+    var active=false;
+    try{
+      var d=await (await fetch(withTok("/api/jobs"))).json();
+      var jobs=d.jobs||[]; render(jobs);
+      active=jobs.some(function(j){ return !j.done; });
+    }catch(e){}
+    clearTimeout(timer); timer=setTimeout(tick, active?1000:5000);
+  }
+  tick();
+})();
+"""
+
+
 COMPARE_JS = """
 (function(){
   function $(id){ return document.getElementById(id); }
@@ -1558,6 +1610,8 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             self._send_mjpeg()
         elif parsed.path == "/api/status":
             self._send_json(self._status())
+        elif parsed.path == "/api/jobs":
+            self._jobs(parsed.query)
         elif parsed.path == "/api/system":
             self._send_json(read_system_stats(self.storage.data_dir))
         elif parsed.path == "/api/metadata":
@@ -2065,10 +2119,16 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
         data_dir = self.storage.data_dir
 
         def worker():
+            jid = f"timelapse:{day}"
+            server.job_set(jid, label=f"Timelapse {day}", stage="Kodowanie", percent=0,
+                           done=False, error="")  # type: ignore[attr-defined]
             try:
-                build_day(data_dir, day, force=True)
+                build_day(data_dir, day, force=True,
+                          progress=lambda s, c, t: server.job_progress(jid, s, c, t))  # type: ignore[attr-defined]
+                server.job_done(jid)  # type: ignore[attr-defined]
             except Exception as exc:
                 log.warning("timelapse build failed for %s: %s", day, exc)
+                server.job_done(jid, error=str(exc))  # type: ignore[attr-defined]
             finally:
                 with server.timelapse_lock:  # type: ignore[attr-defined]
                     server.timelapse_building.discard(day)  # type: ignore[attr-defined]
@@ -2185,13 +2245,17 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             storage = self.storage
 
             def worker():
+                server.job_set("hdr", label="HDR (bracket + fuzja)", stage="Naswietlanie",
+                               percent=0, done=False, error="")  # type: ignore[attr-defined]
                 try:
                     p = storage.capture_hdr()
                     server.hdr["last"] = p.name  # type: ignore[attr-defined]
                     server.hdr["error"] = ""  # type: ignore[attr-defined]
+                    server.job_done("hdr")  # type: ignore[attr-defined]
                 except Exception as exc:
                     server.hdr["error"] = f"{type(exc).__name__}: {exc}"  # type: ignore[attr-defined]
                     log.warning("hdr capture failed: %s", exc)
+                    server.job_done("hdr", error=str(exc))  # type: ignore[attr-defined]
                 finally:
                     server.hdr["building"] = False  # type: ignore[attr-defined]
 
@@ -2263,12 +2327,15 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
         storage = self.storage
 
         def worker():
+            server.job_set("movie", label="Film wzrostu", stage="Przygotowanie", percent=0,
+                           done=False, error="")  # type: ignore[attr-defined]
             try:
                 from . import timelapse as tl
                 sel = sorted(p.name for p in storage.date_dirs())
                 if days > 0:
                     sel = sel[-days:]
                 if not sel:
+                    server.job_done("movie", error="brak klatek")  # type: ignore[attr-defined]
                     return
                 frames = tl.gather_frames(storage.data_dir, sel[0], sel[-1])
                 capmap = {}
@@ -2287,15 +2354,37 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
                     return "   ".join(parts)
 
                 tl.build_movie(frames, storage.movies_dir / "growth.mp4",
-                               caption=caption, max_frames=900, force=True)
+                               caption=caption, max_frames=900, force=True,
+                               progress=lambda s, c, t: server.job_progress("movie", s, c, t))  # type: ignore[attr-defined]
+                server.job_done("movie")  # type: ignore[attr-defined]
             except Exception as exc:
                 log.warning("growth movie failed: %s", exc)
+                server.job_done("movie", error=str(exc))  # type: ignore[attr-defined]
             finally:
                 server.movie_building = False  # type: ignore[attr-defined]
 
         threading.Thread(target=worker, daemon=True).start()
         log.info("growth movie build started (days=%s)", days or "all")
         self._send_json({"ok": True, "building": True})
+
+    def _jobs(self, query: str) -> None:
+        if not self._authorized(query):
+            self._send_json({"error": "unauthorized"}, HTTPStatus.UNAUTHORIZED)
+            return
+        server = self.server
+        jobs = server.jobs_snapshot()  # type: ignore[attr-defined]
+        # Canopy backfill keeps its own counter; surface it as a job too.
+        cb = getattr(server, "canopy_backfill", None)
+        if cb and cb.get("running"):
+            total = cb.get("total") or 0
+            done = cb.get("done") or 0
+            jobs.append({
+                "id": "canopy", "label": "Przeliczanie zieleni (strefy)",
+                "stage": "Analiza klatek", "done": False, "error": "",
+                "current": done, "total": total,
+                "percent": int(done * 100 / total) if total else 0,
+            })
+        self._send_json({"jobs": jobs, "now": int(time.time())})
 
     def _movie_status(self, query: str) -> None:
         if not self._authorized(query):
@@ -2899,8 +2988,10 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
   <div id="lbHint" class="lb-hint">← → klawisze · Esc zamyka</div>
 </div>
 <div id="toast" class="toast"></div>
+<div id="jobsPanel" class="jobspanel" hidden></div>
 <script>window.CAM_TOKEN={token_js};</script>
 <script>{PAGE_JS}</script>
+<script>{JOBS_JS}</script>
 </body>
 </html>"""
 
@@ -3253,8 +3344,51 @@ class CameraServer(ThreadingHTTPServer):
         self.movie_building = False
         self.hdr_lock = threading.Lock()
         self.hdr = {"building": False, "last": None, "error": ""}
+        self.jobs: dict = {}
+        self.jobs_lock = threading.Lock()
         self._maint_stop = threading.Event()
         threading.Thread(target=self._maintenance_loop, name="maintenance", daemon=True).start()
+
+    def job_set(self, jid: str, **fields) -> None:
+        """Create/update a background-job progress entry (thread-safe)."""
+        with self.jobs_lock:
+            j = self.jobs.get(jid) or {"id": jid, "started": time.time(),
+                                       "stage": "", "percent": 0, "done": False, "error": ""}
+            j.update(fields)
+            j["updated"] = time.time()
+            self.jobs[jid] = j
+
+    def job_progress(self, jid: str, stage: str, current: int, total: int) -> None:
+        pct = int(current * 100 / total) if total else 0
+        self.job_set(jid, stage=stage, percent=max(0, min(100, pct)),
+                     current=current, total=total)
+
+    def job_done(self, jid: str, error: str = "") -> None:
+        with self.jobs_lock:
+            j = self.jobs.get(jid)
+            if j:
+                j["done"] = True
+                j["error"] = error or ""
+                if not error:
+                    j["percent"] = 100
+                j["finished"] = time.time()
+                j["updated"] = time.time()
+
+    def jobs_snapshot(self) -> list:
+        """Active jobs plus those finished in the last 20s, newest first."""
+        now = time.time()
+        with self.jobs_lock:
+            # prune entries finished long ago
+            for jid in [k for k, v in self.jobs.items()
+                        if v.get("done") and now - v.get("finished", now) > 20]:
+                self.jobs.pop(jid, None)
+            out = []
+            for j in self.jobs.values():
+                e = dict(j)
+                e["elapsed_s"] = round((j.get("finished") or now) - j.get("started", now), 1)
+                out.append(e)
+        out.sort(key=lambda x: x.get("started", 0), reverse=True)
+        return out
 
     def _maintenance_loop(self) -> None:
         """Periodic storage housekeeping (aging + disk-pressure reclamation)."""
